@@ -1,0 +1,201 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasUserProfile() {
+      return signedIn() && exists(currentUserPath());
+    }
+
+    function currentUserRole() {
+      return request.auth.token.role != null
+        ? request.auth.token.role
+        : hasUserProfile()
+          ? get(currentUserPath()).data.role
+          : null;
+    }
+
+    function currentUserOrgId() {
+      return request.auth.token.organizationId != null
+        ? request.auth.token.organizationId
+        : hasUserProfile()
+          ? get(currentUserPath()).data.organizationId
+          : null;
+    }
+
+    function isAdmin() {
+      return currentUserRole() == 'admin';
+    }
+
+    function isEngineer() {
+      return currentUserRole() == 'engineer';
+    }
+
+    function isTechnician() {
+      return currentUserRole() == 'technician';
+    }
+
+    function isClient() {
+      return currentUserRole() == 'client';
+    }
+
+    function isPlatformStaff() {
+      return isAdmin() || isEngineer() || isTechnician();
+    }
+
+    function belongsToOrg(orgId) {
+      return signedIn() && currentUserOrgId() == orgId;
+    }
+
+    function canReadOrgScopedDoc(orgId) {
+      return isPlatformStaff() || belongsToOrg(orgId);
+    }
+
+    function canManageSupportTicket() {
+      return isAdmin() || isEngineer() || isTechnician();
+    }
+
+    function isConversationParticipant() {
+      return signedIn() && resource.data.participantIds.hasAny([request.auth.uid]);
+    }
+
+    function isConversationParticipantOnCreate() {
+      return signedIn() && request.resource.data.participantIds.hasAny([request.auth.uid]);
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (userId == request.auth.uid || isPlatformStaff());
+      allow create: if signedIn()
+        && userId == request.auth.uid
+        && request.resource.data.role == 'client'
+        && (
+          !('organizationId' in request.resource.data) ||
+          request.resource.data.organizationId == null ||
+          request.resource.data.organizationId is string
+        );
+      allow update: if signedIn() && (userId == request.auth.uid || isAdmin());
+      allow delete: if false;
+    }
+
+    match /organizations/{organizationId} {
+      allow read: if signedIn() && (isPlatformStaff() || belongsToOrg(organizationId));
+      allow write: if isAdmin();
+    }
+
+    match /catalog_products/{productId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /deployments/{deploymentId} {
+      allow read: if signedIn() && canReadOrgScopedDoc(resource.data.organizationId);
+      allow create, update, delete: if isPlatformStaff();
+
+      match /components/{componentId} {
+        allow read: if signedIn() && canReadOrgScopedDoc(
+          get(/databases/$(database)/documents/deployments/$(deploymentId)).data.organizationId
+        );
+        allow create, update, delete: if isPlatformStaff();
+      }
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if signedIn() && canReadOrgScopedDoc(resource.data.organizationId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /support_tickets/{ticketId} {
+      allow read: if signedIn() && canReadOrgScopedDoc(resource.data.organizationId);
+      allow create: if signedIn() && (
+        canManageSupportTicket() ||
+        (isClient()
+          && belongsToOrg(request.resource.data.organizationId)
+          && request.resource.data.createdByUserId == request.auth.uid)
+      );
+      allow update: if signedIn() && (
+        canManageSupportTicket() ||
+        (isClient()
+          && belongsToOrg(resource.data.organizationId)
+          && resource.data.createdByUserId == request.auth.uid)
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isPlatformStaff()
+      );
+      allow create, delete: if isPlatformStaff();
+      allow update: if signedIn() && (
+        isPlatformStaff() ||
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /activity_events/{eventId} {
+      allow read: if signedIn() && canReadOrgScopedDoc(resource.data.organizationId);
+      allow create: if isPlatformStaff();
+      allow update, delete: if false;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn() && (
+        isPlatformStaff() ||
+        resource.data.assigneeUserId == request.auth.uid
+      );
+      allow create, update, delete: if isPlatformStaff();
+    }
+
+    match /inventory_items/{itemId} {
+      allow read: if signedIn() && isPlatformStaff();
+      allow create, update, delete: if isAdmin() || isTechnician();
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isConversationParticipant() || isPlatformStaff();
+      allow create: if isConversationParticipantOnCreate() || isPlatformStaff();
+      allow update, delete: if isConversationParticipant() || isPlatformStaff();
+
+      match /messages/{messageId} {
+        function parentConversation() {
+          return get(/databases/$(database)/documents/conversations/$(conversationId));
+        }
+
+        function canReadMessage() {
+          return signedIn() && (
+            isPlatformStaff() ||
+            parentConversation().data.participantIds.hasAny([request.auth.uid])
+          );
+        }
+
+        allow read: if canReadMessage();
+        allow create: if canReadMessage()
+          && request.resource.data.senderUserId == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /stack_services/{serviceId} {
+      allow read, write: if signedIn() && (isAdmin() || isEngineer());
+    }
+
+    match /permission_role_templates/{roleId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /field_service_clients/{clientId} {
+      allow read, write: if isAdmin() || isTechnician();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

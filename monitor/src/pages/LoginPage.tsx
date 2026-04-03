@@ -1,0 +1,133 @@
+import { useState, useRef, useEffect } from "react"
+import { Link } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
+
+export default function LoginPage() {
+  const { login, authError, loading } = useAuth()
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (authError) setError(authError)
+  }, [authError])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
+    setSubmitting(true)
+    try {
+      await login(emailRef.current?.value ?? "", passwordRef.current?.value ?? "")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Connexion impossible.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 font-sans">
+      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="p-8 pb-4 text-center">
+          <div className="inline-flex items-center gap-3 justify-center mb-6">
+            <div className="size-10 bg-blue-600 text-white rounded-lg flex items-center justify-center">
+              <span className="material-symbols-outlined text-[22px]">terminal</span>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Projet Rodaina</h1>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Connexion à votre espace</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            Entrez vos identifiants pour accéder au tableau de bord de monitoring.
+          </p>
+        </div>
+
+        <form className="px-8 py-4 space-y-5" onSubmit={handleSubmit}>
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-sm text-rose-600 dark:text-rose-400">
+              <span className="material-symbols-outlined text-[16px] shrink-0">error</span>
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="email">
+              Email
+            </label>
+            <input
+              ref={emailRef}
+              className="block w-full rounded-lg border border-slate-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-900 dark:text-white text-sm py-2.5 px-3 outline-none focus:ring-2 focus:ring-offset-0"
+              id="email"
+              name="email"
+              placeholder="votre@email.com"
+              type="email"
+              autoComplete="email"
+              disabled={loading || submitting}
+              onChange={() => setError("")}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="password">
+              Mot de passe
+            </label>
+            <div className="relative">
+              <input
+                ref={passwordRef}
+                className="block w-full rounded-lg border border-slate-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-900 dark:text-white text-sm py-2.5 px-3 pr-10 outline-none focus:ring-2"
+                id="password"
+                name="password"
+                placeholder="••••••••"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                disabled={loading || submitting}
+                onChange={() => setError("")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {showPassword ? "visibility" : "visibility_off"}
+                </span>
+              </button>
+            </div>
+            <div className="flex justify-end pt-1">
+              <a className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white" href="#">
+                Mot de passe oublié ?
+              </a>
+            </div>
+          </div>
+
+          <button
+            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60"
+            type="submit"
+            disabled={loading || submitting}
+          >
+            {submitting ? "Connexion…" : "Se connecter"}
+          </button>
+
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+            Les acces de demonstration ont ete retires. Utilisez un compte Firebase reel.
+          </p>
+        </form>
+
+        <div className="px-8 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Vous n'avez pas de compte ?{" "}
+            <Link className="font-semibold text-blue-600 hover:text-blue-700" to="/register">
+              Demander un accès
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      <div aria-hidden="true" className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-slate-300/20 dark:bg-slate-700/20 rounded-full blur-3xl" />
+      </div>
+    </div>
+  )
+}
