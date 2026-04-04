@@ -20,6 +20,11 @@ create one collection per page or per widget.
 - `invoices`
   - Billing rows scoped to one organization.
   - Example fields: `organizationId`, `status`, `amount`, `issuedAt`, `dueAt`
+- `orders`
+  - Scoped by `organizationId` (use `platform` for internal admin-only rows).
+  - `kind`: `client_request` (demandes — `/admin/requests`) or `material_supply` (commandes matériel).
+  - Demande: `clientLabel`, `clientEmail`, `requestType`, `budgetLabel`, `description`, `timelineLabel`, `priority`, `status`, `adminComment`, …
+  - Matériel: `materialName`, `quantity`, `supplier`, `notes`, `status`, …
 - `support_tickets`
   - Support issues scoped to one organization.
   - Example fields: `organizationId`, `createdByUserId`, `assigneeUserId`, `priority`, `status`, `createdAt`, `updatedAt`
@@ -33,14 +38,17 @@ create one collection per page or per widget.
   - Internal engineer / technician work items.
   - Example fields: `assigneeUserId`, `organizationId`, `priority`, `status`, `dueAt`
 - `inventory_items`
-  - Technician stock.
-  - Example fields: `sku`, `name`, `stock`, `threshold`, `location`, `updatedAt`
+  - Stock matériel (Gestion des Matériels).
+  - Example fields: `sku`, `name`, `category`, `stock`, `threshold`, `location`, `priceDisplay`, `createdAt`, `updatedAt`
 - `conversations`
   - Messaging threads.
   - Example fields: `participantIds`, `organizationId`, `lastMessageAt`, `lastMessageText`
 - `stack_services`
   - Global internal stack monitoring rows.
   - Use this only for internal infra monitoring, not customer deployments.
+- `engineers`
+  - Admin “Gestion des ingénieurs” roster (directory), separate from Auth `users` until linked.
+  - Example fields: `name`, `email`, `specialty`, `status`, `projects`, `linkedUserId`, `createdAt`, `updatedAt`
 
 ## Subcollections
 

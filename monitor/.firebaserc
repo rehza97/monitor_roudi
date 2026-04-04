@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "tfz-app-hub"
+    "default": "roudi-monitor-app",
+    "legacy-tfz": "tfz-app-hub"
   }
 }

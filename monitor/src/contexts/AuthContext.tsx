@@ -9,7 +9,8 @@ import {
   updateProfile,
 } from "firebase/auth"
 
-import { auth, db, ensureAuthPersistence, isFirebaseConfigured, missingFirebaseEnv } from "@/config/firebase"
+import { auth, db, ensureAuthPersistence, isFirebaseConfigured } from "@/config/firebase"
+import { getFirebaseConfigFormError } from "@/lib/firebase-config-messages"
 import { COLLECTIONS } from "@/data/schema"
 import type { UserProfile, UserRole } from "@/data/schema"
 import { doc, getDoc, serverTimestamp, setDoc } from "@/lib/firebase-firestore"
@@ -38,10 +39,6 @@ const AVATAR_COLORS = ["#0891b2", "#db143c", "#2463eb", "#f9bc06", "#7c3aed", "#
 
 function isUserRole(value: unknown): value is UserRole {
   return typeof value === "string" && USER_ROLES.includes(value as UserRole)
-}
-
-function getFirebaseConfigError(): string {
-  return `Configuration Firebase manquante: ${missingFirebaseEnv.join(", ")}`
 }
 
 function getAuthErrorMessage(error: unknown): string {
@@ -107,7 +104,7 @@ function mapUserProfile(uid: string, email: string, data: Record<string, unknown
 }
 
 async function loadUserProfile(uid: string, email: string): Promise<UserProfile> {
-  if (!db) throw new Error(getFirebaseConfigError())
+  if (!db) throw new Error(getFirebaseConfigFormError())
   const snapshot = await getDoc(doc(db, COLLECTIONS.users, uid))
   if (!snapshot.exists()) {
     throw new Error("Aucun profil Firestore trouve pour cet utilisateur.")
@@ -122,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) {
-      setAuthError(getFirebaseConfigError())
+      setAuthError(getFirebaseConfigFormError())
       setLoading(false)
       return
     }
@@ -166,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function login(email: string, password: string): Promise<UserProfile> {
-    if (!auth || !isFirebaseConfigured) throw new Error(getFirebaseConfigError())
+    if (!auth || !isFirebaseConfigured) throw new Error(getFirebaseConfigFormError())
     setAuthError("")
     await ensureAuthPersistence()
     try {
@@ -182,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(input: RegisterInput): Promise<UserProfile> {
-    if (!auth || !db || !isFirebaseConfigured) throw new Error(getFirebaseConfigError())
+    if (!auth || !db || !isFirebaseConfigured) throw new Error(getFirebaseConfigFormError())
 
     const name = input.name.trim()
     const email = input.email.trim().toLowerCase()

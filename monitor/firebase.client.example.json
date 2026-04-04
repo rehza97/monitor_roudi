@@ -1,0 +1,8 @@
+{
+  "apiKey": "your-web-api-key",
+  "authDomain": "roudi-monitor-app.firebaseapp.com",
+  "projectId": "roudi-monitor-app",
+  "storageBucket": "roudi-monitor-app.firebasestorage.app",
+  "messagingSenderId": "your-messaging-sender-id",
+  "appId": "your-web-app-id"
+}

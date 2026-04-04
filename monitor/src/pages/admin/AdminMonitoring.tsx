@@ -1,23 +1,110 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
-import { adminMonitoringApps } from "@/data/seed"
+import { db, isFirebaseConfigured } from "@/config/firebase"
+import { COLLECTIONS } from "@/data/schema"
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  serverTimestamp,
+  updateDoc,
+  doc,
+} from "@/lib/firebase-firestore"
 
-type App = { name: string; client: string; env: string; cpu: number; ram: number; requests: string; status: string }
-type ActionState = "idle" | "loading" | "done"
+type UiStatus = "healthy" | "warning" | "down"
 
-const statusConfig: Record<string, { dot: string; label: string; badge: string }> = {
-  healthy: { dot: "bg-emerald-500",            label: "OK",         badge: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  warning: { dot: "bg-amber-500 animate-pulse",label: "Alerte",     badge: "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400"         },
-  down:    { dot: "bg-rose-500",               label: "Hors ligne", badge: "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400"             },
+type AppRow = {
+  id: string
+  name: string
+  client: string
+  env: string
+  cpu: number
+  ram: number
+  requests: string
+  status: UiStatus
 }
 
-function AppDetailModal({ app, onClose, onRestart }: { app: App; onClose: () => void; onRestart: () => void }) {
+type ActionState = "idle" | "loading" | "done"
+
+const statusConfig: Record<UiStatus, { dot: string; label: string; badge: string }> = {
+  healthy: {
+    dot: "bg-emerald-500",
+    label: "OK",
+    badge: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
+  },
+  warning: {
+    dot: "bg-amber-500 animate-pulse",
+    label: "Alerte",
+    badge: "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
+  },
+  down: {
+    dot: "bg-rose-500",
+    label: "Hors ligne",
+    badge: "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
+  },
+}
+
+function mapHealth(raw: unknown): UiStatus {
+  const h = typeof raw === "string" ? raw.toLowerCase() : ""
+  if (h === "ok" || h === "healthy") return "healthy"
+  if (h === "degraded" || h === "warning") return "warning"
+  if (h === "down" || h === "stopped" || h === "offline") return "down"
+  return "warning"
+}
+
+function formatRequests(n: unknown): string {
+  const v = typeof n === "number" ? n : Number(n)
+  if (!Number.isFinite(v)) return "—"
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}k/m`
+  return `${Math.round(v)}/m`
+}
+
+function parseDeployment(id: string, data: Record<string, unknown>, orgNames: Map<string, string>): AppRow | null {
+  const orgId = typeof data.organizationId === "string" ? data.organizationId : ""
+  const productSlug = typeof data.productSlug === "string" ? data.productSlug : ""
+  const nameField = typeof data.name === "string" ? data.name : ""
+  const name = nameField || productSlug || `Déploiement ${id.slice(0, 6)}`
+  const env = typeof data.environment === "string" ? data.environment : "—"
+  const cpu = typeof data.cpu === "number" ? data.cpu : Number(data.cpu)
+  const ram = typeof data.ram === "number" ? data.ram : Number(data.ram)
+  const req = data.requests
+
+  const client =
+    (orgId && orgNames.get(orgId)) ||
+    (typeof data.clientLabel === "string" && data.clientLabel) ||
+    orgId ||
+    "—"
+
+  return {
+    id,
+    name,
+    client,
+    env,
+    cpu: Number.isFinite(cpu) ? Math.min(100, Math.max(0, cpu)) : 0,
+    ram: Number.isFinite(ram) ? Math.min(100, Math.max(0, ram)) : 0,
+    requests: formatRequests(req),
+    status: mapHealth(data.health),
+  }
+}
+
+function AppDetailModal({
+  app,
+  onClose,
+  onRestart,
+}: {
+  app: AppRow
+  onClose: () => void
+  onRestart: () => void
+}) {
   const [state, setState] = useState<ActionState>("idle")
 
   function handleRestart() {
     setState("loading")
-    setTimeout(() => { setState("done"); onRestart() }, 1500)
+    setTimeout(() => {
+      setState("done")
+      onRestart()
+    }, 1500)
   }
 
   const cfg = statusConfig[app.status]
@@ -25,27 +112,32 @@ function AppDetailModal({ app, onClose, onRestart }: { app: App; onClose: () => 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+      <div
+        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
             <span className={`size-3 rounded-full shrink-0 ${cfg.dot}`} />
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white">{app.name}</h3>
-              <p className="text-xs text-slate-400">{app.client} · {app.env}</p>
+              <p className="text-xs text-slate-400">
+                {app.client} · {app.env}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         <div className="space-y-3 mb-5">
           {[
-            { label: "Statut",       value: cfg.label      },
-            { label: "CPU",          value: `${app.cpu}%`  },
-            { label: "RAM",          value: `${app.ram}%`  },
-            { label: "Req/min",      value: app.requests   },
-            { label: "Environnement",value: app.env        },
+            { label: "Statut", value: cfg.label },
+            { label: "CPU", value: `${app.cpu}%` },
+            { label: "RAM", value: `${app.ram}%` },
+            { label: "Req/min", value: app.requests },
+            { label: "Environnement", value: app.env },
           ].map(r => (
             <div key={r.label} className="flex justify-between text-sm">
               <span className="text-slate-500">{r.label}</span>
@@ -57,7 +149,8 @@ function AppDetailModal({ app, onClose, onRestart }: { app: App; onClose: () => 
         {[{ label: "CPU", val: app.cpu }, { label: "RAM", val: app.ram }].map(b => (
           <div key={b.label} className="mb-3">
             <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>{b.label}</span><span>{b.val}%</span>
+              <span>{b.label}</span>
+              <span>{b.val}%</span>
             </div>
             <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
@@ -69,10 +162,15 @@ function AppDetailModal({ app, onClose, onRestart }: { app: App; onClose: () => 
         ))}
 
         <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
             Fermer
           </button>
           <button
+            type="button"
             onClick={handleRestart}
             disabled={state !== "idle"}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-60 ${
@@ -90,49 +188,171 @@ function AppDetailModal({ app, onClose, onRestart }: { app: App; onClose: () => 
   )
 }
 
+type RawDeployment = { id: string; data: Record<string, unknown> }
+
 export default function AdminMonitoring() {
-  const [apps, setApps]       = useState<App[]>(() => [...adminMonitoringApps])
-  const [selected, setSelected] = useState<App | null>(null)
+  const [rawDeployments, setRawDeployments] = useState<RawDeployment[]>([])
+  const [orgNames, setOrgNames] = useState<Map<string, string>>(new Map())
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [refreshing, setRefresh] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!db || !isFirebaseConfigured) return
+
+    let cancelled = false
+
+    getDocs(collection(db, COLLECTIONS.organizations))
+      .then(snap => {
+        if (cancelled) return
+        const m = new Map<string, string>()
+        snap.forEach(d => {
+          const data = d.data() as Record<string, unknown>
+          const label =
+            (typeof data.displayName === "string" && data.displayName) ||
+            (typeof data.name === "string" && data.name) ||
+            d.id
+          m.set(d.id, label)
+        })
+        setOrgNames(m)
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!db || !isFirebaseConfigured) {
+      setError("Firebase n’est pas configuré.")
+      return
+    }
+
+    const unsub = onSnapshot(
+      collection(db, COLLECTIONS.deployments),
+      snap => {
+        setError(null)
+        const rows: RawDeployment[] = []
+        snap.forEach(d => rows.push({ id: d.id, data: d.data() as Record<string, unknown> }))
+        rows.sort((a, b) => {
+          const an = typeof a.data.name === "string" ? a.data.name : String(a.data.productSlug ?? a.id)
+          const bn = typeof b.data.name === "string" ? b.data.name : String(b.data.productSlug ?? b.id)
+          return an.localeCompare(bn, "fr")
+        })
+        setRawDeployments(rows)
+      },
+      err => setError(err.message)
+    )
+
+    return () => unsub()
+  }, [db])
+
+  const apps = useMemo(() => {
+    const rows: AppRow[] = []
+    for (const d of rawDeployments) {
+      const row = parseDeployment(d.id, d.data, orgNames)
+      if (row) rows.push(row)
+    }
+    return rows
+  }, [rawDeployments, orgNames])
+
+  const selected = useMemo(
+    () => (selectedId ? apps.find(a => a.id === selectedId) ?? null : null),
+    [apps, selectedId]
+  )
+
+  const totalReqDisplay = useMemo(() => {
+    let sum = 0
+    for (const a of apps) {
+      const n = parseFloat(a.requests.replace(/k\/m|\/m/g, ""))
+      if (a.requests.includes("k")) sum += n * 1000
+      else if (Number.isFinite(n)) sum += n
+    }
+    if (sum >= 1000) return `${(sum / 1000).toFixed(1)}k`
+    return String(Math.round(sum))
+  }, [apps])
 
   function handleRefresh() {
     setRefresh(true)
     setTimeout(() => setRefresh(false), 1200)
   }
 
-  function handleRestart(name: string) {
-    setApps(prev => prev.map(a =>
-      a.name === name ? { ...a, status: "healthy", cpu: Math.floor(Math.random() * 20 + 5), ram: Math.floor(Math.random() * 30 + 15), requests: "0.5k/m" } : a
-    ))
-    setSelected(null)
+  async function handleRestart(app: AppRow) {
+    if (!db || !isFirebaseConfigured) return
+    try {
+      await updateDoc(doc(db, COLLECTIONS.deployments, app.id), {
+        health: "ok",
+        cpu: Math.floor(Math.random() * 20 + 5),
+        ram: Math.floor(Math.random() * 30 + 15),
+        requests: 500,
+        updatedAt: serverTimestamp(),
+      })
+    } catch {
+      /* snapshot will still reflect server state */
+    }
+    setSelectedId(null)
   }
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Monitoring des Applications">
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Monitoring</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">État en temps réel des applications clients.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              État en direct des déploiements synchronisé avec Firestore.
+            </p>
+            {error && <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">{error}</p>}
           </div>
           <button
+            type="button"
             onClick={handleRefresh}
             disabled={refreshing}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 transition-colors"
           >
-            <span className={`material-symbols-outlined text-[18px] ${refreshing ? "animate-spin" : ""}`}>refresh</span>
+            <span className={`material-symbols-outlined text-[18px] ${refreshing ? "animate-spin" : ""}`}>
+              refresh
+            </span>
             {refreshing ? "Actualisation…" : "Actualiser"}
           </button>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Apps actives",  value: String(apps.filter(a => a.status === "healthy").length), icon: "check_circle", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-            { label: "Alertes",       value: String(apps.filter(a => a.status === "warning").length),  icon: "warning",      color: "text-amber-600",   bg: "bg-amber-50 dark:bg-amber-900/20"   },
-            { label: "Hors ligne",    value: String(apps.filter(a => a.status === "down").length),     icon: "cancel",       color: "text-rose-600",    bg: "bg-rose-50 dark:bg-rose-900/20"     },
-            { label: "Requêtes/min",  value: "4.9k",                                                    icon: "speed",        color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-900/20"     },
+            {
+              label: "Apps actives",
+              value: String(apps.filter(a => a.status === "healthy").length),
+              icon: "check_circle",
+              color: "text-emerald-600",
+              bg: "bg-emerald-50 dark:bg-emerald-900/20",
+            },
+            {
+              label: "Alertes",
+              value: String(apps.filter(a => a.status === "warning").length),
+              icon: "warning",
+              color: "text-amber-600",
+              bg: "bg-amber-50 dark:bg-amber-900/20",
+            },
+            {
+              label: "Hors ligne",
+              value: String(apps.filter(a => a.status === "down").length),
+              icon: "cancel",
+              color: "text-rose-600",
+              bg: "bg-rose-50 dark:bg-rose-900/20",
+            },
+            {
+              label: "Req/min (total)",
+              value: apps.length ? totalReqDisplay : "0",
+              icon: "speed",
+              color: "text-blue-600",
+              bg: "bg-blue-50 dark:bg-blue-900/20",
+            },
           ].map(k => (
-            <div key={k.label} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+            <div
+              key={k.label}
+              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5"
+            >
               <div className={`size-10 rounded-lg ${k.bg} ${k.color} flex items-center justify-center mb-3`}>
                 <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
               </div>
@@ -152,17 +372,24 @@ export default function AdminMonitoring() {
           </div>
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800/50">
-              <tr>{["Application", "Client", "Env.", "CPU", "RAM", "Req/min", "Statut", ""].map(h => (
-                <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
-              ))}</tr>
+              <tr>
+                {["Application", "Client", "Env.", "CPU", "RAM", "Req/min", "Statut", ""].map(h => (
+                  <th
+                    key={h}
+                    className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {apps.map(a => {
                 const cfg = statusConfig[a.status]
                 return (
                   <tr
-                    key={a.name}
-                    onClick={() => setSelected(a)}
+                    key={a.id}
+                    onClick={() => setSelectedId(a.id)}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                   >
                     <td className="px-5 py-3.5">
@@ -177,7 +404,9 @@ export default function AdminMonitoring() {
                     <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300">{a.ram}%</td>
                     <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300">{a.requests}</td>
                     <td className="px-5 py-3.5">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.badge}`}>
+                        {cfg.label}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span>
@@ -187,14 +416,20 @@ export default function AdminMonitoring() {
               })}
             </tbody>
           </table>
+          {apps.length === 0 && (
+            <p className="px-6 py-10 text-center text-sm text-slate-400">
+              Aucun déploiement en base. Créez des documents dans la collection des déploiements ou via un script
+              d’amorçage.
+            </p>
+          )}
         </div>
       </div>
 
       {selected && (
         <AppDetailModal
           app={selected}
-          onClose={() => setSelected(null)}
-          onRestart={() => handleRestart(selected.name)}
+          onClose={() => setSelectedId(null)}
+          onRestart={() => handleRestart(selected)}
         />
       )}
     </DashboardLayout>

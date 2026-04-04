@@ -10,14 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-.env
 *.local
-firebase.client.json
-
-# Firebase Admin (service account JSON — never commit)
-admin/serviceAccountKey.json
-**/serviceAccountKey.json
-admin/.default-admin-credentials.json
 
 # Editor directories and files
 .vscode/*
@@ -29,3 +22,5 @@ admin/.default-admin-credentials.json
 *.njsproj
 *.sln
 *.sw?
+
+/design_screens/*

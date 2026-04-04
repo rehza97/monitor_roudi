@@ -88,6 +88,68 @@ export interface EngineerRosterRow {
   status: string
 }
 
+/** Internal org id for platform-scoped orders (admin / stock), not a client tenant */
+export const PLATFORM_ORGANIZATION_ID = "platform" as const
+
+export const ORDER_KIND = {
+  clientRequest: "client_request",
+  materialSupply: "material_supply",
+} as const
+
+export type OrderKind = (typeof ORDER_KIND)[keyof typeof ORDER_KIND]
+
+/** Firestore `orders/{orderId}` — client “demandes” or material supply orders */
+export interface FirestoreOrder {
+  organizationId: string
+  kind: OrderKind
+  createdByUserId: string
+  status: string
+  /** Demande client */
+  clientLabel?: string
+  clientEmail?: string
+  requestType?: string
+  budgetLabel?: string
+  description?: string
+  timelineLabel?: string
+  priority?: string
+  features?: string[]
+  adminComment?: string
+  /** Commande matériel */
+  materialName?: string
+  quantity?: number
+  supplier?: string
+  notes?: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `inventory_items/{id}` — Gestion des matériels */
+export interface FirestoreInventoryItem {
+  sku: string
+  name: string
+  category: string
+  stock: number
+  threshold: number
+  location: string
+  /** Display string e.g. "1 200 DA" */
+  priceDisplay: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `engineers/{engineerId}` document (admin roster / Gestion des ingénieurs) */
+export interface FirestoreEngineer {
+  name: string
+  email: string
+  specialty: string
+  status: string
+  projects: number
+  /** Optional link to `users/{uid}` when the engineer has a login */
+  linkedUserId?: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
 export interface InvoiceRow {
   id: string
   title: string
@@ -262,6 +324,7 @@ export const ROOT_COLLECTIONS = {
   catalogProducts: "catalog_products",
   deployments: "deployments",
   invoices: "invoices",
+  orders: "orders",
   supportTickets: "support_tickets",
   notifications: "notifications",
   activityEvents: "activity_events",
@@ -269,6 +332,7 @@ export const ROOT_COLLECTIONS = {
   inventoryItems: "inventory_items",
   conversations: "conversations",
   stackServices: "stack_services",
+  engineers: "engineers",
 } as const
 
 /**

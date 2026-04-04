@@ -110,6 +110,28 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    /** Material / service orders (e.g. admin materials flow), scoped by organization */
+    match /orders/{orderId} {
+      allow read: if signedIn() && canReadOrgScopedDoc(resource.data.organizationId);
+      allow create: if signedIn()
+        && request.resource.data.organizationId is string
+        && (
+          isAdmin() ||
+          isTechnician() ||
+          (isClient()
+            && belongsToOrg(request.resource.data.organizationId)
+            && request.resource.data.createdByUserId == request.auth.uid)
+        );
+      allow update: if signedIn() && (
+        isAdmin() ||
+        isTechnician() ||
+        (isClient()
+          && belongsToOrg(resource.data.organizationId)
+          && resource.data.createdByUserId == request.auth.uid)
+      );
+      allow delete: if isAdmin();
+    }
+
     match /support_tickets/{ticketId} {
       allow read: if signedIn() && canReadOrgScopedDoc(resource.data.organizationId);
       allow create: if signedIn() && (
@@ -184,6 +206,28 @@ service cloud.firestore {
 
     match /stack_services/{serviceId} {
       allow read, write: if signedIn() && (isAdmin() || isEngineer());
+    }
+
+    /** Admin-managed engineer roster (Gestion des ingénieurs); not the same as Auth `users` role */
+    match /engineers/{engineerId} {
+      allow read: if signedIn() && isPlatformStaff();
+      allow create: if isAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.specialty is string
+        && request.resource.data.status is string
+        && request.resource.data.projects is int
+        && request.resource.data.projects >= 0
+        && request.resource.data.projects <= 10000;
+      allow update: if isAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.specialty is string
+        && request.resource.data.status is string
+        && request.resource.data.projects is int
+        && request.resource.data.projects >= 0
+        && request.resource.data.projects <= 10000;
+      allow delete: if isAdmin();
     }
 
     match /permission_role_templates/{roleId} {

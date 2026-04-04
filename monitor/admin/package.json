@@ -1,0 +1,13 @@
+{
+  "name": "monitor-firebase-admin",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Firebase Admin SDK (Node only). Do not import from the Vite/React app.",
+  "scripts": {
+    "init": "node init.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0"
+  }
+}

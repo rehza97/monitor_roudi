@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Système de Monitoring Apps - Rapport Fonctionnel</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f8f9fa;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px;
+        text-align: center;
+        position: relative;
+      }
+
+      .header::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="80" r="1.5" fill="rgba(255,255,255,0.1)"/></svg>');
+      }
+
+      .header-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        font-weight: 700;
+      }
+
+      .header .subtitle {
+        font-size: 1.2em;
+        opacity: 0.9;
+        margin-bottom: 20px;
+      }
+
+      .project-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .content {
+        padding: 40px;
+      }
+
+      .section {
+        margin-bottom: 40px;
+      }
+
+      .section h2 {
+        color: #667eea;
+        font-size: 1.8em;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .project-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-bottom: 40px;
+      }
+
+      .info-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 25px;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+      }
+
+      .info-card h3 {
+        color: #667eea;
+        margin-bottom: 15px;
+        font-size: 1.3em;
+      }
+
+      .info-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .info-label {
+        font-weight: 600;
+        color: #555;
+      }
+
+      .info-value {
+        color: #333;
+        font-weight: 500;
+      }
+
+      .tech-stack {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+      }
+
+      .tech-item {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+      }
+
+      .tech-item:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+      }
+
+      .tech-item h4 {
+        color: #667eea;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+      }
+
+      .features-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .features-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+      }
+
+      .features-table td {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .features-table tr:nth-child(even) {
+        background: #f8f9fa;
+      }
+
+      .features-table tr:hover {
+        background: #e3f2fd;
+      }
+
+      .price-cell {
+        font-weight: 700;
+        color: #667eea;
+        text-align: right;
+      }
+
+      .module-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 15px;
+        font-weight: 700;
+        font-size: 1.1em;
+      }
+
+      .timeline {
+        position: relative;
+        padding-left: 30px;
+      }
+
+      .timeline::before {
+        content: "";
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #667eea;
+      }
+
+      .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-left: 20px;
+      }
+
+      .timeline-item::before {
+        content: "";
+        position: absolute;
+        left: -35px;
+        top: 25px;
+        width: 12px;
+        height: 12px;
+        background: #667eea;
+        border-radius: 50%;
+        border: 3px solid white;
+      }
+
+      .timeline-day {
+        font-weight: 700;
+        color: #667eea;
+        font-size: 1.2em;
+        margin-bottom: 10px;
+      }
+
+      .total-price {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        margin: 30px 0;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .total-price h3 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .total-price p {
+        font-size: 1.2em;
+        opacity: 0.9;
+      }
+
+      .included-list,
+      .optional-list {
+        list-style: none;
+        padding: 0;
+      }
+
+      .included-list li,
+      .optional-list li {
+        padding: 10px 0;
+        padding-left: 30px;
+        position: relative;
+        border-bottom: 1px solid #eee;
+      }
+
+      .included-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #28a745;
+        font-weight: bold;
+        font-size: 1.2em;
+      }
+
+      .optional-list li::before {
+        content: "+";
+        position: absolute;
+        left: 0;
+        color: #ffc107;
+        font-weight: bold;
+        font-size: 1.2em;
+      }
+
+      .contact-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 30px;
+        border-radius: 15px;
+        margin-top: 40px;
+        text-align: center;
+      }
+
+      .contact-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .contact-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .contact-card h4 {
+        color: #667eea;
+        margin-bottom: 10px;
+      }
+
+      .print-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+        z-index: 1000;
+      }
+
+      .print-btn:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+      }
+
+      .role-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 600;
+        margin-left: 8px;
+      }
+
+      .admin-badge {
+        background: #ff6b6b;
+        color: white;
+      }
+
+      .client-badge {
+        background: #4ecdc4;
+        color: white;
+      }
+
+      .engineer-badge {
+        background: #45b7d1;
+        color: white;
+      }
+
+      .tech-badge {
+        background: #f9ca24;
+        color: #333;
+      }
+
+      @media print {
+        body {
+          background: white;
+          padding: 0;
+        }
+        .container {
+          box-shadow: none;
+          border-radius: 0;
+        }
+        .print-btn {
+          display: none;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          margin: 0;
+          border-radius: 0;
+        }
+        .header {
+          padding: 30px 20px;
+        }
+        .content {
+          padding: 20px;
+        }
+        .print-btn {
+          position: static;
+          margin: 20px auto;
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>
+
+    <div class="container">
+      <div class="header">
+        <div class="header-content">
+          <h1>📱 Système de Monitoring d'Applications</h1>
+          <p class="subtitle">
+            Plateforme Complète de Gestion pour Développeurs
+          </p>
+          <div class="project-badge">Rapport Fonctionnel Complet</div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="project-info">
+          <div class="info-card">
+            <h3>📋 Détails du Projet</h3>
+            <div class="info-item">
+              <span class="info-label">Type de Projet:</span>
+              <span class="info-value">Application Web Complète</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Plateforme:</span>
+              <span class="info-value">Web (Frontend + Backend)</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Architecture:</span>
+              <span class="info-value">Hybride (PostgreSQL + Firebase)</span>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <h3>📊 Fonctionnalités</h3>
+            <div class="info-item">
+              <span class="info-label">Total Features:</span>
+              <span
+                class="info-value"
+                style="color: #667eea; font-weight: 700; font-size: 1.3em"
+                >33 Modules</span
+              >
+            </div>
+            <div class="info-item">
+              <span class="info-label">Rôles Utilisateurs:</span>
+              <span class="info-value"
+                >4 Types (Admin, Client, Ingénieur, Tech)</span
+              >
+            </div>
+            <div class="info-item">
+              <span class="info-label">Technologies:</span>
+              <span class="info-value"
+                >React, FastAPI, PostgreSQL, Firebase</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>🔧 Stack Technique - Architecture Hybride</h2>
+          <div class="tech-stack">
+            <div class="tech-item">
+              <h4>Frontend</h4>
+              <p>⚛️ React.js<br />Interface moderne et responsive</p>
+            </div>
+            <div class="tech-item">
+              <h4>Backend</h4>
+              <p>🚀 FastAPI (Python)<br />API RESTful haute performance</p>
+            </div>
+            <div class="tech-item">
+              <h4>Base de Données Principale</h4>
+              <p>🐘 PostgreSQL<br />Données structurées et relations</p>
+            </div>
+            <div class="tech-item">
+              <h4>Monitoring Temps Réel</h4>
+              <p>🔥 Firebase Realtime DB<br />Collecte données des apps</p>
+            </div>
+            <div class="tech-item">
+              <h4>Authentification</h4>
+              <p>🔐 Firebase Auth<br />Sécurité multi-rôles intégrée</p>
+            </div>
+            <div class="tech-item">
+              <h4>Stockage Fichiers</h4>
+              <p>☁️ Firebase Storage<br />Images et documents</p>
+            </div>
+            <div class="tech-item">
+              <h4>Remote Control</h4>
+              <p>
+                📡 Firebase Cloud Messaging<br />Contrôle à distance des apps
+              </p>
+            </div>
+            <div class="tech-item">
+              <h4>Cartographie</h4>
+              <p>🗺️ Google Maps API<br />Localisation clients</p>
+            </div>
+            <div class="tech-item">
+              <h4>Paiement</h4>
+              <p>💳 Stripe / CIB<br />Transactions sécurisées</p>
+            </div>
+          </div>
+
+          <div
+            style="
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              padding: 25px;
+              border-radius: 10px;
+              margin-top: 30px;
+            "
+          >
+            <h3 style="color: #667eea; margin-bottom: 15px">
+              🏗️ Architecture Hybride Expliquée
+            </h3>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+              "
+            >
+              <div
+                style="
+                  background: white;
+                  padding: 20px;
+                  border-radius: 10px;
+                  border-left: 4px solid #667eea;
+                "
+              >
+                <h4 style="color: #667eea; margin-bottom: 10px">
+                  🐘 PostgreSQL - Base Principale
+                </h4>
+                <ul style="font-size: 0.9em; line-height: 1.8; color: #555">
+                  <li>
+                    ✓ Données utilisateurs (Admin, Clients, Ingénieurs,
+                    Techniciens)
+                  </li>
+                  <li>✓ Gestion des matériels et catalogue</li>
+                  <li>✓ Demandes d'applications</li>
+                  <li>✓ Historique des paiements</li>
+                  <li>✓ Tickets de maintenance</li>
+                  <li>✓ Relations complexes et intégrité</li>
+                </ul>
+              </div>
+              <div
+                style="
+                  background: white;
+                  padding: 20px;
+                  border-radius: 10px;
+                  border-left: 4px solid #ff6b6b;
+                "
+              >
+                <h4 style="color: #ff6b6b; margin-bottom: 10px">
+                  🔥 Firebase - Monitoring & Temps Réel
+                </h4>
+                <ul style="font-size: 0.9em; line-height: 1.8; color: #555">
+                  <li>✓ Réception données des apps en temps réel</li>
+                  <li>✓ Monitoring performance et logs</li>
+                  <li>✓ Contrôle à distance des applications</li>
+                  <li>✓ Collecte de métriques live</li>
+                  <li>✓ Notifications push instantanées</li>
+                  <li>✓ Synchronisation multi-devices</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📦 Fonctionnalités du Système</h2>
+          <table class="features-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fonctionnalité</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- MODULE ADMIN -->
+              <tr>
+                <td colspan="3" class="module-header">
+                  🔴 MODULE ADMIN
+                  <span class="role-badge admin-badge">ADMIN</span>
+                </td>
+              </tr>
+              <tr>
+                <td>1</td>
+                <td><strong>Dashboard Administrateur</strong></td>
+                <td>
+                  Vue d'ensemble complète du système avec statistiques en temps
+                  réel
+                </td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><strong>Gestion des Ingénieurs</strong></td>
+                <td>
+                  CRUD complet : Nom, Prénom, Numéro, Email, Permissions
+                  personnalisées
+                </td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><strong>Gestion des Techniciens</strong></td>
+                <td>
+                  CRUD complet : Nom, Prénom, Numéro, Email, Permissions
+                  personnalisées
+                </td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td><strong>Gestion des Matériels</strong></td>
+                <td>
+                  CRUD : Nom, Image, Prix, Caractéristiques techniques
+                  détaillées
+                </td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td><strong>Système de Permissions</strong></td>
+                <td>Gestion fine des rôles et permissions par utilisateur</td>
+              </tr>
+
+              <!-- MODULE CLIENTS -->
+              <tr>
+                <td colspan="3" class="module-header">
+                  🔵 MODULE CLIENTS
+                  <span class="role-badge client-badge">CLIENT</span>
+                </td>
+              </tr>
+              <tr>
+                <td>6</td>
+                <td><strong>Système d'Inscription</strong></td>
+                <td>
+                  Inscription avec deux types : Étudiants (Licence/Master) et
+                  Autres
+                </td>
+              </tr>
+              <tr>
+                <td>7</td>
+                <td><strong>Profil Client Détaillé</strong></td>
+                <td>
+                  Gestion complète du profil avec toutes les informations
+                  personnelles
+                </td>
+              </tr>
+              <tr>
+                <td>8</td>
+                <td><strong>Landing Page Showroom</strong></td>
+                <td>
+                  Page d'accueil vitrine présentant toutes les applications
+                  existantes avec descriptions
+                </td>
+              </tr>
+              <tr>
+                <td>9</td>
+                <td><strong>Pages Détaillées des Apps</strong></td>
+                <td>
+                  Page dédiée pour chaque application avec description complète,
+                  fonctionnalités, et matériels compatibles
+                </td>
+              </tr>
+              <tr>
+                <td>10</td>
+                <td><strong>Recherche d'Applications</strong></td>
+                <td>Moteur de recherche avancé avec filtres multiples</td>
+              </tr>
+              <tr>
+                <td>11</td>
+                <td><strong>Demande d'Application</strong></td>
+                <td>
+                  Formulaire détaillé : Domaine, Thème, Description,
+                  Spécifications
+                </td>
+              </tr>
+              <tr>
+                <td>12</td>
+                <td><strong>Système de Paiement</strong></td>
+                <td>Paiement main à main et par carte (intégration gateway)</td>
+              </tr>
+              <tr>
+                <td>13</td>
+                <td><strong>Demande de Matériels</strong></td>
+                <td>Système de commande de matériels avec suivi</td>
+              </tr>
+              <tr>
+                <td>14</td>
+                <td><strong>Demande de Maintenance</strong></td>
+                <td>
+                  Système de tickets avec description du problème et priorité
+                </td>
+              </tr>
+              <tr>
+                <td>15</td>
+                <td><strong>Historique Complet</strong></td>
+                <td>Suivi de toutes les demandes, paiements et maintenances</td>
+              </tr>
+
+              <!-- MODULE INGÉNIEURS -->
+              <tr>
+                <td colspan="3" class="module-header">
+                  🟢 MODULE INGÉNIEURS
+                  <span class="role-badge engineer-badge">ENGINEER</span>
+                </td>
+              </tr>
+              <tr>
+                <td>16</td>
+                <td><strong>Dashboard Ingénieur</strong></td>
+                <td>
+                  Vue personnalisée avec demandes assignées et statistiques
+                </td>
+              </tr>
+              <tr>
+                <td>17</td>
+                <td><strong>Gestion des Demandes</strong></td>
+                <td>
+                  Voir détails complets, choisir applications à développer
+                </td>
+              </tr>
+              <tr>
+                <td>18</td>
+                <td><strong>Accepter/Refuser Demandes</strong></td>
+                <td>
+                  Système de validation avec motifs et notifications clients
+                </td>
+              </tr>
+              <tr>
+                <td>19</td>
+                <td><strong>Consultation Info Clients</strong></td>
+                <td>Accès détaillé aux profils et historiques clients</td>
+              </tr>
+              <tr>
+                <td>20</td>
+                <td><strong>Suivi Avancement Projets</strong></td>
+                <td>Système de statuts et jalons pour chaque projet</td>
+              </tr>
+
+              <!-- MODULE TECHNICIENS -->
+              <tr>
+                <td colspan="3" class="module-header">
+                  🟡 MODULE TECHNICIENS
+                  <span class="role-badge tech-badge">TECH</span>
+                </td>
+              </tr>
+              <tr>
+                <td>21</td>
+                <td><strong>Dashboard Technicien</strong></td>
+                <td>Vue des tickets de maintenance assignés</td>
+              </tr>
+              <tr>
+                <td>22</td>
+                <td><strong>Gestion Maintenance</strong></td>
+                <td>Voir demandes, accepter/refuser avec détails techniques</td>
+              </tr>
+              <tr>
+                <td>23</td>
+                <td><strong>Consultation Clients</strong></td>
+                <td>Accès informations clients pour interventions</td>
+              </tr>
+
+              <!-- FONCTIONNALITÉS TRANSVERSALES -->
+              <tr>
+                <td colspan="3" class="module-header">
+                  ⚙️ FONCTIONNALITÉS TRANSVERSALES
+                </td>
+              </tr>
+              <tr>
+                <td>24</td>
+                <td><strong>Système de Monitoring Apps</strong></td>
+                <td>
+                  Réception et affichage des données en temps réel depuis les
+                  applications clientes via Firebase
+                </td>
+              </tr>
+              <tr>
+                <td>25</td>
+                <td><strong>Remote Control Apps</strong></td>
+                <td>
+                  Contrôle à distance des applications avec Firebase Cloud
+                  Messaging (démarrer/arrêter/configurer)
+                </td>
+              </tr>
+              <tr>
+                <td>26</td>
+                <td><strong>Collecte de Données & Logs</strong></td>
+                <td>
+                  Système de collecte automatique des logs, métriques et
+                  performances des apps
+                </td>
+              </tr>
+              <tr>
+                <td>27</td>
+                <td><strong>Carte de Localisation</strong></td>
+                <td>
+                  Intégration Google Maps pour visualiser localisation clients
+                </td>
+              </tr>
+              <tr>
+                <td>28</td>
+                <td><strong>Système de Notifications</strong></td>
+                <td>Notifications en temps réel pour tous les utilisateurs</td>
+              </tr>
+              <tr>
+                <td>29</td>
+                <td><strong>Upload de Fichiers</strong></td>
+                <td>Gestion d'images et documents (matériels, projets)</td>
+              </tr>
+              <tr>
+                <td>30</td>
+                <td><strong>Système de Messaging</strong></td>
+                <td>
+                  Messagerie interne entre clients, ingénieurs et techniciens
+                </td>
+              </tr>
+              <tr>
+                <td>31</td>
+                <td><strong>Rapports & Statistiques</strong></td>
+                <td>
+                  Génération de rapports détaillés et graphiques analytics
+                </td>
+              </tr>
+              <tr>
+                <td>32</td>
+                <td><strong>Architecture Base de Données</strong></td>
+                <td>
+                  Architecture hybride PostgreSQL + Firebase optimisée avec
+                  relations complexes
+                </td>
+              </tr>
+              <tr>
+                <td>33</td>
+                <td><strong>Tests & Sécurité</strong></td>
+                <td>
+                  Tests complets, validation, sécurité et protection données
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <h2>✅ Fonctionnalités Incluses</h2>
+          <ul class="included-list">
+            <li>
+              Architecture hybride complète : PostgreSQL (base principale) +
+              Firebase (monitoring temps réel, Auth, Storage)
+            </li>
+            <li>
+              Système d'authentification Firebase Auth sécurisé avec gestion
+              multi-rôles (Admin, Client, Ingénieur, Technicien)
+            </li>
+            <li>Interface web moderne et responsive (mobile-friendly)</li>
+            <li>Dashboard personnalisé pour chaque type d'utilisateur</li>
+            <li>
+              Module complet de gestion des ingénieurs et techniciens avec
+              permissions
+            </li>
+            <li>Catalogue de matériels avec images et caractéristiques</li>
+            <li>
+              <strong>Landing page showroom</strong> - Vitrine présentant toutes
+              les applications existantes
+            </li>
+            <li>
+              <strong>Pages détaillées des apps</strong> - Chaque application
+              avec description complète, fonctionnalités et matériels
+              compatibles
+            </li>
+            <li>
+              Système de demande d'applications avec workflow de validation
+            </li>
+            <li>
+              Intégration système de paiement (main à main + carte bancaire)
+            </li>
+            <li>
+              <strong>Système de monitoring en temps réel</strong> - Réception
+              et affichage des données depuis les applications clientes via
+              Firebase
+            </li>
+            <li>
+              <strong>Contrôle à distance des apps</strong> - Remote control
+              avec Firebase Cloud Messaging pour gérer les applications à
+              distance
+            </li>
+            <li>
+              <strong>Collecte automatique de données</strong> - Logs, métriques
+              et performances des applications en temps réel
+            </li>
+            <li>
+              Système de tickets de maintenance avec assignation automatique
+            </li>
+            <li>Carte interactive Google Maps pour localisation des clients</li>
+            <li>Système de notifications en temps réel</li>
+            <li>Messagerie interne entre utilisateurs</li>
+            <li>Module de rapports et statistiques avec graphiques</li>
+            <li>Upload et gestion de fichiers/images</li>
+            <li>Système de recherche avancée multi-critères</li>
+            <li>Support technique et corrections de bugs</li>
+            <li>
+              Documentation complète (technique et utilisateur) en français
+            </li>
+            <li>Formation initiale pour l'administrateur</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>📎 Améliorations Optionnelles</h2>
+          <p style="margin-bottom: 20px; color: #666">
+            Extensions possibles pour enrichir le système:
+          </p>
+          <ul class="optional-list">
+            <li>
+              <strong>Application Mobile (Android/iOS)</strong> - Version mobile
+              native pour clients, ingénieurs et techniciens
+            </li>
+            <li>
+              <strong>Système de Chat Vidéo</strong> - Visioconférence intégrée
+              pour support client
+            </li>
+            <li>
+              <strong>Intégration IA</strong> - Assistant virtuel et
+              recommandations intelligentes
+            </li>
+            <li>
+              <strong>Module Comptabilité</strong> - Gestion financière complète
+              avec facturation
+            </li>
+            <li>
+              <strong>API Publique</strong> - Documentation et endpoints pour
+              intégrations tierces
+            </li>
+            <li>
+              <strong>Notifications SMS/Email</strong> - Intégration service
+              d'envoi automatique
+            </li>
+            <li>
+              <strong>Support Multilingue</strong> - Arabe, Français, Anglais
+            </li>
+            <li>
+              <strong>Tableau de Bord Analytics Avancé</strong> - Métriques
+              détaillées et KPIs
+            </li>
+            <li>
+              <strong>Système de Badges & Gamification</strong> - Engagement
+              utilisateurs
+            </li>
+            <li>
+              <strong>Backup Automatique Cloud</strong> - Sauvegarde quotidienne
+              sécurisée
+            </li>
+            <li>
+              <strong>Module Blog/Actualités</strong> - Publication de contenus
+              et tutoriels
+            </li>
+            <li>
+              <strong>Intégration Réseaux Sociaux</strong> - Connexion via
+              Google/Facebook/LinkedIn
+            </li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>🎯 Architecture du Système</h2>
+          <div style="background: #f8f9fa; padding: 25px; border-radius: 10px">
+            <h3 style="color: #667eea; margin-bottom: 15px">
+              Hiérarchie des Rôles
+            </h3>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+              "
+            >
+              <div
+                style="
+                  background: white;
+                  padding: 20px;
+                  border-radius: 10px;
+                  border-top: 4px solid #ff6b6b;
+                "
+              >
+                <h4 style="color: #ff6b6b; margin-bottom: 10px">👨‍💼 ADMIN</h4>
+                <ul style="list-style: none; padding: 0; font-size: 0.9em">
+                  <li>✓ Gestion complète système</li>
+                  <li>✓ Gestion ingénieurs</li>
+                  <li>✓ Gestion techniciens</li>
+                  <li>✓ Gestion matériels</li>
+                  <li>✓ Permissions</li>
+                  <li>✓ Rapports globaux</li>
+                </ul>
+              </div>
+              <div
+                style="
+                  background: white;
+                  padding: 20px;
+                  border-radius: 10px;
+                  border-top: 4px solid #4ecdc4;
+                "
+              >
+                <h4 style="color: #4ecdc4; margin-bottom: 10px">👤 CLIENT</h4>
+                <ul style="list-style: none; padding: 0; font-size: 0.9em">
+                  <li>✓ Inscription/Profil</li>
+                  <li>✓ Recherche apps</li>
+                  <li>✓ Demande application</li>
+                  <li>✓ Paiement</li>
+                  <li>✓ Demande matériels</li>
+                  <li>✓ Demande maintenance</li>
+                </ul>
+              </div>
+              <div
+                style="
+                  background: white;
+                  padding: 20px;
+                  border-radius: 10px;
+                  border-top: 4px solid #45b7d1;
+                "
+              >
+                <h4 style="color: #45b7d1; margin-bottom: 10px">
+                  👨‍💻 INGÉNIEUR
+                </h4>
+                <ul style="list-style: none; padding: 0; font-size: 0.9em">
+                  <li>✓ Dashboard personnel</li>
+                  <li>✓ Voir demandes apps</li>
+                  <li>✓ Accepter/Refuser</li>
+                  <li>✓ Consulter clients</li>
+                  <li>✓ Suivi projets</li>
+                  <li>✓ Rapports activité</li>
+                </ul>
+              </div>
+              <div
+                style="
+                  background: white;
+                  padding: 20px;
+                  border-radius: 10px;
+                  border-top: 4px solid #f9ca24;
+                "
+              >
+                <h4 style="color: #f9ca24; margin-bottom: 10px">
+                  🔧 TECHNICIEN
+                </h4>
+                <ul style="list-style: none; padding: 0; font-size: 0.9em">
+                  <li>✓ Dashboard maintenance</li>
+                  <li>✓ Voir demandes maintenance</li>
+                  <li>✓ Accepter/Refuser</li>
+                  <li>✓ Consulter clients</li>
+                  <li>✓ Suivi interventions</li>
+                  <li>✓ Rapports techniques</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>💡 Points Forts du Système</h2>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+              gap: 20px;
+            "
+          >
+            <div
+              style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 25px;
+                border-radius: 12px;
+                text-align: center;
+              "
+            >
+              <h3 style="margin-bottom: 10px">🎯 Gestion Centralisée</h3>
+              <p style="opacity: 0.9">
+                Tout sous un seul toit : apps, monitoring, matériels,
+                maintenance, géolocalisation
+              </p>
+            </div>
+            <div
+              style="
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                padding: 25px;
+                border-radius: 12px;
+                text-align: center;
+              "
+            >
+              <h3 style="margin-bottom: 10px">👥 Multi-Rôles Intelligent</h3>
+              <p style="opacity: 0.9">
+                4 types d'utilisateurs avec permissions granulaires
+              </p>
+            </div>
+            <div
+              style="
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                color: white;
+                padding: 25px;
+                border-radius: 12px;
+                text-align: center;
+              "
+            >
+              <h3 style="margin-bottom: 10px">📡 Monitoring Temps Réel</h3>
+              <p style="opacity: 0.9">
+                Surveillance et contrôle à distance des applications en direct
+                via Firebase
+              </p>
+            </div>
+            <div
+              style="
+                background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                color: white;
+                padding: 25px;
+                border-radius: 12px;
+                text-align: center;
+              "
+            >
+              <h3 style="margin-bottom: 10px">💳 Paiement Flexible</h3>
+              <p style="opacity: 0.9">
+                Main à main ou carte bancaire selon préférence
+              </p>
+            </div>
+            <div
+              style="
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                color: white;
+                padding: 25px;
+                border-radius: 12px;
+                text-align: center;
+              "
+            >
+              <h3 style="margin-bottom: 10px">🏗️ Architecture Hybride</h3>
+              <p style="opacity: 0.9">
+                PostgreSQL + Firebase pour performance et temps réel optimal
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

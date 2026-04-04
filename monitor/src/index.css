@@ -153,3 +153,15 @@
         font-variation-settings: "opsz" 32;
     }
 }
+
+/* Leaflet client markers (Admin location map) */
+.leaflet-div-icon.client-map-marker {
+    border: 2px solid white !important;
+    border-radius: 9999px !important;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.22);
+    background: #db143c !important;
+}
+.leaflet-div-icon.client-map-marker.client-map-marker--selected {
+    background: white !important;
+    box-shadow: 0 0 0 2px #db143c, 0 2px 10px rgb(0 0 0 / 0.2);
+}
