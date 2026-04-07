@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import type { FirebaseError } from "firebase/app"
 import {
   createUserWithEmailAndPassword,
+  getIdTokenResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
@@ -14,6 +15,7 @@ import { getFirebaseConfigFormError } from "@/lib/firebase-config-messages"
 import { COLLECTIONS } from "@/data/schema"
 import type { UserProfile, UserRole } from "@/data/schema"
 import { doc, getDoc, serverTimestamp, setDoc } from "@/lib/firebase-firestore"
+import { clearAuthDebugSnapshot, setAuthDebugSnapshot } from "@/lib/auth-debug-state"
 
 interface RegisterInput {
   accountType: "student" | "other"
@@ -103,6 +105,28 @@ function mapUserProfile(uid: string, email: string, data: Record<string, unknown
   }
 }
 
+function rolePermissions(role: UserRole | null) {
+  const isAdmin = role === "admin"
+  const isEngineer = role === "engineer"
+  const isTechnician = role === "technician"
+  const isClient = role === "client"
+  return {
+    isAdmin,
+    isEngineer,
+    isTechnician,
+    isClient,
+    isPlatformStaff: isAdmin || isEngineer || isTechnician,
+  }
+}
+
+function logAuthDebugState(message: string): void {
+  const snapshot = {
+    uid: auth?.currentUser?.uid ?? null,
+    email: auth?.currentUser?.email ?? null,
+  }
+  console.info(`[Auth debug] ${message}`, snapshot)
+}
+
 async function loadUserProfile(uid: string, email: string): Promise<UserProfile> {
   if (!db) throw new Error(getFirebaseConfigFormError())
   const snapshot = await getDoc(doc(db, COLLECTIONS.users, uid))
@@ -134,20 +158,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
 
       if (!firebaseUser) {
+        clearAuthDebugSnapshot()
+        logAuthDebugState("signed out")
         setUser(null)
         setLoading(false)
         return
+      }
+
+      setAuthDebugSnapshot({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? null,
+        permissions: { isAuthenticated: true },
+      })
+      logAuthDebugState("auth state changed (signed in)")
+      try {
+        const token = await getIdTokenResult(firebaseUser)
+        const tokenRole = typeof token.claims.role === "string" ? token.claims.role : null
+        const tokenOrgId =
+          typeof token.claims.organizationId === "string" ? token.claims.organizationId : null
+        console.info("[Auth debug] token claims", {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? null,
+          role: tokenRole,
+          organizationId: tokenOrgId,
+          hasRoleClaim: tokenRole !== null,
+        })
+      } catch (tokenError) {
+        console.warn("[Auth debug] failed to read token claims", {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? null,
+          error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+        })
       }
 
       setLoading(true)
 
       try {
         const profile = await loadUserProfile(firebaseUser.uid, firebaseUser.email ?? "")
+        setAuthDebugSnapshot({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? null,
+          role: profile.role,
+          organizationId: profile.organizationId ?? null,
+          permissions: {
+            isAuthenticated: true,
+            ...rolePermissions(profile.role),
+          },
+        })
+        console.info("[Auth debug] profile loaded", {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? null,
+          role: profile.role,
+          organizationId: profile.organizationId ?? null,
+          permissions: rolePermissions(profile.role),
+        })
         if (cancelled) return
         setUser(profile)
         setAuthError("")
       } catch (error) {
         if (auth) await signOut(auth)
+        console.error("[Auth debug] profile load failed", {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? null,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        clearAuthDebugSnapshot()
         if (cancelled) return
         setUser(null)
         setAuthError(error instanceof Error ? error.message : getAuthErrorMessage(error))
@@ -168,7 +243,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await ensureAuthPersistence()
     try {
       const credential = await signInWithEmailAndPassword(auth, email.trim(), password)
+      logAuthDebugState("login success")
       const profile = await loadUserProfile(credential.user.uid, credential.user.email ?? email.trim())
+      setAuthDebugSnapshot({
+        uid: credential.user.uid,
+        email: credential.user.email ?? null,
+        role: profile.role,
+        organizationId: profile.organizationId ?? null,
+        permissions: {
+          isAuthenticated: true,
+          ...rolePermissions(profile.role),
+        },
+      })
       setUser(profile)
       return profile
     } catch (error) {
@@ -206,6 +292,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await setDoc(doc(db, COLLECTIONS.users, credential.user.uid), profile)
       const userProfile = mapUserProfile(credential.user.uid, credential.user.email ?? email, profile)
+      setAuthDebugSnapshot({
+        uid: credential.user.uid,
+        email: credential.user.email ?? null,
+        role: userProfile.role,
+        organizationId: userProfile.organizationId ?? null,
+        permissions: {
+          isAuthenticated: true,
+          ...rolePermissions(userProfile.role),
+        },
+      })
+      console.info("[Auth debug] profile created", {
+        uid: credential.user.uid,
+        email: credential.user.email ?? null,
+        role: userProfile.role,
+        organizationId: userProfile.organizationId ?? null,
+        permissions: rolePermissions(userProfile.role),
+      })
       setUser(userProfile)
       return userProfile
     } catch (error) {
@@ -222,6 +325,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await signOut(auth)
+    clearAuthDebugSnapshot()
+    logAuthDebugState("logout")
     setUser(null)
   }
 

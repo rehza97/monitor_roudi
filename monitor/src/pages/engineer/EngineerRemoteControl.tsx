@@ -156,7 +156,7 @@ export default function EngineerRemoteControl() {
 
   return (
     <DashboardLayout role="engineer" navItems={engineerNav} pageTitle="Contrôle à Distance">
-      <div className="p-6 space-y-6 max-w-4xl">
+      <div className="p-6 w-full space-y-6">
         {/* Server selector */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-4">
           <span className="material-symbols-outlined text-blue-600 text-[24px] shrink-0">dns</span>

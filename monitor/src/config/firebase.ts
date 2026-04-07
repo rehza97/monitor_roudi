@@ -56,7 +56,7 @@ export function missingFirebaseEnvLabels(): string[] {
 
 export const isFirebaseConfigured = missingFirebaseEnvKeys.length === 0
 
-const firebaseApp = isFirebaseConfigured
+export const firebaseApp = isFirebaseConfigured
   ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
   : null
 

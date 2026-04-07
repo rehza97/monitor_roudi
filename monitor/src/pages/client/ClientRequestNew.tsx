@@ -1,67 +1,192 @@
-import { useState, type KeyboardEvent } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
+import { useAuth } from "@/contexts/AuthContext"
+import { db } from "@/config/firebase"
+import { collection, addDoc, serverTimestamp } from "@/lib/firebase-firestore"
+import { COLLECTIONS, type FirestoreOrder } from "@/data/schema"
 
-type FormState = "idle" | "submitting" | "done"
+const INPUT_CLS =
+  "w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+const TEXTAREA_CLS =
+  "w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c] resize-none"
+const LABEL_CLS = "text-sm font-medium text-slate-700 dark:text-slate-300"
+
+function StepBadge({
+  num,
+  label,
+  active,
+  done,
+  onClick,
+}: {
+  num: number
+  label: string
+  active: boolean
+  done: boolean
+  onClick: () => void
+}) {
+  return (
+    <button type="button" onClick={onClick} className="flex items-center gap-2">
+      <div
+        className={`size-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+          done
+            ? "bg-emerald-500 text-white"
+            : active
+            ? "bg-[#db143c] text-white"
+            : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+        }`}
+      >
+        {done ? (
+          <span className="material-symbols-outlined text-[14px]">check</span>
+        ) : (
+          num
+        )}
+      </div>
+      <span
+        className={`text-sm font-medium hidden sm:block ${
+          active
+            ? "text-slate-900 dark:text-white"
+            : done
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-slate-400"
+        }`}
+      >
+        {label}
+      </span>
+    </button>
+  )
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+}: {
+  title: string
+  icon: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <span className="material-symbols-outlined text-[20px] text-[#db143c]">{icon}</span>
+        <h3 className="font-semibold text-slate-900 dark:text-white">{title}</h3>
+      </div>
+      {children}
+    </div>
+  )
+}
 
 export default function ClientRequestNew() {
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const [name,        setName]        = useState("")
-  const [appType,     setAppType]     = useState("Application web")
-  const [budget,      setBudget]      = useState("")
-  const [description, setDescription] = useState("")
-  const [featureInput,setFeatureInput]= useState("")
-  const [features,    setFeatures]    = useState<string[]>([])
-  const [deadline,    setDeadline]    = useState("1 mois")
-  const [priority,    setPriority]    = useState("Normale")
-  const [state,       setState]       = useState<FormState>("idle")
+
+  const [activeSection, setActiveSection] = useState(0)
+
+  const [requestType, setRequestType]     = useState("")
+  const [description, setDescription]     = useState("")
+  const [features, setFeatures]           = useState<string[]>([""])
+  const [budgetLabel, setBudgetLabel]     = useState("")
+  const [timelineLabel, setTimelineLabel] = useState("")
+  const [priority, setPriority]           = useState("Normale")
+
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [newId, setNewId]     = useState("")
+  const [error, setError]     = useState("")
 
   function addFeature() {
-    const f = featureInput.trim()
-    if (f && !features.includes(f)) setFeatures(prev => [...prev, f])
-    setFeatureInput("")
+    setFeatures((prev) => [...prev, ""])
   }
 
-  function handleFeatureKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") { e.preventDefault(); addFeature() }
+  function updateFeature(idx: number, value: string) {
+    setFeatures((prev) => prev.map((f, i) => (i === idx ? value : f)))
   }
 
-  function removeFeature(f: string) {
-    setFeatures(prev => prev.filter(x => x !== f))
+  function removeFeature(idx: number) {
+    setFeatures((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  const sections = [
+    { label: "Informations", icon: "info" },
+    { label: "Fonctionnalités", icon: "list_alt" },
+    { label: "Budget & Délai", icon: "schedule" },
+  ]
+
+  const sectionFilled = [
+    requestType.trim().length > 0,
+    features.some((f) => f.trim().length > 0),
+    budgetLabel.trim().length > 0 || timelineLabel.trim().length > 0,
+  ]
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) return
-    setState("submitting")
-    setTimeout(() => setState("done"), 1200)
+    if (!db || !user?.organizationId) {
+      setError("Configuration manquante. Impossible de soumettre.")
+      return
+    }
+    if (!requestType.trim()) {
+      setError("Le type de demande est obligatoire.")
+      setActiveSection(0)
+      return
+    }
+    setSaving(true)
+    setError("")
+    try {
+      const ref = await addDoc(collection(db, COLLECTIONS.orders), {
+        organizationId: user.organizationId,
+        kind: "client_request",
+        status: "En attente",
+        createdByUserId: user.id,
+        requestType: requestType.trim(),
+        description: description.trim(),
+        features: features.map((f) => f.trim()).filter(Boolean),
+        budgetLabel: budgetLabel.trim(),
+        timelineLabel: timelineLabel.trim(),
+        priority,
+        createdAt: serverTimestamp(),
+      } as FirestoreOrder)
+      setNewId(ref.id)
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue.")
+    } finally {
+      setSaving(false)
+    }
   }
 
-  if (state === "done") {
+  if (success) {
     return (
       <DashboardLayout role="client" navItems={clientNav} pageTitle="Nouvelle demande">
-        <div className="flex flex-col items-center justify-center py-24 gap-5">
+        <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-6">
           <div className="size-20 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
-            <span className="material-symbols-outlined text-emerald-600 text-[40px]">check_circle</span>
+            <span className="material-symbols-outlined text-emerald-500 text-[40px]">
+              check_circle
+            </span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Demande soumise !</h2>
-          <p className="text-slate-500 text-sm text-center max-w-xs">
-            Votre demande <strong>{name}</strong> a été envoyée. Notre équipe vous contactera sous 24h.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate("/client/requests")}
-              className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Demande envoyée !</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-sm">
+              Votre demande a été soumise avec succès. Notre équipe vous recontactera sous 24h.
+            </p>
+            <p className="text-xs font-mono text-slate-400 mt-1">
+              Ref. {newId.slice(0, 8).toUpperCase()}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/client/requests/${newId}`}
+              className="px-5 py-2.5 bg-[#db143c] text-white font-semibold rounded-lg hover:opacity-90 text-sm"
             >
-              Voir mes demandes
-            </button>
-            <button
-              onClick={() => { setName(""); setBudget(""); setDescription(""); setFeatures([]); setState("idle") }}
-              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold rounded-lg"
+              Voir ma demande
+            </Link>
+            <Link
+              to="/client/requests"
+              className="px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm"
             >
-              Nouvelle demande
-            </button>
+              Mes demandes
+            </Link>
           </div>
         </div>
       </DashboardLayout>
@@ -70,155 +195,243 @@ export default function ClientRequestNew() {
 
   return (
     <DashboardLayout role="client" navItems={clientNav} pageTitle="Nouvelle demande">
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Demander une nouvelle application</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Remplissez ce formulaire pour soumettre votre besoin.</p>
-        </div>
+      <div className="p-6 w-full space-y-6">
+        {/* Back link */}
+        <Link
+          to="/client/requests"
+          className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Retour aux demandes
+        </Link>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* General info */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-cyan-600 text-[20px]">info</span>
-              Informations générales
-            </h3>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Nom du projet <span className="text-rose-500">*</span></label>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                required
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-600"
-                placeholder="Ex: App e-commerce"
+        {/* Step indicator */}
+        <div className="flex items-center gap-3">
+          {sections.map((s, i) => (
+            <div key={s.label} className="flex items-center gap-2">
+              <StepBadge
+                num={i + 1}
+                label={s.label}
+                active={activeSection === i}
+                done={sectionFilled[i] && activeSection !== i}
+                onClick={() => setActiveSection(i)}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Type d'application</label>
-                <select
-                  value={appType}
-                  onChange={e => setAppType(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none"
-                >
-                  <option>Application web</option>
-                  <option>Application mobile</option>
-                  <option>API / Backend</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Budget estimé (DA)</label>
-                <input
-                  type="number"
-                  value={budget}
-                  onChange={e => setBudget(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-600"
-                  placeholder="5 000"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-cyan-600 text-[20px]">edit_note</span>
-              Description détaillée
-            </h3>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description du besoin</label>
-              <textarea
-                rows={5}
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-600 resize-none"
-                placeholder="Décrivez votre besoin en détail…"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Fonctionnalités souhaitées</label>
-              <div className="flex gap-2">
-                <input
-                  value={featureInput}
-                  onChange={e => setFeatureInput(e.target.value)}
-                  onKeyDown={handleFeatureKey}
-                  className="flex-1 h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-600"
-                  placeholder="Ajouter une fonctionnalité et appuyer Entrée…"
-                />
-                <button
-                  type="button"
-                  onClick={addFeature}
-                  disabled={!featureInput.trim()}
-                  className="px-3 h-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                </button>
-              </div>
-              {features.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {features.map(f => (
-                    <span key={f} className="flex items-center gap-1 px-3 py-1 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400 text-xs font-medium rounded-full border border-cyan-200 dark:border-cyan-800">
-                      {f}
-                      <button type="button" onClick={() => removeFeature(f)} className="hover:text-cyan-900 dark:hover:text-cyan-200">
-                        <span className="material-symbols-outlined text-[14px]">close</span>
-                      </button>
-                    </span>
-                  ))}
-                </div>
+              {i < sections.length - 1 && (
+                <div className="h-px w-6 bg-slate-200 dark:bg-slate-700 hidden sm:block" />
               )}
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Tech specs */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-cyan-600 text-[20px]">settings</span>
-              Spécifications techniques
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Section 1 — Basic info */}
+          {activeSection === 0 && (
+            <SectionCard title="Informations de base" icon="info">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Délai souhaité</label>
-                <select
-                  value={deadline}
-                  onChange={e => setDeadline(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none"
-                >
-                  <option>1 mois</option><option>2 mois</option><option>3 mois</option><option>6 mois</option>
-                </select>
+                <label className={LABEL_CLS}>
+                  Type de demande <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  required
+                  value={requestType}
+                  onChange={(e) => setRequestType(e.target.value)}
+                  className={INPUT_CLS}
+                  placeholder="Ex. Développement application web, Intégration API…"
+                />
               </div>
+
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Priorité</label>
+                <label className={LABEL_CLS}>Description du projet</label>
+                <textarea
+                  rows={5}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className={TEXTAREA_CLS}
+                  placeholder="Décrivez votre besoin, le contexte, les objectifs attendus…"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={LABEL_CLS}>Priorité</label>
                 <select
                   value={priority}
-                  onChange={e => setPriority(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none"
+                  onChange={(e) => setPriority(e.target.value)}
+                  className={INPUT_CLS}
                 >
-                  <option>Normale</option><option>Haute</option><option>Urgente</option>
+                  <option>Basse</option>
+                  <option>Normale</option>
+                  <option>Haute</option>
+                  <option>Urgente</option>
                 </select>
               </div>
-            </div>
-          </div>
 
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/client/requests")}
-              className="px-5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={state === "submitting" || !name.trim()}
-              className="px-5 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 disabled:opacity-60 text-white text-sm font-bold transition-colors flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {state === "submitting" ? "hourglass_empty" : "send"}
-              </span>
-              {state === "submitting" ? "Envoi…" : "Soumettre la demande"}
-            </button>
-          </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(1)}
+                  disabled={!requestType.trim()}
+                  className="px-5 py-2.5 bg-[#db143c] text-white font-semibold rounded-lg hover:opacity-90 disabled:opacity-40 text-sm"
+                >
+                  Suivant →
+                </button>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* Section 2 — Features */}
+          {activeSection === 1 && (
+            <SectionCard title="Fonctionnalités & Périmètre" icon="list_alt">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Listez les fonctionnalités clés que vous souhaitez inclure dans votre projet.
+              </p>
+
+              <div className="space-y-2">
+                {features.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      value={f}
+                      onChange={(e) => updateFeature(i, e.target.value)}
+                      className={INPUT_CLS}
+                      placeholder={`Fonctionnalité ${i + 1}`}
+                    />
+                    {features.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeFeature(i)}
+                        className="text-slate-400 hover:text-rose-500 shrink-0"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          remove_circle
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={addFeature}
+                className="flex items-center gap-1.5 text-sm text-[#db143c] hover:opacity-80 font-medium"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                Ajouter une fonctionnalité
+              </button>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(0)}
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                >
+                  ← Retour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(2)}
+                  className="px-5 py-2.5 bg-[#db143c] text-white font-semibold rounded-lg hover:opacity-90 text-sm"
+                >
+                  Suivant →
+                </button>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* Section 3 — Timeline / Budget */}
+          {activeSection === 2 && (
+            <SectionCard title="Budget & Délai" icon="schedule">
+              <div className="space-y-1.5">
+                <label className={LABEL_CLS}>Budget estimé</label>
+                <input
+                  value={budgetLabel}
+                  onChange={(e) => setBudgetLabel(e.target.value)}
+                  className={INPUT_CLS}
+                  placeholder="Ex. 500 000 DA, 50 000 €…"
+                />
+                <p className="text-xs text-slate-400">
+                  Indiquez une fourchette ou un budget maximum.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={LABEL_CLS}>Délai souhaité</label>
+                <input
+                  value={timelineLabel}
+                  onChange={(e) => setTimelineLabel(e.target.value)}
+                  className={INPUT_CLS}
+                  placeholder="Ex. 3 mois, Avant juin 2025…"
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-700 dark:text-rose-400 text-sm">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  {error}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(1)}
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                >
+                  ← Retour
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-[#db143c] text-white font-semibold rounded-lg hover:opacity-90 disabled:opacity-50 text-sm"
+                >
+                  {saving ? (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">
+                        hourglass_empty
+                      </span>
+                      Envoi…
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">send</span>
+                      Soumettre la demande
+                    </>
+                  )}
+                </button>
+              </div>
+            </SectionCard>
+          )}
         </form>
+
+        {/* Summary preview */}
+        {(requestType || features.some((f) => f.trim())) && (
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-2">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Récapitulatif
+            </p>
+            {requestType && (
+              <p className="text-sm text-slate-900 dark:text-white font-medium">{requestType}</p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {features
+                .filter((f) => f.trim())
+                .map((f, i) => (
+                  <span
+                    key={i}
+                    className="text-xs px-2 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full text-slate-600 dark:text-slate-300"
+                  >
+                    {f}
+                  </span>
+                ))}
+            </div>
+            {(budgetLabel || timelineLabel || priority !== "Normale") && (
+              <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
+                {budgetLabel && <span>Budget : {budgetLabel}</span>}
+                {timelineLabel && <span>Délai : {timelineLabel}</span>}
+                {priority && <span>Priorité : {priority}</span>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

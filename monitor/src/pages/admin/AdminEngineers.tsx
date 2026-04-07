@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react"
+import { getFunctions, httpsCallable } from "firebase/functions"
+import { useNavigate } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
-import { db } from "@/config/firebase"
+import { db, firebaseApp } from "@/config/firebase"
 import { COLLECTIONS, type EngineerRosterRow, type FirestoreEngineer } from "@/data/schema"
 import {
   addDoc,
@@ -59,6 +61,7 @@ function EngineerModal({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localError, setLocalError] = useState("")
+  const isDev = import.meta.env.DEV
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -66,6 +69,9 @@ function EngineerModal({
     setLocalError("")
     setSaving(true)
     try {
+      if (mode?.type === "add") {
+        await createRealUserFromDev()
+      }
       await onSave(
         {
           ...form,
@@ -96,21 +102,105 @@ function EngineerModal({
     }
   }
 
+  function autofillForDev() {
+    setForm((p) => ({
+      ...p,
+      name: "Nassim Dev",
+      email: "nassim.dev@rodaina.local",
+      projects: 3,
+      specialty: "Fullstack",
+      status: "Disponible",
+    }))
+    setLocalError("")
+  }
+
+  async function createRealUserFromDev() {
+    if (!form.name.trim() || !form.email.trim()) {
+      setLocalError("Nom et email requis pour créer un vrai compte.")
+      return
+    }
+
+    setLocalError("")
+
+    try {
+      if (isDev) {
+        const res = await fetch("/__dev/firebase/create-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            email: form.email.trim(),
+            role: "engineer",
+          }),
+        })
+        const json = (await res.json()) as {
+          ok?: boolean
+          uid?: string
+          created?: boolean
+          password?: string | null
+          error?: string
+        }
+        if (!res.ok || !json.ok || !json.uid) {
+          throw new Error(json.error || "Provisionnement impossible.")
+        }
+
+        if (json.created && json.password) {
+          console.info("[Dev account created]", { uid: json.uid, password: json.password })
+        }
+      } else {
+        if (!firebaseApp) throw new Error("Firebase app indisponible.")
+        const fn = httpsCallable<
+          { email: string; name: string; role: string; organizationId?: string | null },
+          { uid: string; created: boolean; password?: string | null }
+        >(getFunctions(firebaseApp), "createManagedUser")
+        const response = await fn({
+          email: form.email.trim(),
+          name: form.name.trim(),
+          role: "engineer",
+          organizationId: null,
+        })
+        const data = response.data
+        if (data.created && data.password) {
+          console.info("[Managed account created]", { uid: data.uid, password: data.password })
+        }
+      }
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : "Provisionnement impossible.")
+      throw err
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <form
-        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4"
+        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 dark:text-white">
-            {mode?.type === "add" ? "Ajouter un ingénieur" : "Modifier l'ingénieur"}
-          </h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white">
+              {mode?.type === "add" ? "Ajouter un ingénieur" : "Modifier l'ingénieur"}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Renseignez le profil puis enregistrez.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {isDev ? (
+              <button
+                type="button"
+                onClick={autofillForDev}
+                className="h-8 px-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Remplir (dev)
+              </button>
+            ) : null}
+            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
 
         {localError ? (
@@ -119,62 +209,66 @@ function EngineerModal({
           </p>
         ) : null}
 
-        {[
-          { key: "name" as const, label: "Nom complet", type: "text" },
-          { key: "email" as const, label: "Email", type: "email" },
-        ].map((f) => (
-          <div key={f.key} className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3.5">
+          {[
+            { key: "name" as const, label: "Nom complet", type: "text" },
+            { key: "email" as const, label: "Email", type: "email" },
+          ].map((f) => (
+            <div key={f.key} className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+              <input
+                value={form[f.key]}
+                onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                type={f.type}
+                required
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3.5">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Projets actifs</label>
             <input
-              value={form[f.key]}
-              onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
-              type={f.type}
-              required
+              type="number"
+              min={0}
+              max={10000}
+              value={form.projects}
+              onChange={(e) => setForm((p) => ({ ...p, projects: Number(e.target.value) || 0 }))}
               className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             />
           </div>
-        ))}
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Projets actifs</label>
-          <input
-            type="number"
-            min={0}
-            max={10000}
-            value={form.projects}
-            onChange={(e) => setForm((p) => ({ ...p, projects: Number(e.target.value) || 0 }))}
-            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Spécialité</label>
-            <select
-              value={form.specialty}
-              onChange={(e) => setForm((p) => ({ ...p, specialty: e.target.value }))}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
-            >
-              {specialties.slice(1).map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Statut</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
-            >
-              {statuses.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Spécialité</label>
+              <select
+                value={form.specialty}
+                onChange={(e) => setForm((p) => ({ ...p, specialty: e.target.value }))}
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              >
+                {specialties.slice(1).map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Statut</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              >
+                {statuses.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-1">
           {mode?.type === "edit" && onDelete ? (
             <button
               type="button"
@@ -197,7 +291,7 @@ function EngineerModal({
             disabled={saving || deleting}
             className="flex-1 py-2.5 bg-[#db143c] hover:opacity-90 disabled:opacity-60 text-white text-sm font-bold rounded-lg transition-opacity"
           >
-            {saving ? "Enregistrement…" : mode?.type === "add" ? "Ajouter" : "Enregistrer"}
+            {saving ? "Création…" : mode?.type === "add" ? "Créer profil" : "Enregistrer"}
           </button>
         </div>
       </form>
@@ -206,6 +300,7 @@ function EngineerModal({
 }
 
 export default function AdminEngineers() {
+  const navigate = useNavigate()
   const [engineers, setEngineers] = useState<Engineer[]>([])
   const [loading, setLoading] = useState(true)
   const [listError, setListError] = useState("")
@@ -362,7 +457,7 @@ export default function AdminEngineers() {
                   <td className="px-5 py-3.5">
                     <button
                       type="button"
-                      onClick={() => setModal({ type: "edit", engineer: e })}
+                      onClick={() => navigate(`/admin/engineers/${e.id}`)}
                       className="text-xs text-[#db143c] font-medium hover:opacity-80 flex items-center gap-0.5"
                     >
                       Gérer <span className="material-symbols-outlined text-[14px]">arrow_forward</span>

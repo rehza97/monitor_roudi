@@ -46,7 +46,7 @@ export default function TechnicianSettings() {
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Réglages">
-      <form onSubmit={handleSave} className="p-6 max-w-3xl space-y-8">
+      <form onSubmit={handleSave} className="p-6 w-full space-y-8">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Réglages</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Vos préférences personnelles et de travail.</p>

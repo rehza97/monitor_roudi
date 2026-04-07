@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db, isFirebaseConfigured } from "@/config/firebase"
 import { COLLECTIONS } from "@/data/schema"
-import { collection, getDocs, limit, onSnapshot, orderBy, query } from "@/lib/firebase-firestore"
+import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp } from "@/lib/firebase-firestore"
 import { formatFirestoreDateTime } from "@/lib/utils"
 
 const FILTER_CATEGORIES = ["Tous", "Demandes", "Utilisateurs", "Matériels", "Applications", "Finance", "Autre"] as const
@@ -118,6 +118,114 @@ function docToRow(
   }
 }
 
+const EVENT_CATEGORIES = ["Demandes", "Utilisateurs", "Matériels", "Applications", "Finance", "Autre"] as const
+
+function AddEventModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    title: "",
+    actorName: "",
+    category: "Autre" as typeof EVENT_CATEGORIES[number],
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.title.trim() || !db) return
+    setSaving(true)
+    setError("")
+    try {
+      await addDoc(collection(db, COLLECTIONS.activityEvents), {
+        title: form.title.trim(),
+        actorName: form.actorName.trim() || "Admin",
+        category: form.category,
+        createdAt: serverTimestamp(),
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Enregistrement impossible.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <form
+        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4"
+        onClick={e => e.stopPropagation()}
+        onSubmit={e => void handleSubmit(e)}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 dark:text-white">Ajouter un événement</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 rounded-lg">
+            {error}
+          </p>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Titre / Description *</label>
+          <input
+            value={form.title}
+            onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+            required
+            placeholder="Ex: Nouvelle demande validée…"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Auteur</label>
+          <input
+            value={form.actorName}
+            onChange={e => setForm(p => ({ ...p, actorName: e.target.value }))}
+            placeholder="Nom de l'auteur (laissez vide pour « Admin »)"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Catégorie</label>
+          <select
+            value={form.category}
+            onChange={e => setForm(p => ({ ...p, category: e.target.value as typeof EVENT_CATEGORIES[number] }))}
+            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+          >
+            {EVENT_CATEGORIES.map(c => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex-1 py-2.5 bg-[#db143c] hover:opacity-90 disabled:opacity-60 text-white text-sm font-bold rounded-lg"
+          >
+            {saving ? "Enregistrement…" : "Ajouter"}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function AdminHistory() {
   const [rows, setRows] = useState<ActivityRow[]>([])
   const [actorNames, setActorNames] = useState<Map<string, string>>(new Map())
@@ -125,6 +233,7 @@ export default function AdminHistory() {
   const [category, setCategory] = useState<FilterCategory>("Tous")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
     if (!db || !isFirebaseConfigured) {
@@ -200,12 +309,24 @@ export default function AdminHistory() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Historique des Activités">
-      <div className="p-6 max-w-3xl space-y-5">
+      <div className="p-6 w-full space-y-5">
         {error && (
           <p className="text-sm text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-900 px-3 py-2">
             {error}
           </p>
         )}
+
+        <div className="flex gap-3 flex-wrap items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            disabled={!db || !isFirebaseConfigured}
+            className="flex items-center gap-2 px-4 py-2 bg-[#db143c] text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            Ajouter un événement
+          </button>
+        </div>
 
         <div className="flex gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
@@ -281,6 +402,13 @@ export default function AdminHistory() {
           )}
         </div>
       </div>
+
+      {showAddModal && (
+        <AddEventModal
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => {}}
+        />
+      )}
     </DashboardLayout>
   )
 }

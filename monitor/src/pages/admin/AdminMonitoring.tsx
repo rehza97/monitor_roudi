@@ -4,6 +4,7 @@ import { adminNav } from "@/lib/nav"
 import { db, isFirebaseConfigured } from "@/config/firebase"
 import { COLLECTIONS } from "@/data/schema"
 import {
+  addDoc,
   collection,
   getDocs,
   onSnapshot,
@@ -190,12 +191,160 @@ function AppDetailModal({
 
 type RawDeployment = { id: string; data: Record<string, unknown> }
 
+const ENVIRONMENTS = ["Production", "Staging", "Development"] as const
+const HEALTH_OPTIONS = [
+  { value: "ok", label: "Sain (OK)" },
+  { value: "degraded", label: "Dégradé" },
+  { value: "down", label: "Hors ligne" },
+]
+
+function AddDeploymentModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({
+    name: "",
+    productSlug: "",
+    organizationId: "",
+    environment: "Production" as typeof ENVIRONMENTS[number],
+    health: "ok",
+    cpu: 10,
+    ram: 20,
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!db || !form.name.trim()) return
+    setSaving(true)
+    setError("")
+    try {
+      await addDoc(collection(db, COLLECTIONS.deployments), {
+        name: form.name.trim(),
+        productSlug: form.productSlug.trim() || form.name.trim().toLowerCase().replace(/\s+/g, "-"),
+        organizationId: form.organizationId.trim() || "platform",
+        environment: form.environment,
+        health: form.health,
+        cpu: Math.min(100, Math.max(0, form.cpu)),
+        ram: Math.min(100, Math.max(0, form.ram)),
+        requests: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de la création.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <form
+        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4"
+        onClick={e => e.stopPropagation()}
+        onSubmit={e => void handleSubmit(e)}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 dark:text-white">Nouveau déploiement</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 rounded-lg">
+            {error}
+          </p>
+        )}
+
+        {[
+          { key: "name" as const, label: "Nom de l'application *", placeholder: "Ex: API Gestion" },
+          { key: "productSlug" as const, label: "Slug produit", placeholder: "api-gestion (auto si vide)" },
+          { key: "organizationId" as const, label: "ID Organisation", placeholder: "platform" },
+        ].map(f => (
+          <div key={f.key} className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+            <input
+              value={form[f.key]}
+              onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+              required={f.key === "name"}
+              placeholder={f.placeholder}
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+            />
+          </div>
+        ))}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Environnement</label>
+            <select
+              value={form.environment}
+              onChange={e => setForm(p => ({ ...p, environment: e.target.value as typeof ENVIRONMENTS[number] }))}
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+            >
+              {ENVIRONMENTS.map(env => <option key={env}>{env}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Santé initiale</label>
+            <select
+              value={form.health}
+              onChange={e => setForm(p => ({ ...p, health: e.target.value }))}
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+            >
+              {HEALTH_OPTIONS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { key: "cpu" as const, label: "CPU initial (%)" },
+            { key: "ram" as const, label: "RAM initiale (%)" },
+          ]).map(f => (
+            <div key={f.key} className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={form[f.key]}
+                onChange={e => setForm(p => ({ ...p, [f.key]: Number(e.target.value) || 0 }))}
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex-1 py-2.5 bg-[#db143c] hover:opacity-90 disabled:opacity-60 text-white text-sm font-bold rounded-lg"
+          >
+            {saving ? "Création…" : "Créer le déploiement"}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function AdminMonitoring() {
   const [rawDeployments, setRawDeployments] = useState<RawDeployment[]>([])
   const [orgNames, setOrgNames] = useState<Map<string, string>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [refreshing, setRefresh] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
     if (!db || !isFirebaseConfigured) return
@@ -305,17 +454,28 @@ export default function AdminMonitoring() {
             </p>
             {error && <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">{error}</p>}
           </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 transition-colors"
-          >
-            <span className={`material-symbols-outlined text-[18px] ${refreshing ? "animate-spin" : ""}`}>
-              refresh
-            </span>
-            {refreshing ? "Actualisation…" : "Actualiser"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 transition-colors"
+            >
+              <span className={`material-symbols-outlined text-[18px] ${refreshing ? "animate-spin" : ""}`}>
+                refresh
+              </span>
+              {refreshing ? "Actualisation…" : "Actualiser"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              disabled={!db || !isFirebaseConfigured}
+              className="flex items-center gap-2 px-4 py-2 bg-[#db143c] text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              Nouveau déploiement
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -431,6 +591,10 @@ export default function AdminMonitoring() {
           onClose={() => setSelectedId(null)}
           onRestart={() => handleRestart(selected)}
         />
+      )}
+
+      {showAddModal && (
+        <AddDeploymentModal onClose={() => setShowAddModal(false)} />
       )}
     </DashboardLayout>
   )

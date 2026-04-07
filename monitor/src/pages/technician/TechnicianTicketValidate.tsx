@@ -23,7 +23,7 @@ export default function TechnicianTicketValidate() {
   if (done) {
     return (
       <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Intervention clôturée">
-        <div className="p-6 max-w-2xl">
+        <div className="p-6 w-full">
           <div className="flex flex-col items-center justify-center py-16 text-center space-y-5">
             <div className="size-20 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
               <span className="material-symbols-outlined text-emerald-600 text-[48px]">check_circle</span>
@@ -49,7 +49,7 @@ export default function TechnicianTicketValidate() {
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Validation de l'intervention">
-      <div className="p-6 max-w-2xl space-y-6">
+      <div className="p-6 w-full space-y-6">
         <Link to={`/technician/tickets/${id}`} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span> Retour au ticket
         </Link>

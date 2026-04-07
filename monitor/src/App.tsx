@@ -38,6 +38,7 @@ import ClientSupport       from "./pages/client/ClientSupport"
 // Admin
 import AdminDashboard        from "./pages/admin/AdminDashboard"
 import AdminEngineers        from "./pages/admin/AdminEngineers"
+import AdminEngineerDetail   from "./pages/admin/AdminEngineerDetail"
 import AdminRequests         from "./pages/admin/AdminRequests"
 import AdminRequestValidate  from "./pages/admin/AdminRequestValidate"
 import AdminMaterials        from "./pages/admin/AdminMaterials"
@@ -116,6 +117,7 @@ export default function App() {
       <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/dashboard"         element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/engineers"         element={<ProtectedRoute role="admin"><AdminEngineers /></ProtectedRoute>} />
+      <Route path="/admin/engineers/:id"     element={<ProtectedRoute role="admin"><AdminEngineerDetail /></ProtectedRoute>} />
       <Route path="/admin/requests"          element={<ProtectedRoute role="admin"><AdminRequests /></ProtectedRoute>} />
       <Route path="/admin/requests/:id"      element={<ProtectedRoute role="admin"><AdminRequestValidate /></ProtectedRoute>} />
       <Route path="/admin/materials"         element={<ProtectedRoute role="admin"><AdminMaterials /></ProtectedRoute>} />

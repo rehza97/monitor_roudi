@@ -144,6 +144,9 @@ export interface FirestoreEngineer {
   specialty: string
   status: string
   projects: number
+  phone?: string
+  bio?: string
+  skills?: string[]
   /** Optional link to `users/{uid}` when the engineer has a login */
   linkedUserId?: string
   createdAt?: unknown
@@ -354,7 +357,101 @@ export const SUBCOLLECTIONS = {
 export const OPTIONAL_ROOT_COLLECTIONS = {
   permissionRoleTemplates: "permission_role_templates",
   fieldServiceClients: "field_service_clients",
+  platformConfig: "platform_config",
 } as const
+
+/** Firestore `permission_role_templates/{id}` */
+export interface FirestoreRoleTemplate {
+  name: string
+  users: number
+  perms: string[]
+  color: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `platform_config/main` — single-document platform settings */
+export interface FirestorePlatformConfig {
+  name: string
+  email: string
+  url: string
+  security: {
+    twofa: boolean
+    multiSession: boolean
+    connLogs: boolean
+    ipWhitelist: boolean
+  }
+  updatedAt?: unknown
+}
+
+/** Firestore `support_tickets/{id}` */
+export interface FirestoreSupportTicket {
+  subject: string
+  description?: string
+  priority: "Basse" | "Normale" | "Haute" | "Urgente"
+  status: "Ouvert" | "En cours" | "Résolu" | "Fermé"
+  createdByUserId: string
+  organizationId?: string
+  assignedToId?: string
+  report?: string
+  duration?: string
+  materialsUsed?: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `tasks/{id}` */
+export interface FirestoreTask {
+  label: string
+  project: string
+  priority: string
+  dueDate?: string
+  done: boolean
+  assignedToId?: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `notifications/{id}` */
+export interface FirestoreNotification {
+  title: string
+  message?: string
+  icon?: string
+  color?: string
+  read: boolean
+  userId?: string
+  organizationId?: string
+  link?: string
+  createdAt?: unknown
+}
+
+/** Firestore `invoices/{id}` */
+export interface FirestoreInvoice {
+  title: string
+  amount: number
+  status: "En attente" | "Payée" | "En retard"
+  organizationId: string
+  createdByUserId?: string
+  issuedAt?: unknown
+  dueAt?: unknown
+  createdAt?: unknown
+}
+
+/** Firestore `field_service_clients/{id}` */
+export interface FirestoreFieldServiceClient {
+  name: string
+  contact: string
+  email: string
+  phone: string
+  city: string
+  address: string
+  status: string
+  tickets?: number
+  since?: string
+  lastIntervention?: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
 
 /** Backward-compatible aggregate for imports that expect a single constant. */
 export const COLLECTIONS = {

@@ -113,7 +113,7 @@ export default function AdminMaterialsOrder() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Commander des matériels">
-      <div className="p-6 max-w-3xl space-y-6">
+      <div className="p-6 w-full space-y-6">
         <Link to="/admin/materials" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span> Retour aux matériels
         </Link>

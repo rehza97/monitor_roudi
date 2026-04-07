@@ -6,7 +6,7 @@ export default function AdminClientDetail() {
   const { id } = useParams()
   return (
     <DashboardLayout role="admin" navItems={adminNav} userName="Admin Rodaina" userEmail="admin@rodaina.fr" userInitials="AR" pageTitle="Fiche Client">
-      <div className="p-6 max-w-4xl space-y-6">
+      <div className="p-6 w-full space-y-6">
         <Link to="/admin/location" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span> Retour
         </Link>

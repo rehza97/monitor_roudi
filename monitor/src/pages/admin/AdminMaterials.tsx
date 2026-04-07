@@ -72,6 +72,7 @@ function MaterialModal({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState("")
+  const isDev = import.meta.env.DEV
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -114,6 +115,17 @@ function MaterialModal({
     }
   }
 
+  function autofillForDev() {
+    setSku("MAT-DEV-001")
+    setName("Routeur Pro X")
+    setCategory("Réseau")
+    setStock(24)
+    setThreshold(8)
+    setLocation("Entrepôt A")
+    setPriceDisplay("42 000 DA")
+    setError("")
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
@@ -122,13 +134,24 @@ function MaterialModal({
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => void handleSubmit(e)}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="font-bold text-slate-900 dark:text-white">
             {isEdit ? "Modifier le matériel" : "Nouveau matériel"}
           </h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {isDev ? (
+              <button
+                type="button"
+                onClick={autofillForDev}
+                className="h-8 px-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Remplir (dev)
+              </button>
+            ) : null}
+            <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         {[

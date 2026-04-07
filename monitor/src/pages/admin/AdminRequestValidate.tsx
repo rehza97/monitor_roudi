@@ -171,7 +171,7 @@ export default function AdminRequestValidate() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Validation de la demande">
-      <div className="p-6 max-w-4xl space-y-6">
+      <div className="p-6 w-full space-y-6">
         <Link to="/admin/requests" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span> Retour
         </Link>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { NavLink, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -78,6 +79,70 @@ const roleConfig: Record<Role, {
   },
 }
 
+function DashboardMainSkeleton() {
+  return (
+    <div className="p-6 space-y-5 animate-pulse">
+      <div className="h-10 rounded-xl bg-slate-200 dark:bg-slate-800" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="h-24 rounded-xl bg-slate-200 dark:bg-slate-800" />
+        <div className="h-24 rounded-xl bg-slate-200 dark:bg-slate-800" />
+        <div className="h-24 rounded-xl bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="h-72 rounded-xl bg-slate-200 dark:bg-slate-800" />
+      <div className="h-52 rounded-xl bg-slate-200 dark:bg-slate-800" />
+    </div>
+  )
+}
+
+export function DashboardShellSkeleton({ role, pageTitle }: { role: Role; pageTitle?: string }) {
+  const cfg = roleConfig[role]
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans">
+      <aside
+        className="flex flex-col w-64 shrink-0 bg-slate-900 dark:bg-black/80 border-r border-white/5"
+        style={{ width: "var(--sidebar-width)" }}
+      >
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-white/5 shrink-0">
+          <div className="size-8 rounded-lg animate-pulse" style={{ backgroundColor: cfg.brand }} />
+          <div className="flex-1 space-y-1.5 animate-pulse">
+            <div className="h-3 rounded bg-slate-700 w-32" />
+            <div className="h-2.5 rounded bg-slate-800 w-24" />
+          </div>
+        </div>
+        <div className="flex-1 p-3 space-y-2 animate-pulse">
+          <div className="h-9 rounded-lg bg-slate-800" />
+          <div className="h-9 rounded-lg bg-slate-800" />
+          <div className="h-9 rounded-lg bg-slate-800" />
+          <div className="h-9 rounded-lg bg-slate-800" />
+          <div className="h-9 rounded-lg bg-slate-800" />
+        </div>
+      </aside>
+
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <header
+          className="flex items-center gap-4 px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0"
+          style={{ height: "var(--header-height)" }}
+        >
+          {pageTitle ? (
+            <h1 className="text-slate-900 dark:text-white text-lg font-semibold truncate flex-1">{pageTitle}</h1>
+          ) : (
+            <div className="h-5 w-40 rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
+          )}
+          <div className="flex items-center gap-2 ml-auto animate-pulse">
+            <div className="size-9 rounded-lg bg-slate-200 dark:bg-slate-800" />
+            <div className="size-9 rounded-lg bg-slate-200 dark:bg-slate-800" />
+            <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-800" />
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+          <DashboardMainSkeleton />
+        </main>
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardLayout({
   children,
   role,
@@ -91,6 +156,12 @@ export default function DashboardLayout({
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const [contentLoading, setContentLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setContentLoading(false), 240)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   // Prefer live auth user, fall back to legacy props
   const displayName     = user?.name     ?? userName
@@ -231,7 +302,7 @@ export default function DashboardLayout({
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
-          {children}
+          {contentLoading ? <DashboardMainSkeleton /> : children}
         </main>
       </div>
     </div>

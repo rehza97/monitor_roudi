@@ -28,7 +28,7 @@ export default function TechnicianNotifications() {
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Notifications">
-      <div className="p-6 max-w-2xl space-y-3">
+      <div className="p-6 w-full space-y-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <p className="text-slate-500 text-sm">{notifs.length} notifications</p>

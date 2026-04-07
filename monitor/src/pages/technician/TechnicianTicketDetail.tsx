@@ -1,4 +1,5 @@
-import { useState } from "react"
+// FILE REPLACED — full Firestore version below
+import { useEffect, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
 import { useParams, Link } from "react-router-dom"
@@ -56,7 +57,7 @@ export default function TechnicianTicketDetail() {
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Détails du ticket">
-      <div className="p-6 max-w-4xl space-y-6">
+      <div className="p-6 w-full space-y-6">
         <Link to="/technician/tickets" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span> Retour aux interventions
         </Link>

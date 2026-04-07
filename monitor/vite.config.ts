@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
@@ -37,6 +38,80 @@ function readFirebaseClientJson(
   }
 }
 
+function readRequestBody(req: import("node:http").IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = ""
+    req.setEncoding("utf8")
+    req.on("data", (chunk) => {
+      data += chunk
+    })
+    req.on("end", () => resolve(data))
+    req.on("error", reject)
+  })
+}
+
+function createDevFirebaseAdminPlugin(root: string) {
+  return {
+    name: "dev-firebase-admin-api",
+    configureServer(server: import("vite").ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.method !== "POST" || req.url !== "/__dev/firebase/create-user") return next()
+
+        try {
+          const raw = await readRequestBody(req)
+          const payload = JSON.parse(raw || "{}")
+
+          const scriptPath = path.resolve(root, "admin/create-user-from-dev-api.mjs")
+          const child = spawn(process.execPath, [scriptPath], {
+            cwd: root,
+            stdio: ["pipe", "pipe", "pipe"],
+          })
+
+          let out = ""
+          let err = ""
+          child.stdout.on("data", (chunk) => {
+            out += String(chunk)
+          })
+          child.stderr.on("data", (chunk) => {
+            err += String(chunk)
+          })
+
+          child.stdin.write(JSON.stringify(payload))
+          child.stdin.end()
+
+          child.on("close", (code) => {
+            res.setHeader("Content-Type", "application/json")
+
+            if (code !== 0) {
+              res.statusCode = 500
+              res.end(
+                JSON.stringify({
+                  ok: false,
+                  error: `create-user script failed (${code})`,
+                  details: err || out,
+                }),
+              )
+              return
+            }
+
+            res.statusCode = 200
+            res.end(out || JSON.stringify({ ok: false, error: "empty response" }))
+          })
+        } catch (e) {
+          res.statusCode = 500
+          res.setHeader("Content-Type", "application/json")
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          )
+        }
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const root = __dirname
@@ -51,7 +126,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     define,
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), createDevFirebaseAdminPlugin(root)],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
