@@ -149,19 +149,19 @@ function RequestModal({
         </div>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         {[
-          ["Client", clientLabel, setClientLabel, "text", true],
-          ["Email client", clientEmail, setClientEmail, "email", false],
-          ["Type / titre", requestType, setRequestType, "text", true],
-          ["Budget", budgetLabel, setBudgetLabel, "text", false],
-          ["Délai souhaité", timelineLabel, setTimelineLabel, "text", false],
-        ].map(([label, val, set, typ, req]) => (
-          <div key={label as string} className="space-y-1.5">
+          { label: "Client", value: clientLabel, set: setClientLabel, type: "text", required: true },
+          { label: "Email client", value: clientEmail, set: setClientEmail, type: "email", required: false },
+          { label: "Type / titre", value: requestType, set: setRequestType, type: "text", required: true },
+          { label: "Budget", value: budgetLabel, set: setBudgetLabel, type: "text", required: false },
+          { label: "Délai souhaité", value: timelineLabel, set: setTimelineLabel, type: "text", required: false },
+        ].map(({ label, value, set, type, required }) => (
+          <div key={label} className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>
             <input
-              value={val as string}
-              onChange={(e) => (set as (s: string) => void)(e.target.value)}
-              type={typ as string}
-              required={req as boolean}
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              type={type}
+              required={required}
               className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             />
           </div>

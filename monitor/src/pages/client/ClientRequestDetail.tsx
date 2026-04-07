@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
-import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import { doc, getDoc } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreOrder } from "@/data/schema"
@@ -54,7 +53,6 @@ function Timeline({ status }: { status: string }) {
           {STEPS.map((step, i) => {
             const done    = i < current
             const active  = i === current
-            const future  = i > current
 
             return (
               <div key={step} className="flex-1 flex flex-col items-center">
@@ -115,7 +113,6 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 export default function ClientRequestDetail() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
 
   const [order, setOrder] = useState<(FirestoreOrder & { id: string }) | null>(null)
   const [loading, setLoading] = useState(true)

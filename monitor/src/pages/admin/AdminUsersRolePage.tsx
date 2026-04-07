@@ -6,7 +6,7 @@ import { db } from "@/config/firebase"
 import { COLLECTIONS, type UserRole } from "@/data/schema"
 import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "@/lib/firebase-firestore"
 import { formatFirestoreDateTime } from "@/lib/utils"
-import { createManagedUser, deleteManagedUser } from "@/lib/managed-users"
+import { createManagedUser, deleteManagedUser, setManagedUserPassword } from "@/lib/managed-users"
 
 type ManagedRow = {
   id: string
@@ -15,6 +15,7 @@ type ManagedRow = {
   role: UserRole
   organizationId?: string
   accountType?: string
+  phone?: string
   createdAt?: unknown
 }
 
@@ -55,7 +56,17 @@ function UserModal({
   role: UserRole
   mode: ModalMode
   onClose: () => void
-  onSave: (payload: { name: string; email: string; organizationId?: string; accountType?: string }, id: string | null) => Promise<void>
+  onSave: (
+    payload: {
+      name: string
+      email: string
+      organizationId?: string
+      accountType?: string
+      phone?: string
+      password?: string
+    },
+    id: string | null,
+  ) => Promise<void>
 }) {
   const isEdit = mode?.type === "edit"
   const init = isEdit ? mode.row : null
@@ -63,6 +74,8 @@ function UserModal({
   const [email, setEmail] = useState(init?.email ?? "")
   const [organizationId, setOrganizationId] = useState(init?.organizationId ?? "")
   const [accountType, setAccountType] = useState(init?.accountType ?? "other")
+  const [phone, setPhone] = useState(init?.phone ?? "")
+  const [password, setPassword] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [createdPassword, setCreatedPassword] = useState<string | null>(null)
@@ -79,6 +92,8 @@ function UserModal({
           email: email.trim().toLowerCase(),
           organizationId: organizationId.trim() || undefined,
           accountType: accountType.trim() || undefined,
+          phone: phone.trim() || undefined,
+          password: password.trim() || undefined,
         },
         isEdit && init ? init.id : null,
       )
@@ -162,6 +177,29 @@ function UserModal({
             </select>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Téléphone</label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+213..."
+              className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              {isEdit ? "Nouveau mot de passe (optionnel)" : "Mot de passe (optionnel)"}
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={isEdit ? "Laisser vide pour conserver" : "Sinon genere automatiquement"}
+              className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            />
+          </div>
+        </div>
 
         <div className="flex gap-2 pt-1">
           <button
@@ -220,6 +258,7 @@ export default function AdminUsersRolePage({
             email: typeof data.email === "string" ? data.email : "—",
             organizationId: typeof data.organizationId === "string" ? data.organizationId : undefined,
             accountType: typeof data.accountType === "string" ? data.accountType : undefined,
+            phone: typeof data.phone === "string" ? data.phone : undefined,
             createdAt: data.createdAt,
           }
         })
@@ -236,7 +275,14 @@ export default function AdminUsersRolePage({
   }, [role])
 
   async function handleSave(
-    payload: { name: string; email: string; organizationId?: string; accountType?: string },
+    payload: {
+      name: string
+      email: string
+      organizationId?: string
+      accountType?: string
+      phone?: string
+      password?: string
+    },
     id: string | null,
   ) {
     if (!db) throw new Error("Firestore indisponible.")
@@ -246,8 +292,12 @@ export default function AdminUsersRolePage({
         email: payload.email,
         organizationId: payload.organizationId ?? null,
         accountType: payload.accountType ?? null,
+        phone: payload.phone ?? null,
         updatedAt: serverTimestamp(),
       })
+      if (payload.password?.trim()) {
+        await setManagedUserPassword(id, payload.password)
+      }
       return
     }
 
@@ -256,10 +306,13 @@ export default function AdminUsersRolePage({
       name: payload.name,
       role,
       organizationId: payload.organizationId ?? null,
+      phone: payload.phone ?? null,
+      password: payload.password ?? null,
     })
 
     await updateDoc(doc(db, COLLECTIONS.users, created.uid), {
       accountType: payload.accountType ?? null,
+      phone: payload.phone ?? null,
       updatedAt: serverTimestamp(),
     })
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { engineerNav } from "@/lib/nav"
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { db } from "@/config/firebase"
 import {
   collection, query, where, orderBy, limit,
@@ -111,7 +111,6 @@ function ProcessModal({ order, onClose, onSave }: ProcessModalProps) {
 }
 
 export default function EngineerRequests() {
-  const navigate = useNavigate()
   const [orders, setOrders]       = useState<Order[]>([])
   const [loading, setLoading]     = useState(true)
   const [search, setSearch]       = useState("")

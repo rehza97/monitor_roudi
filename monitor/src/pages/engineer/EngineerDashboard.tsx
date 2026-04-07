@@ -126,11 +126,29 @@ export default function EngineerDashboard() {
     const q = query(
       collection(db, COLLECTIONS.tasks),
       where("assignedToId", "==", user.id),
-      orderBy("createdAt", "desc"),
-      limit(20),
     )
     const unsub = onSnapshot(q, snap => {
-      setTasks(snap.docs.map(d => ({ id: d.id, ...(d.data() as FirestoreTask) })))
+      const rows = snap.docs.map(d => ({ id: d.id, ...(d.data() as FirestoreTask) }))
+      const sorted = rows
+        .sort((a, b) => {
+          const am =
+            a.createdAt &&
+            typeof a.createdAt === "object" &&
+            "toMillis" in a.createdAt &&
+            typeof (a.createdAt as { toMillis: () => number }).toMillis === "function"
+              ? (a.createdAt as { toMillis: () => number }).toMillis()
+              : 0
+          const bm =
+            b.createdAt &&
+            typeof b.createdAt === "object" &&
+            "toMillis" in b.createdAt &&
+            typeof (b.createdAt as { toMillis: () => number }).toMillis === "function"
+              ? (b.createdAt as { toMillis: () => number }).toMillis()
+              : 0
+          return bm - am
+        })
+        .slice(0, 20)
+      setTasks(sorted)
       setLoadingTasks(false)
     })
     return unsub

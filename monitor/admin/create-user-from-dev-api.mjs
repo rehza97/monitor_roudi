@@ -1,6 +1,6 @@
 /**
  * Dev-only helper: create/update Firebase Auth user + Firestore users/{uid} profile.
- * Input: JSON on stdin { email, name, role, organizationId? }
+ * Input: JSON on stdin { email, name, role, organizationId?, phone?, password? }
  * Output: JSON on stdout.
  */
 import { randomBytes } from "node:crypto"
@@ -52,6 +52,14 @@ try {
     typeof parsed.organizationId === "string" && parsed.organizationId.trim()
       ? parsed.organizationId.trim()
       : null
+  const phone =
+    typeof parsed.phone === "string" && parsed.phone.trim()
+      ? parsed.phone.trim()
+      : null
+  const requestedPassword =
+    typeof parsed.password === "string" && parsed.password.trim()
+      ? parsed.password.trim()
+      : null
 
   if (!email) {
     out({ ok: false, error: "email is required" })
@@ -72,10 +80,10 @@ try {
   try {
     const existing = await auth.getUserByEmail(email)
     uid = existing.uid
-    await auth.updateUser(uid, { displayName: name })
+    await auth.updateUser(uid, { displayName: name, ...(requestedPassword ? { password: requestedPassword } : {}) })
   } catch (err) {
     if (err?.code === "auth/user-not-found") {
-      password = generatePassword()
+      password = requestedPassword || generatePassword()
       const createdUser = await auth.createUser({
         email,
         password,
@@ -96,6 +104,7 @@ try {
     initials: deriveInitials(name, email),
     avatarColor: pickAvatarColor(uid),
     accountType: "other",
+    phone,
     organizationId,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }

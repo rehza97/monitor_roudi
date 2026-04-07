@@ -1,5 +1,5 @@
 // FILE REPLACED — full Firestore version below
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
 import { useParams, Link } from "react-router-dom"

@@ -18,6 +18,17 @@ export const limit = Firestore.limit
 export const serverTimestamp = Firestore.serverTimestamp
 export const writeBatch = Firestore.writeBatch
 
+type SnapshotTarget =
+  | FirestoreTypes.Query<unknown, FirestoreTypes.DocumentData>
+  | FirestoreTypes.DocumentReference<unknown, FirestoreTypes.DocumentData>
+
+type SnapshotForTarget<Target extends SnapshotTarget> =
+  Target extends FirestoreTypes.Query<infer AppModelType, infer DbModelType>
+    ? FirestoreTypes.QuerySnapshot<AppModelType, DbModelType>
+    : Target extends FirestoreTypes.DocumentReference<infer AppModelType, infer DbModelType>
+      ? FirestoreTypes.DocumentSnapshot<AppModelType, DbModelType>
+      : never
+
 function captureCaller(operation: string): string | null {
   const stack = new Error(`firestore:${operation}`).stack
   if (!stack) return null
@@ -67,12 +78,23 @@ export async function getDocs<
  * Wraps SDK onSnapshot so listener errors (e.g. permission-denied) always log to the console.
  * Two-arg listeners get an error handler that only logs; three-arg listeners log then forward.
  */
+export function onSnapshot<Target extends SnapshotTarget>(
+  target: Target,
+  onNext: (snapshot: SnapshotForTarget<Target>) => void,
+  onError?: (error: FirestoreTypes.FirestoreError) => void,
+): FirestoreTypes.Unsubscribe
+export function onSnapshot<Target extends SnapshotTarget>(
+  target: Target,
+  options: FirestoreTypes.SnapshotListenOptions,
+  onNext: (snapshot: SnapshotForTarget<Target>) => void,
+  onError?: (error: FirestoreTypes.FirestoreError) => void,
+): FirestoreTypes.Unsubscribe
 export function onSnapshot(
-  ...args: Parameters<typeof Firestore.onSnapshot>
+  ...args: unknown[]
 ): ReturnType<typeof Firestore.onSnapshot> {
   const target = args[0]
 
-  if (args.length === 2) {
+  if (args.length === 2 && typeof args[1] === "function") {
     const onNext = args[1] as (snap: unknown) => void
     return Firestore.onSnapshot(target as never, onNext, (err: unknown) => {
       logFirestoreError("onSnapshot", err, {
@@ -83,7 +105,11 @@ export function onSnapshot(
     })
   }
 
-  if (args.length >= 3) {
+  if (
+    args.length >= 3 &&
+    typeof args[1] === "function" &&
+    (typeof args[2] === "function" || args[2] === undefined)
+  ) {
     const onNext = args[1] as (snap: unknown) => void
     const userOnError = args[2] as ((e: unknown) => void) | undefined
     return Firestore.onSnapshot(target as never, onNext, (err: unknown) => {
@@ -96,7 +122,25 @@ export function onSnapshot(
     })
   }
 
-  return Firestore.onSnapshot(...args)
+  if (
+    args.length >= 4 &&
+    typeof args[2] === "function" &&
+    (typeof args[3] === "function" || args[3] === undefined)
+  ) {
+    const options = args[1]
+    const onNext = args[2] as (snap: unknown) => void
+    const userOnError = args[3] as ((e: unknown) => void) | undefined
+    return Firestore.onSnapshot(target as never, options as never, onNext, (err: unknown) => {
+      logFirestoreError("onSnapshot", err, {
+        target: labelFirestoreTarget(target),
+        targetDetails: describeFirestoreTarget(target),
+        caller: captureCaller("onSnapshot"),
+      })
+      userOnError?.(err)
+    })
+  }
+
+  return Firestore.onSnapshot(...(args as Parameters<typeof Firestore.onSnapshot>))
 }
 
 export async function addDoc<AppModelType>(

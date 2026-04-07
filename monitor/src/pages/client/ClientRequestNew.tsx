@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
@@ -80,7 +80,6 @@ function SectionCard({
 
 export default function ClientRequestNew() {
   const { user } = useAuth()
-  const navigate = useNavigate()
 
   const [activeSection, setActiveSection] = useState(0)
 

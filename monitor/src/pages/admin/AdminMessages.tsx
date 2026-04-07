@@ -136,8 +136,9 @@ export default function AdminMessages() {
 
   useEffect(() => {
     if (!db || !isFirebaseConfigured || !uid) return
+    const firestore = db
 
-    const q = query(collection(db, COLLECTIONS.conversations), orderBy("lastMessageAt", "desc"))
+    const q = query(collection(firestore, COLLECTIONS.conversations), orderBy("lastMessageAt", "desc"))
 
     const unsub = onSnapshot(
       q,
@@ -209,7 +210,7 @@ export default function AdminMessages() {
             const targets = participantIds.filter(id => id !== lastSender)
             for (const targetUid of targets) {
               if (targetUid === uid) continue
-              addDoc(collection(db, COLLECTIONS.notifications), {
+              addDoc(collection(firestore, COLLECTIONS.notifications), {
                 userId: targetUid,
                 kind: "chat",
                 read: false,
@@ -236,9 +237,10 @@ export default function AdminMessages() {
     if (!db || !isFirebaseConfigured || !selectedId) {
       return
     }
+    const firestore = db
 
     const mq = query(
-      collection(db, COLLECTIONS.conversations, selectedId, COLLECTIONS.messages),
+      collection(firestore, COLLECTIONS.conversations, selectedId, COLLECTIONS.messages),
       orderBy("createdAt", "asc")
     )
 

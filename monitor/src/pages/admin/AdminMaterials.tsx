@@ -155,18 +155,18 @@ function MaterialModal({
         </div>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         {[
-          ["Réf. SKU", sku, setSku, "text"],
-          ["Nom", name, setName, "text"],
-          ["Catégorie", category, setCategory, "text"],
-          ["Emplacement", location, setLocation, "text"],
-          ["Prix (affichage)", priceDisplay, setPriceDisplay, "text"],
-        ].map(([label, val, set, typ]) => (
-          <div key={label as string} className="space-y-1.5">
+          { label: "Réf. SKU", value: sku, set: setSku, type: "text" },
+          { label: "Nom", value: name, set: setName, type: "text" },
+          { label: "Catégorie", value: category, set: setCategory, type: "text" },
+          { label: "Emplacement", value: location, set: setLocation, type: "text" },
+          { label: "Prix (affichage)", value: priceDisplay, set: setPriceDisplay, type: "text" },
+        ].map(({ label, value, set, type }) => (
+          <div key={label} className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>
             <input
-              value={val as string}
-              onChange={(e) => (set as (s: string) => void)(e.target.value)}
-              type={typ as string}
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              type={type}
               required={label === "Réf. SKU" || label === "Nom"}
               className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             />

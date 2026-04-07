@@ -168,7 +168,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthDebugSnapshot({
         uid: firebaseUser.uid,
         email: firebaseUser.email ?? null,
-        permissions: { isAuthenticated: true },
+        permissions: {
+          isAuthenticated: true,
+          ...rolePermissions(null),
+        },
       })
       logAuthDebugState("auth state changed (signed in)")
       try {

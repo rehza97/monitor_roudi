@@ -7,6 +7,8 @@ export interface ManagedUserCreateInput {
   name: string
   role: UserRole
   organizationId?: string | null
+  phone?: string | null
+  password?: string | null
 }
 
 export interface ManagedUserCreateResult {
@@ -69,4 +71,31 @@ export async function deleteManagedUser(uid: string): Promise<void> {
   if (!firebaseApp) throw new Error("Firebase app indisponible.")
   const fn = httpsCallable<{ uid: string }, { ok: true }>(getFunctions(firebaseApp), "deleteManagedUser")
   await fn({ uid })
+}
+
+export async function setManagedUserPassword(uid: string, password: string): Promise<void> {
+  const cleanUid = uid.trim()
+  const cleanPassword = password.trim()
+  if (!cleanUid) throw new Error("UID utilisateur manquant.")
+  if (!cleanPassword) throw new Error("Mot de passe requis.")
+
+  if (import.meta.env.DEV) {
+    const res = await fetch("/__dev/firebase/set-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: cleanUid, password: cleanPassword }),
+    })
+    const json = (await res.json()) as { ok?: boolean; error?: string }
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error || "Mise a jour du mot de passe impossible.")
+    }
+    return
+  }
+
+  if (!firebaseApp) throw new Error("Firebase app indisponible.")
+  const fn = httpsCallable<{ uid: string; password: string }, { ok: true }>(
+    getFunctions(firebaseApp),
+    "setManagedUserPassword",
+  )
+  await fn({ uid: cleanUid, password: cleanPassword })
 }

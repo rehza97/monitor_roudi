@@ -10,7 +10,6 @@ import {
   query,
   where,
   orderBy,
-  limit,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreOrder, type Deployment } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
@@ -65,7 +64,7 @@ export default function ClientDashboard() {
 
     const unsub = onSnapshot(q, (snap) => {
       setOrders(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreOrder) })),
+        snap.docs.map((d) => ({ ...(d.data() as FirestoreOrder), id: d.id })),
       )
       setLoadingOrders(false)
     })
@@ -86,7 +85,7 @@ export default function ClientDashboard() {
 
     const unsub = onSnapshot(q, (snap) => {
       setDeployments(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Deployment) })),
+        snap.docs.map((d) => ({ ...(d.data() as Deployment), id: d.id })),
       )
       setLoadingDeps(false)
     })

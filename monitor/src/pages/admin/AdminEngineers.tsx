@@ -17,7 +17,9 @@ import {
   updateDoc,
 } from "@/lib/firebase-firestore"
 
-type Engineer = EngineerRosterRow
+type Engineer = EngineerRosterRow & {
+  phone?: string
+}
 
 const statusColor: Record<string, string> = {
   Disponible: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -38,6 +40,7 @@ function docToEngineer(id: string, data: FirestoreEngineer): Engineer {
     specialty: data.specialty,
     projects: typeof data.projects === "number" ? data.projects : 0,
     status: data.status,
+    phone: typeof data.phone === "string" ? data.phone : "",
   }
 }
 
@@ -55,13 +58,22 @@ function EngineerModal({
   const initial: Engineer =
     mode?.type === "edit"
       ? { ...mode.engineer }
-      : { id: "", name: "", email: "", specialty: "Fullstack", projects: 0, status: "Disponible" }
+      : { id: "", name: "", email: "", specialty: "Fullstack", projects: 0, status: "Disponible", phone: "" }
 
   const [form, setForm] = useState<Engineer>(initial)
+  const [password, setPassword] = useState("")
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localError, setLocalError] = useState("")
   const isDev = import.meta.env.DEV
+
+  function pickRandom<T>(items: readonly T[]): T {
+    return items[Math.floor(Math.random() * items.length)]
+  }
+
+  function randomDigits(length: number): string {
+    return Array.from({ length }, () => Math.floor(Math.random() * 10)).join("")
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -103,13 +115,20 @@ function EngineerModal({
   }
 
   function autofillForDev() {
+    const firstNames = ["Amine", "Nour", "Yacine", "Sara", "Lina", "Mehdi"] as const
+    const lastNames = ["Benkhaled", "Mebarki", "Mansouri", "Rahmani", "Khelifi", "Bouzid"] as const
+    const firstName = pickRandom(firstNames)
+    const lastName = pickRandom(lastNames)
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${randomDigits(3)}@roudi.dz`
+
     setForm((p) => ({
       ...p,
-      name: "Nassim Dev",
-      email: "nassim.dev@rodaina.local",
-      projects: 3,
-      specialty: "Fullstack",
-      status: "Disponible",
+      name: `${firstName} ${lastName}`,
+      email,
+      phone: `+213 ${randomDigits(3)} ${randomDigits(2)} ${randomDigits(2)} ${randomDigits(2)}`,
+      projects: Math.floor(Math.random() * 8),
+      specialty: pickRandom(specialties.slice(1)),
+      status: pickRandom(statuses),
     }))
     setLocalError("")
   }
@@ -130,6 +149,8 @@ function EngineerModal({
           body: JSON.stringify({
             name: form.name.trim(),
             email: form.email.trim(),
+                phone: form.phone?.trim() || null,
+                password: password.trim() || null,
             role: "engineer",
           }),
         })
@@ -150,12 +171,21 @@ function EngineerModal({
       } else {
         if (!firebaseApp) throw new Error("Firebase app indisponible.")
         const fn = httpsCallable<
-          { email: string; name: string; role: string; organizationId?: string | null },
+          {
+            email: string
+            name: string
+            role: string
+            organizationId?: string | null
+            phone?: string | null
+            password?: string | null
+          },
           { uid: string; created: boolean; password?: string | null }
         >(getFunctions(firebaseApp), "createManagedUser")
         const response = await fn({
           email: form.email.trim(),
           name: form.name.trim(),
+          phone: form.phone?.trim() || null,
+          password: password.trim() || null,
           role: "engineer",
           organizationId: null,
         })
@@ -213,6 +243,7 @@ function EngineerModal({
           {[
             { key: "name" as const, label: "Nom complet", type: "text" },
             { key: "email" as const, label: "Email", type: "email" },
+            { key: "phone" as const, label: "Téléphone", type: "tel" },
           ].map((f) => (
             <div key={f.key} className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
@@ -225,6 +256,17 @@ function EngineerModal({
               />
             </div>
           ))}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Mot de passe (optionnel)</label>
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type="password"
+            placeholder="Laisser vide pour génération auto"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+          />
         </div>
 
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3.5">
@@ -342,6 +384,7 @@ export default function AdminEngineers() {
       specialty: eng.specialty,
       status: eng.status,
       projects: Math.max(0, Math.min(10000, Math.floor(eng.projects))),
+      phone: eng.phone?.trim() || null,
       updatedAt: serverTimestamp(),
     }
 

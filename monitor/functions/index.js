@@ -45,6 +45,14 @@ exports.createManagedUser = onCall({ cors: true }, async (request) => {
     typeof request.data?.organizationId === "string" && request.data.organizationId.trim()
       ? request.data.organizationId.trim()
       : null
+  const phone =
+    typeof request.data?.phone === "string" && request.data.phone.trim()
+      ? request.data.phone.trim()
+      : null
+  const requestedPassword =
+    typeof request.data?.password === "string" && request.data.password.trim()
+      ? request.data.password.trim()
+      : null
 
   if (!email) throw new HttpsError("invalid-argument", "email is required")
   if (!ensureRole(role)) throw new HttpsError("invalid-argument", "invalid role")
@@ -58,10 +66,10 @@ exports.createManagedUser = onCall({ cors: true }, async (request) => {
   try {
     const existing = await auth.getUserByEmail(email)
     uid = existing.uid
-    await auth.updateUser(uid, { displayName: name })
+    await auth.updateUser(uid, { displayName: name, ...(requestedPassword ? { password: requestedPassword } : {}) })
   } catch (err) {
     if (err?.code === "auth/user-not-found") {
-      password = randomBytes(18).toString("base64url")
+      password = requestedPassword || randomBytes(18).toString("base64url")
       const user = await auth.createUser({
         email,
         password,
@@ -84,6 +92,7 @@ exports.createManagedUser = onCall({ cors: true }, async (request) => {
       initials: deriveInitials(name, email),
       avatarColor: pickAvatarColor(uid),
       accountType: "other",
+      phone,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     },
@@ -91,6 +100,27 @@ exports.createManagedUser = onCall({ cors: true }, async (request) => {
   )
 
   return { uid, created, password }
+})
+
+exports.setManagedUserPassword = onCall({ cors: true }, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Authentication required.")
+  }
+
+  const uid = typeof request.data?.uid === "string" ? request.data.uid.trim() : ""
+  const password = typeof request.data?.password === "string" ? request.data.password.trim() : ""
+  if (!uid) throw new HttpsError("invalid-argument", "uid is required")
+  if (!password) throw new HttpsError("invalid-argument", "password is required")
+
+  const db = getFirestore()
+  const callerSnap = await db.collection("users").doc(request.auth.uid).get()
+  const callerRole = callerSnap.exists ? callerSnap.data()?.role : null
+  if (callerRole !== "admin") {
+    throw new HttpsError("permission-denied", "Admin role required.")
+  }
+
+  await getAuth().updateUser(uid, { password })
+  return { ok: true }
 })
 
 exports.deleteManagedUser = onCall({ cors: true }, async (request) => {

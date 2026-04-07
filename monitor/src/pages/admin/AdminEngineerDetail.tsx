@@ -291,7 +291,7 @@ export default function AdminEngineerDetail() {
                     <span className="text-xs text-slate-400">
                       {engineer.projects} projet{engineer.projects !== 1 ? "s" : ""} actif{engineer.projects !== 1 ? "s" : ""}
                     </span>
-                    {engineer.createdAt && (
+                    {engineer.createdAt != null && (
                       <span className="text-xs text-slate-400">
                         · Membre depuis {formatFirestoreDate(engineer.createdAt)}
                       </span>

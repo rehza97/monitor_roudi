@@ -111,7 +111,7 @@ export default function AdminReports() {
   const { kpis, bars, typeDistribution, exportPayload, hasInvoiceRevenue } = useMemo(() => {
     const { start, now, prevStart } = periodBounds(period)
 
-    const demandes = orders.filter(o => o.data.kind === ORDER_KIND.client_request)
+    const demandes = orders.filter(o => o.data.kind === ORDER_KIND.clientRequest)
     const supplies = orders.filter(o => o.data.kind === ORDER_KIND.materialSupply)
 
     const countDemandes = (from: number, to: number) =>

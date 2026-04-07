@@ -65,7 +65,7 @@ export default function AdminUserProfile() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!db) return
+    if (!db || !id) return
     setSaving(true)
     setError("")
     try {
@@ -87,6 +87,7 @@ export default function AdminUserProfile() {
   }
 
   async function handleDelete() {
+    if (!id) return
     if (!window.confirm("Supprimer ce compte (Auth + profil) ?")) return
     setDeleting(true)
     setError("")

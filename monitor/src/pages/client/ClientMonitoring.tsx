@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import { onSnapshot, addDoc, collection, query, where } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { DeploymentHealth, DeploymentEnvironment } from "@/data/schema"
+import type { DeploymentEnvironment } from "@/data/schema"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,12 +33,6 @@ type NormalizedHealth = "healthy" | "warning" | "down"
 function normalizeHealth(raw: string): NormalizedHealth {
   if (raw === "ok" || raw === "healthy") return "healthy"
   if (raw === "degraded" || raw === "warning") return "warning"
-  return "down"
-}
-
-function resolveDeploymentHealth(raw: string): DeploymentHealth {
-  if (raw === "ok" || raw === "healthy") return "ok"
-  if (raw === "degraded" || raw === "warning") return "degraded"
   return "down"
 }
 
