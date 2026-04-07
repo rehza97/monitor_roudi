@@ -14,6 +14,7 @@
     "admin:install": "npm install --prefix admin",
     "admin:init": "npm run init --prefix admin",
     "admin:create-default": "node admin/create-default-admin.mjs",
+    "admin:seed:dz": "node admin/seed-algeria.mjs",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",

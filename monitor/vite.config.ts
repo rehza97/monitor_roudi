@@ -108,6 +108,61 @@ function createDevFirebaseAdminPlugin(root: string) {
           )
         }
       })
+
+      server.middlewares.use(async (req, res, next) => {
+        if (req.method !== "POST" || req.url !== "/__dev/firebase/delete-user") return next()
+
+        try {
+          const raw = await readRequestBody(req)
+          const payload = JSON.parse(raw || "{}")
+
+          const scriptPath = path.resolve(root, "admin/delete-user-from-dev-api.mjs")
+          const child = spawn(process.execPath, [scriptPath], {
+            cwd: root,
+            stdio: ["pipe", "pipe", "pipe"],
+          })
+
+          let out = ""
+          let err = ""
+          child.stdout.on("data", (chunk) => {
+            out += String(chunk)
+          })
+          child.stderr.on("data", (chunk) => {
+            err += String(chunk)
+          })
+
+          child.stdin.write(JSON.stringify(payload))
+          child.stdin.end()
+
+          child.on("close", (code) => {
+            res.setHeader("Content-Type", "application/json")
+
+            if (code !== 0) {
+              res.statusCode = 500
+              res.end(
+                JSON.stringify({
+                  ok: false,
+                  error: `delete-user script failed (${code})`,
+                  details: err || out,
+                }),
+              )
+              return
+            }
+
+            res.statusCode = 200
+            res.end(out || JSON.stringify({ ok: false, error: "empty response" }))
+          })
+        } catch (e) {
+          res.statusCode = 500
+          res.setHeader("Content-Type", "application/json")
+          res.end(
+            JSON.stringify({
+              ok: false,
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          )
+        }
+      })
     },
   }
 }

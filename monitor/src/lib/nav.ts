@@ -14,6 +14,9 @@ export const clientNav: NavItem[] = [
 
 export const adminNav: NavItem[] = [
   { icon: "dashboard",            label: "Tableau de bord",     to: "/admin/dashboard" },
+  { icon: "shield_person",        label: "Admins",              to: "/admin/users/admins" },
+  { icon: "business_center",      label: "Clients",             to: "/admin/users/clients" },
+  { icon: "construction",         label: "Techniciens",         to: "/admin/users/technicians" },
   { icon: "group",                label: "Ingénieurs",          to: "/admin/engineers" },
   { icon: "description",          label: "Demandes",            to: "/admin/requests",    badge: 38 },
   { icon: "inventory_2",          label: "Matériels",           to: "/admin/materials" },

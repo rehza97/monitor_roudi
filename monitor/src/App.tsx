@@ -51,6 +51,8 @@ import AdminReports          from "./pages/admin/AdminReports"
 import AdminRoles            from "./pages/admin/AdminRoles"
 import AdminHistory          from "./pages/admin/AdminHistory"
 import AdminSettings         from "./pages/admin/AdminSettings"
+import AdminUsersRolePage    from "./pages/admin/AdminUsersRolePage"
+import AdminUserProfile      from "./pages/admin/AdminUserProfile"
 
 // Engineer
 import EngineerDashboard       from "./pages/engineer/EngineerDashboard"
@@ -130,6 +132,11 @@ export default function App() {
       <Route path="/admin/roles"             element={<ProtectedRoute role="admin"><AdminRoles /></ProtectedRoute>} />
       <Route path="/admin/history"           element={<ProtectedRoute role="admin"><AdminHistory /></ProtectedRoute>} />
       <Route path="/admin/settings"          element={<ProtectedRoute role="admin"><AdminSettings /></ProtectedRoute>} />
+      <Route path="/admin/users/admins"      element={<ProtectedRoute role="admin"><AdminUsersRolePage role="admin" pageTitle="CRUD Admins" /></ProtectedRoute>} />
+      <Route path="/admin/users/clients"     element={<ProtectedRoute role="admin"><AdminUsersRolePage role="client" pageTitle="CRUD Clients" /></ProtectedRoute>} />
+      <Route path="/admin/users/engineers"   element={<ProtectedRoute role="admin"><AdminUsersRolePage role="engineer" pageTitle="CRUD Ingénieurs" /></ProtectedRoute>} />
+      <Route path="/admin/users/technicians" element={<ProtectedRoute role="admin"><AdminUsersRolePage role="technician" pageTitle="CRUD Techniciens" /></ProtectedRoute>} />
+      <Route path="/admin/users/:role/:id"   element={<ProtectedRoute role="admin"><AdminUserProfile /></ProtectedRoute>} />
 
       {/* ── Engineer ────────────────────────────────────── */}
       <Route path="/engineer" element={<Navigate to="/engineer/dashboard" replace />} />

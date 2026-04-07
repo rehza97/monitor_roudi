@@ -92,3 +92,22 @@ exports.createManagedUser = onCall({ cors: true }, async (request) => {
 
   return { uid, created, password }
 })
+
+exports.deleteManagedUser = onCall({ cors: true }, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Authentication required.")
+  }
+  const uid = typeof request.data?.uid === "string" ? request.data.uid.trim() : ""
+  if (!uid) throw new HttpsError("invalid-argument", "uid is required")
+
+  const db = getFirestore()
+  const callerSnap = await db.collection("users").doc(request.auth.uid).get()
+  const callerRole = callerSnap.exists ? callerSnap.data()?.role : null
+  if (callerRole !== "admin") {
+    throw new HttpsError("permission-denied", "Admin role required.")
+  }
+
+  await db.collection("users").doc(uid).delete()
+  await getAuth().deleteUser(uid)
+  return { ok: true }
+})
