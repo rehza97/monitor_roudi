@@ -42,7 +42,12 @@ const LABEL_CLS = "text-sm font-medium text-slate-700 dark:text-slate-300"
 interface ModalProps {
   open: boolean
   onClose: () => void
-  onSubmit: (subject: string, description: string, priority: string) => Promise<void>
+  onSubmit: (
+    subject: string,
+    description: string,
+    priority: string,
+    topic: "software" | "material" | "unknown",
+  ) => Promise<void>
   saving: boolean
 }
 
@@ -50,16 +55,18 @@ function NewTicketModal({ open, onClose, onSubmit, saving }: ModalProps) {
   const [subject, setSubject]       = useState("")
   const [description, setDescription] = useState("")
   const [priority, setPriority]     = useState("Normale")
+  const [topic, setTopic]           = useState<"software" | "material" | "unknown">("unknown")
 
   if (!open) return null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!subject.trim()) return
-    await onSubmit(subject.trim(), description.trim(), priority)
+    await onSubmit(subject.trim(), description.trim(), priority, topic)
     setSubject("")
     setDescription("")
     setPriority("Normale")
+    setTopic("unknown")
   }
 
   return (
@@ -85,6 +92,19 @@ function NewTicketModal({ open, onClose, onSubmit, saving }: ModalProps) {
               className={INPUT_CLS}
               placeholder="Décrivez brièvement votre problème"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className={LABEL_CLS}>Type de ticket</label>
+            <select
+              value={topic}
+              onChange={(e) => setTopic(e.target.value as "software" | "material" | "unknown")}
+              className={INPUT_CLS}
+            >
+              <option value="software">Software</option>
+              <option value="material">Matériel</option>
+              <option value="unknown">Je ne sais pas</option>
+            </select>
           </div>
 
           <div className="space-y-1.5">
@@ -175,13 +195,19 @@ export default function ClientSupport() {
     return () => unsub()
   }, [user?.id])
 
-  async function handleCreate(subject: string, description: string, priority: string) {
+  async function handleCreate(
+    subject: string,
+    description: string,
+    priority: string,
+    topic: "software" | "material" | "unknown",
+  ) {
     if (!db || !user?.id) return
     setSaving(true)
     try {
       const ref = await addDoc(collection(db, COLLECTIONS.supportTickets), {
         subject,
         description,
+        topic,
         priority: priority as FirestoreSupportTicket["priority"],
         status: "Ouvert",
         createdByUserId: user.id,
@@ -287,6 +313,17 @@ export default function ClientSupport() {
                     className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${priorityColor[t.priority] ?? "text-slate-600 bg-slate-100"}`}
                   >
                     {t.priority}
+                  </span>
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                      t.topic === "software"
+                        ? "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400"
+                        : t.topic === "material"
+                          ? "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400"
+                          : "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {t.topic === "software" ? "Software" : t.topic === "material" ? "Matériel" : "Je ne sais pas"}
                   </span>
                   <span
                     className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${statusColor[t.status] ?? "text-slate-600 bg-slate-100"}`}

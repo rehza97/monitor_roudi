@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db, isFirebaseConfigured } from "@/config/firebase"
-import { COLLECTIONS } from "@/data/schema"
+import { COLLECTIONS, type FirestoreSupportTicket } from "@/data/schema"
+import { useAuth } from "@/contexts/AuthContext"
 import {
   addDoc,
   collection,
@@ -17,6 +18,7 @@ type UiStatus = "healthy" | "warning" | "down"
 
 type AppRow = {
   id: string
+  organizationId: string
   name: string
   client: string
   env: string
@@ -79,6 +81,7 @@ function parseDeployment(id: string, data: Record<string, unknown>, orgNames: Ma
 
   return {
     id,
+    organizationId: orgId,
     name,
     client,
     env,
@@ -96,16 +99,22 @@ function AppDetailModal({
 }: {
   app: AppRow
   onClose: () => void
-  onRestart: () => void
+  onRestart: () => Promise<void>
 }) {
   const [state, setState] = useState<ActionState>("idle")
+  const [error, setError] = useState("")
 
-  function handleRestart() {
+  async function handleRestart() {
     setState("loading")
-    setTimeout(() => {
+    setError("")
+    try {
+      await onRestart()
       setState("done")
-      onRestart()
-    }, 1500)
+      setTimeout(() => onClose(), 1000)
+    } catch (err) {
+      setState("idle")
+      setError(err instanceof Error ? err.message : "Impossible de créer la demande de redémarrage.")
+    }
   }
 
   const cfg = statusConfig[app.status]
@@ -172,7 +181,7 @@ function AppDetailModal({
           </button>
           <button
             type="button"
-            onClick={handleRestart}
+            onClick={() => void handleRestart()}
             disabled={state !== "idle"}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-60 ${
               state === "done" ? "bg-emerald-600" : "bg-[#db143c] hover:opacity-90"
@@ -181,9 +190,12 @@ function AppDetailModal({
             <span className="material-symbols-outlined text-[16px]">
               {state === "loading" ? "hourglass_empty" : state === "done" ? "check_circle" : "restart_alt"}
             </span>
-            {state === "loading" ? "Redémarrage…" : state === "done" ? "Redémarré" : "Redémarrer"}
+            {state === "loading" ? "Création ticket…" : state === "done" ? "Demande envoyée" : "Demander redémarrage"}
           </button>
         </div>
+        {error ? (
+          <p className="mt-3 text-xs text-rose-600 dark:text-rose-400">{error}</p>
+        ) : null}
       </div>
     </div>
   )
@@ -339,6 +351,7 @@ function AddDeploymentModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function AdminMonitoring() {
+  const { user } = useAuth()
   const [rawDeployments, setRawDeployments] = useState<RawDeployment[]>([])
   const [orgNames, setOrgNames] = useState<Map<string, string>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -428,18 +441,39 @@ export default function AdminMonitoring() {
   }
 
   async function handleRestart(app: AppRow) {
-    if (!db || !isFirebaseConfigured) return
-    try {
-      await updateDoc(doc(db, COLLECTIONS.deployments, app.id), {
-        health: "ok",
-        cpu: Math.floor(Math.random() * 20 + 5),
-        ram: Math.floor(Math.random() * 30 + 15),
-        requests: 500,
-        updatedAt: serverTimestamp(),
-      })
-    } catch {
-      /* snapshot will still reflect server state */
+    if (!db || !isFirebaseConfigured || !user?.id) {
+      throw new Error("Utilisateur ou configuration Firebase indisponible.")
     }
+
+    await addDoc(collection(db, COLLECTIONS.supportTickets), {
+      subject: `Redémarrage demandé — ${app.name}`,
+      description: `Demande créée depuis le monitoring admin pour ${app.name} (${app.env}).`,
+      priority: "Haute",
+      status: "Ouvert",
+      createdByUserId: user.id,
+      organizationId: app.organizationId || "platform",
+      deploymentId: app.id,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    } as FirestoreSupportTicket & { deploymentId: string })
+
+    await updateDoc(doc(db, COLLECTIONS.deployments, app.id), {
+      restartRequestedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+
+    await addDoc(collection(db, COLLECTIONS.activityEvents), {
+      title: `Demande de redémarrage envoyée (${app.name})`,
+      actor: user.name,
+      category: "monitoring",
+      icon: "restart_alt",
+      color: "text-amber-600",
+      createdAt: serverTimestamp(),
+      organizationId: app.organizationId || "platform",
+      deploymentId: app.id,
+      createdByUserId: user.id,
+    } as Record<string, unknown>)
+
     setSelectedId(null)
   }
 

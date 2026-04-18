@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react"
-import { NavLink, useLocation, useNavigate } from "react-router-dom"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
+import {
+  getHeaderNotificationsPath,
+  getHeaderProfilePath,
+  getHeaderSearchDestination,
+} from "@/lib/dashboard-header-routing"
+import { useClientSidebarBadges } from "@/hooks/useClientSidebarBadges"
 
 export type Role = "client" | "admin" | "engineer" | "technician"
 
@@ -156,12 +162,40 @@ export default function DashboardLayout({
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { messageUnread, notificationUnread } = useClientSidebarBadges(role, user)
   const [contentLoading, setContentLoading] = useState(true)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [headerQuery, setHeaderQuery] = useState("")
+  const searchWrapRef = useRef<HTMLDivElement>(null)
+
+  const notificationsPath = getHeaderNotificationsPath(role)
+  const profilePath = getHeaderProfilePath(role)
+  const onNotificationsHub =
+    location.pathname === notificationsPath || location.pathname.startsWith(`${notificationsPath}/`)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setContentLoading(false), 240)
     return () => window.clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    function handlePointerDown(e: MouseEvent) {
+      if (!searchOpen) return
+      const el = searchWrapRef.current
+      if (el && !el.contains(e.target as Node)) setSearchOpen(false)
+    }
+    document.addEventListener("mousedown", handlePointerDown)
+    return () => document.removeEventListener("mousedown", handlePointerDown)
+  }, [searchOpen])
+
+  useEffect(() => {
+    if (!searchOpen) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setSearchOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [searchOpen])
 
   // Prefer live auth user, fall back to legacy props
   const displayName     = user?.name     ?? userName
@@ -172,6 +206,37 @@ export default function DashboardLayout({
     logout()
     navigate("/login", { replace: true })
   }
+
+  function submitHeaderSearch(e?: React.FormEvent) {
+    e?.preventDefault()
+    const q = headerQuery.trim()
+    if (!q) return
+    navigate(getHeaderSearchDestination(role, q))
+    setHeaderQuery("")
+    setSearchOpen(false)
+  }
+
+  const searchHint =
+    role === "technician"
+      ? "Tickets (sujet, organisation…)"
+      : role === "client"
+        ? "Vos demandes (type, réf…)"
+        : "Demandes (client, réf., type…)"
+
+  const sidebarNavItems = useMemo(() => {
+    if (role !== "client") return navItems
+    return navItems.map((item) => {
+      if (item.to === "/client/messages") {
+        return messageUnread > 0 ? { ...item, badge: messageUnread } : { ...item, badge: undefined }
+      }
+      if (item.to === "/client/notifications") {
+        return notificationUnread > 0
+          ? { ...item, badge: notificationUnread }
+          : { ...item, badge: undefined }
+      }
+      return item
+    })
+  }, [role, navItems, messageUnread, notificationUnread])
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans">
@@ -196,7 +261,7 @@ export default function DashboardLayout({
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {navItems.map((item) => {
+          {sidebarNavItems.map((item) => {
             const isActive = location.pathname === item.to ||
               (item.to !== `/${role}/dashboard` && location.pathname.startsWith(item.to))
             return (
@@ -280,23 +345,82 @@ export default function DashboardLayout({
               {pageTitle}
             </h1>
           )}
-          <div className="flex items-center gap-2 ml-auto">
-            <button className="size-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors">
-              <span className="material-symbols-outlined text-[20px]">search</span>
-            </button>
-            <button className="size-9 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors relative">
+          <div className="flex items-center gap-2 ml-auto relative">
+            <div className="relative" ref={searchWrapRef}>
+              <button
+                type="button"
+                aria-expanded={searchOpen}
+                aria-haspopup="dialog"
+                title="Rechercher"
+                onClick={() => setSearchOpen((o) => !o)}
+                className={`size-9 flex items-center justify-center rounded-lg transition-colors ${
+                  searchOpen
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[20px]">search</span>
+              </button>
+              {searchOpen ? (
+                <div
+                  className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),22rem)] rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  role="dialog"
+                  aria-label="Recherche rapide"
+                >
+                  <form onSubmit={submitHeaderSearch} className="space-y-2">
+                    <input
+                      autoFocus
+                      value={headerQuery}
+                      onChange={(e) => setHeaderQuery(e.target.value)}
+                      placeholder={searchHint}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-slate-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!headerQuery.trim()}
+                      className="w-full rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ backgroundColor: cfg.brand }}
+                    >
+                      Rechercher
+                    </button>
+                  </form>
+                  <p className="mt-2 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                    Ouvre la liste principale avec le filtre prérempli.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            <Link
+              to={notificationsPath}
+              title="Notifications"
+              className={`relative size-9 flex items-center justify-center rounded-lg transition-colors ${
+                onNotificationsHub
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+              }`}
+            >
               <span className="material-symbols-outlined text-[20px]">notifications</span>
-              <span
-                className="absolute top-1.5 right-1.5 size-2 rounded-full"
-                style={{ backgroundColor: cfg.brand }}
-              />
-            </button>
-            <div
-              className="size-8 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer"
+              {!onNotificationsHub ? (
+                <span
+                  className="absolute top-1.5 right-1.5 size-2 rounded-full"
+                  style={{ backgroundColor: cfg.brand }}
+                />
+              ) : null}
+            </Link>
+
+            <Link
+              to={profilePath}
+              title="Profil et paramètres"
+              className={`size-8 shrink-0 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-transparent transition-shadow ${
+                location.pathname === profilePath || location.pathname.startsWith(`${profilePath}/`)
+                  ? "ring-slate-300 dark:ring-slate-500"
+                  : "hover:ring-slate-200 dark:hover:ring-slate-600"
+              }`}
               style={{ backgroundColor: cfg.brand }}
             >
               {displayInitials}
-            </div>
+            </Link>
           </div>
         </header>
 

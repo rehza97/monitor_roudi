@@ -4,8 +4,8 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
 import { useAuth } from "@/contexts/AuthContext"
-import { COLLECTIONS, ORDER_KIND, type FirestoreOrder } from "@/data/schema"
-import { doc, getDoc, serverTimestamp, updateDoc } from "@/lib/firebase-firestore"
+import { COLLECTIONS, ORDER_KIND, type FirestoreInvoice, type FirestoreOrder } from "@/data/schema"
+import { addDoc, collection, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "@/lib/firebase-firestore"
 import { formatFirestoreDate } from "@/lib/utils"
 
 type Decision = "idle" | "validating" | "rejecting" | "validated" | "rejected"
@@ -18,6 +18,47 @@ export default function AdminRequestValidate() {
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState("")
   const [decision, setDecision] = useState<Decision>("idle")
+  const [invoiceTitle, setInvoiceTitle] = useState("")
+  const [invoiceAmount, setInvoiceAmount] = useState("")
+  const [invoiceDueAt, setInvoiceDueAt] = useState("")
+  const [invoiceBusy, setInvoiceBusy] = useState(false)
+  const [invoiceError, setInvoiceError] = useState("")
+  const [linkedInvoiceId, setLinkedInvoiceId] = useState("")
+  const [resolvedClientLabel, setResolvedClientLabel] = useState("")
+  const [resolvedClientEmail, setResolvedClientEmail] = useState("")
+
+  function toNonEmptyText(value: unknown): string {
+    return typeof value === "string" && value.trim() ? value.trim() : ""
+  }
+
+  async function resolveClientDisplay(data: FirestoreOrder): Promise<{ label: string; email: string }> {
+    let label = toNonEmptyText(data.clientLabel)
+    let email = toNonEmptyText(data.clientEmail)
+
+    if ((!label || !email) && db && toNonEmptyText(data.createdByUserId)) {
+      const userSnap = await getDoc(doc(db, COLLECTIONS.users, data.createdByUserId))
+      if (userSnap.exists()) {
+        const userData = userSnap.data() as Record<string, unknown>
+        if (!label) label = toNonEmptyText(userData.name)
+        if (!email) email = toNonEmptyText(userData.email)
+      }
+    }
+
+    if (!label && db && toNonEmptyText(data.organizationId)) {
+      const orgSnap = await getDoc(doc(db, COLLECTIONS.organizations, data.organizationId))
+      if (orgSnap.exists()) {
+        const orgData = orgSnap.data() as Record<string, unknown>
+        label =
+          toNonEmptyText(orgData.displayName) ||
+          toNonEmptyText(orgData.name) ||
+          toNonEmptyText(orgData.title)
+      }
+    }
+
+    if (!label) label = toNonEmptyText(data.organizationId) || "—"
+    if (!email) email = "—"
+    return { label, email }
+  }
 
   useEffect(() => {
     if (!db || !id) {
@@ -40,7 +81,27 @@ export default function AdminRequestValidate() {
             setOrder(null)
           } else {
             setOrder(data)
+            setInvoiceTitle(`Facture - ${data.requestType ?? "Demande client"}`)
+            setInvoiceAmount("")
+            setLinkedInvoiceId(typeof data.invoiceId === "string" ? data.invoiceId : "")
             setLoadError("")
+            const resolved = await resolveClientDisplay(data)
+            if (!cancelled) {
+              setResolvedClientLabel(resolved.label)
+              setResolvedClientEmail(resolved.email)
+            }
+
+            if (!data.invoiceId) {
+              const invQ = query(
+                collection(db, COLLECTIONS.invoices),
+                where("orderId", "==", id),
+                limit(1),
+              )
+              const invSnap = await getDocs(invQ)
+              if (!cancelled && !invSnap.empty) {
+                setLinkedInvoiceId(invSnap.docs[0]?.id ?? "")
+              }
+            }
           }
         }
       } catch (e) {
@@ -83,6 +144,42 @@ export default function AdminRequestValidate() {
     }
   }
 
+  async function handleCreateInvoice() {
+    if (!db || !id || !order || !user) return
+    const amount = Number(invoiceAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setInvoiceError("Montant invalide.")
+      return
+    }
+    setInvoiceBusy(true)
+    setInvoiceError("")
+    try {
+      const dueDate = invoiceDueAt ? new Date(`${invoiceDueAt}T00:00:00`) : undefined
+      const ref = await addDoc(collection(db, COLLECTIONS.invoices), {
+        title: invoiceTitle.trim() || `Facture - ${order.requestType ?? "Demande client"}`,
+        amount,
+        status: "En attente",
+        organizationId: order.organizationId,
+        orderId: id,
+        clientLabel: resolvedClientLabel !== "—" ? resolvedClientLabel : "",
+        clientEmail: resolvedClientEmail !== "—" ? resolvedClientEmail : "",
+        createdByUserId: user.id,
+        issuedAt: serverTimestamp(),
+        dueAt: dueDate,
+        createdAt: serverTimestamp(),
+      } as FirestoreInvoice)
+      await updateDoc(doc(db, COLLECTIONS.orders, id), {
+        invoiceId: ref.id,
+        updatedAt: serverTimestamp(),
+      } as Partial<FirestoreOrder>)
+      setLinkedInvoiceId(ref.id)
+    } catch (err) {
+      setInvoiceError(err instanceof Error ? err.message : "Impossible de créer la facture.")
+    } finally {
+      setInvoiceBusy(false)
+    }
+  }
+
   if (decision === "validated") {
     return (
       <DashboardLayout role="admin" navItems={adminNav} pageTitle="Validation de la demande">
@@ -104,6 +201,15 @@ export default function AdminRequestValidate() {
             <span className="material-symbols-outlined text-[18px]">arrow_back</span>
             Retour aux demandes
           </Link>
+          {id ? (
+            <Link
+              to={`/admin/invoices?orderId=${id}`}
+              className="flex items-center gap-2 px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+              Créer la facture
+            </Link>
+          ) : null}
         </div>
       </DashboardLayout>
     )
@@ -168,6 +274,14 @@ export default function AdminRequestValidate() {
           : "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400"
 
   const features = Array.isArray(order.features) ? order.features : []
+  const clientLabel = resolvedClientLabel || order.clientLabel || "—"
+  const clientEmail = resolvedClientEmail || order.clientEmail || "—"
+  const clientInitials = clientLabel
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "?"
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Validation de la demande">
@@ -182,8 +296,8 @@ export default function AdminRequestValidate() {
               {order.requestType ?? "Demande"}
             </h2>
             <p className="text-slate-500 text-sm mt-1">
-              Réf. {id} · Client : {order.clientLabel ?? "—"}
-              {order.clientEmail ? ` · ${order.clientEmail}` : ""}
+              Réf. {id} · Client : {clientLabel}
+              {clientEmail && clientEmail !== "—" ? ` · ${clientEmail}` : ""}
             </p>
           </div>
           <span className={`text-sm font-semibold px-3 py-1.5 rounded-full shrink-0 ${statusBadge}`}>
@@ -282,21 +396,74 @@ export default function AdminRequestValidate() {
               <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Client</h3>
               <div className="flex items-center gap-3">
                 <div className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold">
-                  {(order.clientLabel ?? "?")
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
+                  {clientInitials}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-900 dark:text-white">
-                    {order.clientLabel ?? "—"}
+                    {clientLabel}
                   </p>
-                  <p className="text-xs text-slate-400">{order.clientEmail ?? "—"}</p>
+                  <p className="text-xs text-slate-400">{clientEmail}</p>
                 </div>
               </div>
             </div>
+
+            {order.status === "Validée" && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Facturation</h3>
+
+                {linkedInvoiceId ? (
+                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+                    Facture liée: <span className="font-mono">{linkedInvoiceId}</span>
+                    <div className="mt-1">
+                      <Link to="/admin/invoices" className="text-[#db143c] font-semibold hover:opacity-80">
+                        Ouvrir la facturation
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-500">Titre facture</label>
+                      <input
+                        value={invoiceTitle}
+                        onChange={(e) => setInvoiceTitle(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-500">Montant (DA)</label>
+                      <input
+                        value={invoiceAmount}
+                        onChange={(e) => setInvoiceAmount(e.target.value)}
+                        type="number"
+                        min={1}
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-500">Échéance</label>
+                      <input
+                        value={invoiceDueAt}
+                        onChange={(e) => setInvoiceDueAt(e.target.value)}
+                        type="date"
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                      />
+                    </div>
+                    {invoiceError ? (
+                      <p className="text-xs text-rose-600 dark:text-rose-400">{invoiceError}</p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateInvoice()}
+                      disabled={invoiceBusy}
+                      className="w-full h-9 rounded-lg bg-[#db143c] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+                    >
+                      {invoiceBusy ? "Création…" : "Créer la facture"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -14,6 +14,7 @@ import {
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreInvoice } from "@/data/schema"
+import { buildInvoicePdfDataUri, downloadInvoicePdf } from "@/lib/invoice-pdf"
 import { formatFirestoreDate } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -108,13 +109,27 @@ export default function ClientPayments() {
     }
   }
 
-  function handleDownload(id: string) {
+  function handleDownload(inv: InvoiceDoc) {
+    const id = inv.id
     if (downloaded.has(id)) return
     setDownloading(id)
     setTimeout(() => {
+      const dataUri =
+        inv.pdfUrl ||
+        buildInvoicePdfDataUri({
+          invoiceNumber: inv.id,
+          title: inv.title,
+          amountLabel: formatAmount(inv.amount ?? 0),
+          status: inv.status,
+          issuedAt: inv.issuedAt ?? inv.createdAt,
+          dueAt: inv.dueAt,
+          clientLabel: inv.clientLabel,
+          clientEmail: inv.clientEmail,
+          organizationId: inv.organizationId,
+        })
+      downloadInvoicePdf(dataUri, `facture-${inv.id.slice(0, 8)}.pdf`)
       setDownloading(null)
       setDownloaded((prev) => new Set([...prev, id]))
-      window.alert("Téléchargement simulé — la facture serait téléchargée ici.")
     }, 800)
   }
 
@@ -277,7 +292,7 @@ export default function ClientPayments() {
                     )}
 
                     <button
-                      onClick={() => handleDownload(inv.id)}
+                      onClick={() => handleDownload(inv)}
                       disabled={downloading === inv.id}
                       title={downloaded.has(inv.id) ? "Téléchargé" : "Télécharger"}
                       className="size-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-60 shrink-0"

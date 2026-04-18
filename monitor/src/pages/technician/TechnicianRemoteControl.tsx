@@ -1,20 +1,46 @@
-import { useState, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
+import { db } from "@/config/firebase"
+import { COLLECTIONS } from "@/data/schema"
+import { collection, onSnapshot } from "@/lib/firebase-firestore"
 
-/* MOCK devices — disabled */
-const devices: { label: string; ip: string; type: string }[] = []
-
+type Device = { id: string; label: string; ip: string; type: string }
 type ActionState = "idle" | "loading" | "done" | "error"
+const SIMULATION_MODE = true
 
-function ConfirmDialog({ title, message, onConfirm, onCancel }: {
-  title: string; message: string
-  onConfirm: () => void; onCancel: () => void
+function mapDeploymentToDevice(id: string, data: Record<string, unknown>): Device {
+  const label =
+    (typeof data.name === "string" && data.name) ||
+    (typeof data.clientListName === "string" && data.clientListName) ||
+    (typeof data.productSlug === "string" && data.productSlug) ||
+    `Déploiement ${id.slice(0, 6)}`
+
+  const ip =
+    (typeof data.ip === "string" && data.ip) ||
+    (typeof data.host === "string" && data.host) ||
+    (typeof data.address === "string" && data.address) ||
+    "N/A"
+
+  const env = typeof data.environment === "string" ? data.environment : "Production"
+  return { id, label, ip, type: env }
+}
+
+function ConfirmDialog({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  title: string
+  message: string
+  onConfirm: () => void
+  onCancel: () => void
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">{message}</p>
         <div className="flex gap-2">
@@ -31,6 +57,8 @@ function ConfirmDialog({ title, message, onConfirm, onCancel }: {
 }
 
 export default function TechnicianRemoteControl() {
+  const [devices, setDevices] = useState<Device[]>([])
+  const [loading, setLoading] = useState(true)
   const [deviceIdx, setDeviceIdx] = useState(0)
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -39,13 +67,30 @@ export default function TechnicianRemoteControl() {
   const [log, setLog] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
+  useEffect(() => {
+    if (!db) {
+      setLoading(false)
+      return
+    }
+    const unsub = onSnapshot(collection(db, COLLECTIONS.deployments), (snap) => {
+      const rows = snap.docs
+        .map((d) => mapDeploymentToDevice(d.id, d.data() as Record<string, unknown>))
+        .sort((a, b) => a.label.localeCompare(b.label, "fr"))
+      setDevices(rows)
+      setLoading(false)
+      setDeviceIdx((prev) => (rows.length === 0 ? 0 : Math.min(prev, rows.length - 1)))
+    })
+    return unsub
+  }, [])
+
   const device = devices[deviceIdx]
 
   function addLog(msg: string) {
-    setLog(prev => [...prev.slice(-19), `[${new Date().toLocaleTimeString("fr-DZ")}] ${msg}`])
+    setLog((prev) => [...prev.slice(-19), `[${new Date().toLocaleTimeString("fr-DZ")}] ${msg}`])
   }
 
   function handleConnect() {
+    if (!device) return
     if (connected) {
       setConnected(false)
       addLog(`Déconnecté de ${device.label}`)
@@ -57,26 +102,29 @@ export default function TechnicianRemoteControl() {
       setConnecting(false)
       setConnected(true)
       addLog(`Connecté — ${device.label} (${device.type})`)
-    }, 1500)
+    }, 900)
   }
 
-  function runAction(key: string, label: string, delay = 1200) {
-    setActionStates(s => ({ ...s, [key]: "loading" }))
+  function runAction(key: string, label: string, delay = 700) {
+    setActionStates((s) => ({ ...s, [key]: "loading" }))
     addLog(`${label}…`)
     setTimeout(() => {
-      setActionStates(s => ({ ...s, [key]: "done" }))
+      setActionStates((s) => ({ ...s, [key]: "done" }))
       addLog(`${label} — OK`)
-      setTimeout(() => setActionStates(s => ({ ...s, [key]: "idle" })), 2000)
+      setTimeout(() => setActionStates((s) => ({ ...s, [key]: "idle" })), 1500)
     }, delay)
   }
 
   function handleAction(key: string, label: string, needsConfirm = false) {
-    if (!connected) return
+    if (!connected || !device) return
     if (needsConfirm) {
       setConfirm({
         title: label,
         message: `Confirmer l'action "${label}" sur ${device.label} ?`,
-        onConfirm: () => { setConfirm(null); runAction(key, label) },
+        onConfirm: () => {
+          setConfirm(null)
+          runAction(key, label)
+        },
       })
       return
     }
@@ -92,26 +140,34 @@ export default function TechnicianRemoteControl() {
     const file = e.target.files?.[0]
     if (!file) return
     addLog(`Envoi fichier : ${file.name} (${(file.size / 1024).toFixed(1)} Ko)…`)
-    setActionStates(s => ({ ...s, upload: "loading" }))
+    setActionStates((s) => ({ ...s, upload: "loading" }))
     setTimeout(() => {
-      setActionStates(s => ({ ...s, upload: "done" }))
+      setActionStates((s) => ({ ...s, upload: "done" }))
       addLog(`Fichier ${file.name} envoyé avec succès`)
-      setTimeout(() => setActionStates(s => ({ ...s, upload: "idle" })), 2000)
-    }, 1500)
+      setTimeout(() => setActionStates((s) => ({ ...s, upload: "idle" })), 1500)
+    }, 1000)
     e.target.value = ""
   }
 
   const quickActions = [
-    { key: "restart",    icon: "restart_alt",          label: "Redémarrer",     needsConfirm: true  },
-    { key: "shutdown",   icon: "power_settings_new",   label: "Éteindre",       needsConfirm: true  },
-    { key: "screenshot", icon: "screenshot",           label: "Capture",        needsConfirm: false },
-    { key: "upload",     icon: "file_upload",          label: "Envoyer fichier",needsConfirm: false },
+    { key: "restart", icon: "restart_alt", label: "Redémarrer", needsConfirm: true },
+    { key: "shutdown", icon: "power_settings_new", label: "Éteindre", needsConfirm: true },
+    { key: "screenshot", icon: "screenshot", label: "Capture", needsConfirm: false },
+    { key: "upload", icon: "file_upload", label: "Envoyer fichier", needsConfirm: false },
   ]
+
+  if (loading) {
+    return (
+      <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
+        <div className="p-6 text-slate-500 dark:text-slate-400 text-sm">Chargement des équipements…</div>
+      </DashboardLayout>
+    )
+  }
 
   if (devices.length === 0) {
     return (
       <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
-        <div className="p-6 text-slate-500 dark:text-slate-400 text-sm">Aucun équipement mock — branchez une source de données réelle.</div>
+        <div className="p-6 text-slate-500 dark:text-slate-400 text-sm">Aucun équipement disponible. Ajoutez des déploiements dans Firestore (`deployments`).</div>
       </DashboardLayout>
     )
   }
@@ -119,23 +175,26 @@ export default function TechnicianRemoteControl() {
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
       <div className="p-6 w-full space-y-6">
-        {/* Device selector */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-4">
           <span className="material-symbols-outlined text-amber-500 text-[24px] shrink-0">devices</span>
           <select
             value={deviceIdx}
-            onChange={e => { setDeviceIdx(Number(e.target.value)); setConnected(false); setLog([]) }}
+            onChange={(e) => {
+              setDeviceIdx(Number(e.target.value))
+              setConnected(false)
+              setLog([])
+            }}
             className="flex-1 h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
-            {devices.map((d, i) => <option key={i} value={i}>{d.label}</option>)}
+            {devices.map((d, i) => (
+              <option key={d.id} value={i}>{d.label}</option>
+            ))}
           </select>
           <button
             onClick={handleConnect}
             disabled={connecting}
             className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 ${
-              connected
-                ? "bg-rose-500 hover:bg-rose-600"
-                : "bg-amber-500 hover:bg-amber-600 disabled:opacity-60"
+              connected ? "bg-rose-500 hover:bg-rose-600" : "bg-amber-500 hover:bg-amber-600 disabled:opacity-60"
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">
@@ -145,7 +204,12 @@ export default function TechnicianRemoteControl() {
           </button>
         </div>
 
-        {/* Remote session */}
+        {SIMULATION_MODE && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
+            Mode simulation: les actions de contrôle à distance sont démonstratives (pas d’exécution réseau réelle).
+          </div>
+        )}
+
         <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
             <div className="flex items-center gap-2">
@@ -176,14 +240,13 @@ export default function TechnicianRemoteControl() {
           </div>
         </div>
 
-        {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {quickActions.map(a => {
+          {quickActions.map((a) => {
             const state = actionStates[a.key] ?? "idle"
             return (
               <button
                 key={a.key}
-                onClick={() => a.key === "upload" ? handleFileUpload() : handleAction(a.key, a.label, a.needsConfirm)}
+                onClick={() => (a.key === "upload" ? handleFileUpload() : handleAction(a.key, a.label, a.needsConfirm))}
                 disabled={!connected || state === "loading"}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                   state === "done"
@@ -200,7 +263,6 @@ export default function TechnicianRemoteControl() {
           })}
         </div>
 
-        {/* Activity log */}
         {log.length > 0 && (
           <div className="bg-slate-900 rounded-xl border border-slate-700 p-4">
             <div className="flex items-center justify-between mb-3">

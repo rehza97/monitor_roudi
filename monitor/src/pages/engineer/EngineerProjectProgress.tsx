@@ -10,6 +10,7 @@ import {
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder, FirestoreTask } from "@/data/schema"
+import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface Order extends FirestoreOrder { id: string }
@@ -51,11 +52,15 @@ export default function EngineerProjectProgress() {
     getDoc(doc(db, COLLECTIONS.orders, id)).then(snap => {
       if (!snap.exists()) { setNF(true); setLoading(false); return }
       const data = { id: snap.id, ...(snap.data() as FirestoreOrder) }
-      setOrder(data)
-      setNotes(data.adminComment ?? "")
+      if (!canEngineerAccessOrder(data, user?.id)) {
+        setNF(true)
+      } else {
+        setOrder(data)
+        setNotes(data.adminComment ?? "")
+      }
       setLoading(false)
     })
-  }, [id])
+  }, [id, user?.id])
 
   useEffect(() => {
     if (!db || !user?.id) return
@@ -79,11 +84,12 @@ export default function EngineerProjectProgress() {
 
   async function handleSaveNotes(e: React.FormEvent) {
     e.preventDefault()
-    if (!db || !id) return
+    if (!db || !id || !user?.id) return
     setSaving(true)
     try {
       await updateDoc(doc(db, COLLECTIONS.orders, id), {
         adminComment: notes,
+        assignedToId: user.id,
         updatedAt: serverTimestamp(),
       })
       setSaved(true)

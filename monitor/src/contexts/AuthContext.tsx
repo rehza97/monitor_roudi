@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   getIdTokenResult,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -31,6 +32,7 @@ interface AuthContextValue {
   authError: string
   login: (email: string, password: string) => Promise<UserProfile>
   register: (input: RegisterInput) => Promise<UserProfile>
+  resetPassword: (email: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -86,9 +88,12 @@ function mapUserProfile(uid: string, email: string, data: Record<string, unknown
   }
 
   const name = typeof data.name === "string" && data.name.trim() ? data.name : email
-  const organizationId = typeof data.organizationId === "string" && data.organizationId.trim()
-    ? data.organizationId
+  const orgFromDoc = typeof data.organizationId === "string" && data.organizationId.trim()
+    ? data.organizationId.trim()
     : undefined
+  // Self-service client accounts: tenant id defaults to Firebase uid (see register()).
+  const organizationId =
+    data.role === "client" && !orgFromDoc ? uid : orgFromDoc
 
   return {
     id: uid,
@@ -285,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name,
         email,
         role: "client",
+        organizationId: credential.user.uid,
         initials: deriveInitials(name, email),
         avatarColor: pickAvatarColor(credential.user.uid),
         accountType: input.accountType,
@@ -333,8 +339,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  async function resetPassword(email: string): Promise<void> {
+    if (!auth || !isFirebaseConfigured) throw new Error(getFirebaseConfigFormError())
+    const normalized = email.trim().toLowerCase()
+    if (!normalized) throw new Error("Veuillez entrer votre email pour réinitialiser le mot de passe.")
+    try {
+      await sendPasswordResetEmail(auth, normalized)
+    } catch (error) {
+      const message = getAuthErrorMessage(error)
+      setAuthError(message)
+      throw new Error(message)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, authError, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, authError, login, register, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   )

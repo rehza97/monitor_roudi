@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
-import { COLLECTIONS, type FirestorePlatformConfig } from "@/data/schema"
+import { COLLECTIONS, type FirestorePlatformConfig, type InvoiceCompanyConfig } from "@/data/schema"
 import { doc, getDoc, setDoc, serverTimestamp } from "@/lib/firebase-firestore"
 
 const SETTINGS_DOC_ID = "main"
@@ -16,11 +16,24 @@ const SECURITY_ROWS: { key: SecurityKey; label: string; desc: string }[] = [
   { key: "ipWhitelist",  label: "IP whitelist",                      desc: "Restreindre l'accès admin par adresse IP"        },
 ]
 
+const DEFAULT_INVOICE_CONFIG: InvoiceCompanyConfig = {
+  companyName: "RODAINA",
+  companyTagline: "Digital Systems & Monitoring",
+  companyAddress: "Alger, Algerie",
+  companyEmail: "contact@rodaina.dz",
+  companyPhone: "+213 XX XX XX XX",
+  bankName: "CPA Algerie",
+  bankIBAN: "DZ00 0000 0000 0000 0000 00",
+  bankSWIFT: "CPAADZIAXXX",
+  bankNote: "Virement bancaire uniquement. Merci d'indiquer le numero de facture en reference.",
+}
+
 const DEFAULT_CONFIG: FirestorePlatformConfig = {
   name: "",
   email: "",
   url: "",
   security: { twofa: true, multiSession: false, connLogs: true, ipWhitelist: false },
+  invoiceConfig: DEFAULT_INVOICE_CONFIG,
 }
 
 type MaintenanceState = "idle" | "loading" | "done"
@@ -43,6 +56,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function AdminSettings() {
   const [config, setConfig] = useState<FirestorePlatformConfig>(DEFAULT_CONFIG)
+  const [invoiceCfg, setInvoiceCfg] = useState<InvoiceCompanyConfig>(DEFAULT_INVOICE_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [maint, setMaint] = useState<Record<string, MaintenanceState>>({})
@@ -65,17 +79,26 @@ export default function AdminSettings() {
               ipWhitelist:  data.security?.ipWhitelist  ?? false,
             },
           })
+          if (data.invoiceConfig) {
+            setInvoiceCfg({ ...DEFAULT_INVOICE_CONFIG, ...data.invoiceConfig })
+          }
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  function setField<K extends keyof Omit<FirestorePlatformConfig, "security" | "updatedAt">>(
+  function setField<K extends keyof Omit<FirestorePlatformConfig, "security" | "updatedAt" | "invoiceConfig">>(
     key: K,
     value: FirestorePlatformConfig[K]
   ) {
     setConfig(p => ({ ...p, [key]: value }))
+    setDirty(true)
+    setSaveState("idle")
+  }
+
+  function setInvoiceField<K extends keyof InvoiceCompanyConfig>(key: K, value: string) {
+    setInvoiceCfg(p => ({ ...p, [key]: value }))
     setDirty(true)
     setSaveState("idle")
   }
@@ -93,7 +116,7 @@ export default function AdminSettings() {
     try {
       await setDoc(
         doc(db, COLLECTIONS.platformConfig, SETTINGS_DOC_ID),
-        { ...config, updatedAt: serverTimestamp() },
+        { ...config, invoiceConfig: invoiceCfg, updatedAt: serverTimestamp() },
         { merge: true }
       )
       setSaveState("saved")
@@ -155,6 +178,104 @@ export default function AdminSettings() {
                 />
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Invoice / Company Info */}
+        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <span className="material-symbols-outlined text-[#db143c] text-[20px]">receipt_long</span>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Facturation — Identité entreprise</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Ces informations apparaissent sur tous les PDFs de factures générés.</p>
+            </div>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Company */}
+            <div className="md:col-span-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Entreprise</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {([
+                  { key: "companyName"    as const, label: "Nom de l'entreprise",  placeholder: "RODAINA" },
+                  { key: "companyTagline" as const, label: "Tagline / Activité",   placeholder: "Digital Systems & Monitoring" },
+                  { key: "companyAddress" as const, label: "Adresse",              placeholder: "Alger, Algerie" },
+                  { key: "companyEmail"   as const, label: "Email de contact",     placeholder: "contact@rodaina.dz" },
+                  { key: "companyPhone"   as const, label: "Téléphone",            placeholder: "+213 XX XX XX XX" },
+                ]).map(f => (
+                  <div key={f.key} className="space-y-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{f.label}</label>
+                    <input
+                      value={invoiceCfg[f.key]}
+                      onChange={e => setInvoiceField(f.key, e.target.value)}
+                      placeholder={f.placeholder}
+                      disabled={loading}
+                      className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bank */}
+            <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3 mt-2">Coordonnées bancaires</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {([
+                  { key: "bankName"  as const, label: "Banque",  placeholder: "CPA Algerie" },
+                  { key: "bankIBAN"  as const, label: "IBAN",    placeholder: "DZ00 0000 0000 0000 0000 00" },
+                  { key: "bankSWIFT" as const, label: "SWIFT",   placeholder: "CPAADZIAXXX" },
+                ]).map(f => (
+                  <div key={f.key} className="space-y-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{f.label}</label>
+                    <input
+                      value={invoiceCfg[f.key]}
+                      onChange={e => setInvoiceField(f.key, e.target.value)}
+                      placeholder={f.placeholder}
+                      disabled={loading}
+                      className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50 font-mono"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Note de paiement</label>
+                <input
+                  value={invoiceCfg.bankNote}
+                  onChange={e => setInvoiceField("bankNote", e.target.value)}
+                  placeholder="Virement bancaire uniquement. Merci d'indiquer le numero de facture en reference."
+                  disabled={loading}
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            {/* Live preview */}
+            <div className="md:col-span-2 mt-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Aperçu en-tête PDF</p>
+              <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                <div className="bg-[#1c2840] px-5 py-4 flex items-start justify-between">
+                  <div>
+                    <p className="text-white font-bold text-lg">{invoiceCfg.companyName || "—"}</p>
+                    <p className="text-slate-400 text-xs">{invoiceCfg.companyTagline || "—"}</p>
+                    <div className="mt-2 space-y-0.5">
+                      <p className="text-slate-400 text-xs">{invoiceCfg.companyAddress}</p>
+                      <p className="text-slate-400 text-xs">{invoiceCfg.companyEmail}</p>
+                      <p className="text-slate-400 text-xs">{invoiceCfg.companyPhone}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-extrabold text-2xl tracking-widest">FACTURE</p>
+                    <p className="text-slate-400 text-xs mt-1">N° XXXXXXXX</p>
+                  </div>
+                </div>
+                <div className="bg-[#db143c] h-1" />
+                <div className="bg-slate-50 dark:bg-slate-900 px-5 py-3 text-xs text-slate-500">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Banque :</span> {invoiceCfg.bankName} &nbsp;|&nbsp;
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">IBAN :</span> {invoiceCfg.bankIBAN} &nbsp;|&nbsp;
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">SWIFT :</span> {invoiceCfg.bankSWIFT}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

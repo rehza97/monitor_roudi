@@ -5,6 +5,8 @@ import * as FirestoreRuntime from "../../node_modules/@firebase/firestore/dist/i
 import type * as FirestoreTypes from "../../node_modules/@firebase/firestore/dist/index"
 
 import { describeFirestoreTarget, labelFirestoreTarget, logFirestoreError } from "./firestore-error-log"
+import { COLLECTIONS } from "@/data/schema"
+import { getAuthDebugSnapshot } from "@/lib/auth-debug-state"
 
 const Firestore = FirestoreRuntime as typeof FirestoreTypes
 
@@ -35,6 +37,98 @@ function captureCaller(operation: string): string | null {
   const lines = stack.split("\n").map((line) => line.trim())
   const firstAppLine = lines.find((line) => line.includes("/src/") && !line.includes("firebase-firestore.ts"))
   return firstAppLine ?? lines[2] ?? null
+}
+
+function extractRootPath(path: string): string {
+  return path.split("/")[0] ?? ""
+}
+
+function deriveActivityCategory(path: string): string {
+  const root = extractRootPath(path)
+  if (root === COLLECTIONS.orders) return "Demandes"
+  if (root === COLLECTIONS.users || root === COLLECTIONS.engineers) return "Utilisateurs"
+  if (root === COLLECTIONS.inventoryItems) return "Matériels"
+  if (root === COLLECTIONS.deployments) return "Applications"
+  if (root === COLLECTIONS.invoices) return "Finance"
+  return "Autre"
+}
+
+function shouldAutoLogActivity(path: string): boolean {
+  const root = extractRootPath(path)
+  if (!root || root === COLLECTIONS.activityEvents) return false
+  const trackedRoots: string[] = [
+    COLLECTIONS.orders,
+    COLLECTIONS.users,
+    COLLECTIONS.engineers,
+    COLLECTIONS.inventoryItems,
+    COLLECTIONS.deployments,
+    COLLECTIONS.invoices,
+    COLLECTIONS.supportTickets,
+    COLLECTIONS.fieldServiceClients,
+    COLLECTIONS.permissionRoleTemplates,
+    COLLECTIONS.platformConfig,
+  ]
+  return trackedRoots.includes(root)
+}
+
+function guessEntityLabel(data: unknown): string {
+  if (!data || typeof data !== "object") return ""
+  const record = data as Record<string, unknown>
+  const fields = ["title", "name", "subject", "requestType", "materialName", "email"] as const
+  for (const field of fields) {
+    const value = record[field]
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return ""
+}
+
+async function writeAutoActivityEvent(
+  firestore: FirestoreTypes.Firestore,
+  operation: "create" | "update" | "delete",
+  path: string,
+  data?: unknown,
+): Promise<void> {
+  if (!shouldAutoLogActivity(path)) return
+  const snapshot = getAuthDebugSnapshot()
+  const root = extractRootPath(path)
+  const entityLabel = guessEntityLabel(data)
+  const actionLabel = operation === "create" ? "Création" : operation === "update" ? "Mise à jour" : "Suppression"
+  const rootLabel =
+    root === COLLECTIONS.orders
+      ? "commande/demande"
+      : root === COLLECTIONS.users
+        ? "utilisateur"
+        : root === COLLECTIONS.engineers
+          ? "ingénieur"
+          : root === COLLECTIONS.inventoryItems
+            ? "matériel"
+            : root === COLLECTIONS.deployments
+              ? "déploiement"
+              : root === COLLECTIONS.invoices
+                ? "facture"
+                : root === COLLECTIONS.supportTickets
+                  ? "ticket"
+                  : "ressource"
+  const title = entityLabel
+    ? `${actionLabel} ${rootLabel}: ${entityLabel}`
+    : `${actionLabel} ${rootLabel}`
+
+  try {
+    const eventsRef = Firestore.collection(firestore, COLLECTIONS.activityEvents)
+    // Prefer direct SDK call to avoid recursive wrapper logging.
+    await Firestore.addDoc(eventsRef, {
+      title,
+      category: deriveActivityCategory(path),
+      actorUserId: snapshot.uid,
+      actorName: snapshot.email ?? "Système",
+      action: operation,
+      path,
+      createdAt: Firestore.serverTimestamp(),
+      auto: true,
+    })
+  } catch {
+    // Activity logging must never break primary writes.
+  }
 }
 
 export async function getDoc<
@@ -148,7 +242,9 @@ export async function addDoc<AppModelType>(
   data: FirestoreTypes.WithFieldValue<AppModelType>,
 ): Promise<FirestoreTypes.DocumentReference<AppModelType>> {
   try {
-    return await Firestore.addDoc(reference, data)
+    const created = await Firestore.addDoc(reference, data)
+    void writeAutoActivityEvent(reference.firestore, "create", created.path, data)
+    return created
   } catch (e) {
     logFirestoreError("addDoc", e, {
       path: reference.path,
@@ -194,6 +290,7 @@ export async function updateDoc<
 ): Promise<void> {
   try {
     await Firestore.updateDoc(reference, data)
+    void writeAutoActivityEvent(reference.firestore, "update", reference.path, data)
   } catch (e) {
     logFirestoreError("updateDoc", e, {
       path: reference.path,
@@ -213,6 +310,7 @@ export async function deleteDoc<
 ): Promise<void> {
   try {
     await Firestore.deleteDoc(reference)
+    void writeAutoActivityEvent(reference.firestore, "delete", reference.path)
   } catch (e) {
     logFirestoreError("deleteDoc", e, {
       path: reference.path,

@@ -3,12 +3,14 @@ import { Link } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 
 export default function LoginPage() {
-  const { login, authError, loading } = useAuth()
+  const { login, resetPassword, authError, loading } = useAuth()
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetMessage, setResetMessage] = useState("")
 
   useEffect(() => {
     if (authError) setError(authError)
@@ -24,6 +26,22 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : "Connexion impossible.")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleResetPassword(e: React.MouseEvent) {
+    e.preventDefault()
+    setError("")
+    setResetMessage("")
+    const email = emailRef.current?.value ?? ""
+    setResettingPassword(true)
+    try {
+      await resetPassword(email)
+      setResetMessage("Email de réinitialisation envoyé. Vérifiez votre boîte de réception.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Réinitialisation impossible.")
+    } finally {
+      setResettingPassword(false)
     }
   }
 
@@ -48,6 +66,12 @@ export default function LoginPage() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-sm text-rose-600 dark:text-rose-400">
               <span className="material-symbols-outlined text-[16px] shrink-0">error</span>
               {error}
+            </div>
+          )}
+          {resetMessage && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-700 dark:text-emerald-400">
+              <span className="material-symbols-outlined text-[16px] shrink-0">mark_email_read</span>
+              {resetMessage}
             </div>
           )}
 
@@ -95,7 +119,11 @@ export default function LoginPage() {
               </button>
             </div>
             <div className="flex justify-end pt-1">
-              <a className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white" href="#">
+              <a
+                className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+                href="#"
+                onClick={(e) => void handleResetPassword(e)}
+              >
                 Mot de passe oublié ?
               </a>
             </div>
@@ -104,7 +132,7 @@ export default function LoginPage() {
           <button
             className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60"
             type="submit"
-            disabled={loading || submitting}
+            disabled={loading || submitting || resettingPassword}
           >
             {submitting ? "Connexion…" : "Se connecter"}
           </button>

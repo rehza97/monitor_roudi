@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
@@ -9,6 +9,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  limit,
   addDoc,
   updateDoc,
   doc,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreSupportTicket } from "@/data/schema"
+import { canTechnicianAccessTicket } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface TicketDoc extends FirestoreSupportTicket {
@@ -56,9 +58,10 @@ const EMPTY_FORM: NewTicketForm = {
 export default function TechnicianTickets() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [tickets, setTickets] = useState<TicketDoc[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "")
   const [statusFilter, setStatusFilter] = useState<string>("Tous")
   const [priorityFilter, setPriorityFilter] = useState<string>("Toutes")
   const [showModal, setShowModal] = useState(false)
@@ -66,17 +69,25 @@ export default function TechnicianTickets() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    setSearch(searchParams.get("q") ?? "")
+  }, [searchParams])
+
+  useEffect(() => {
     if (!db) return
     const q = query(
       collection(db, COLLECTIONS.supportTickets),
       orderBy("createdAt", "desc"),
+      limit(250),
     )
     const unsub = onSnapshot(q, (snap) => {
-      setTickets(snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) })))
+      const visible = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
+        .filter((t) => canTechnicianAccessTicket(t, user?.id))
+      setTickets(visible)
       setLoading(false)
     })
     return unsub
-  }, [])
+  }, [user?.id])
 
   const filtered = tickets.filter((t) => {
     const q = search.toLowerCase()

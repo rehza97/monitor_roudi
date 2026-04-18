@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
@@ -224,13 +224,18 @@ function RequestModal({
 
 export default function AdminRequests() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [rows, setRows] = useState<Row[]>([])
   const [rawById, setRawById] = useState<Record<string, FirestoreOrder>>({})
   const [loading, setLoading] = useState(true)
   const [listError, setListError] = useState("")
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "")
   const [status, setStatus] = useState("Tous les statuts")
   const [modal, setModal] = useState<ModalMode>(null)
+
+  useEffect(() => {
+    setSearch(searchParams.get("q") ?? "")
+  }, [searchParams])
 
   useEffect(() => {
     if (!db) {

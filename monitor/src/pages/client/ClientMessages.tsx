@@ -15,6 +15,7 @@ import {
   serverTimestamp,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
+import { firestoreTsToMillis, markClientConversationRead } from "@/lib/client-messaging-read"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,9 @@ interface FirestoreConversation {
   participantIds: string[]
   participantNames?: Record<string, string>
   lastMessage?: string
+  lastMessageText?: string
   lastMessageAt?: unknown
+  lastSenderUserId?: string
   name?: string
   createdAt?: unknown
 }
@@ -151,10 +154,19 @@ export default function ClientMessages() {
       }))
       setMessages(docs)
       setLoadingMsgs(false)
+
+      let maxMillis = 0
+      snap.docs.forEach((d) => {
+        const data = d.data() as { createdAt?: unknown }
+        maxMillis = Math.max(maxMillis, firestoreTsToMillis(data.createdAt))
+      })
+      if (user?.id && activeConvId && maxMillis > 0) {
+        markClientConversationRead(user.id, activeConvId, maxMillis)
+      }
     })
 
     return unsub
-  }, [activeConvId])
+  }, [activeConvId, user?.id])
 
   // ── Auto-scroll ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -183,7 +195,9 @@ export default function ClientMessages() {
       const convRef = doc(db, COLLECTIONS.conversations, activeConvId)
       await updateDoc(convRef, {
         lastMessage: text,
+        lastMessageText: text,
         lastMessageAt: serverTimestamp(),
+        lastSenderUserId: user.id,
       } as Record<string, unknown>)
 
       setMsgText("")

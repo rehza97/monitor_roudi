@@ -1,10 +1,20 @@
-import { Link, NavLink } from "react-router-dom"
+import { Link, NavLink, useNavigate } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
+import { getDashboardPathForRole } from "@/lib/auth-routing"
 
 interface PublicLayoutProps {
   children: React.ReactNode
 }
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await logout()
+    navigate("/", { replace: true })
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-slate-900 font-sans antialiased">
       {/* ── Header ──────────────────────────────────── */}
@@ -39,12 +49,32 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               </nav>
             </div>
             <div className="flex items-center gap-3">
-              <Link to="/login" className="hidden sm:flex items-center justify-center h-9 px-4 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                Connexion
-              </Link>
-              <Link to="/register" className="flex items-center justify-center h-9 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all">
-                Inscription
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to={getDashboardPathForRole(user.role)}
+                    className="flex items-center justify-center h-9 px-4 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  >
+                    Tableau de bord
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => void handleLogout()}
+                    className="flex items-center justify-center h-9 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all"
+                  >
+                    Déconnexion
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="hidden sm:flex items-center justify-center h-9 px-4 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                    Connexion
+                  </Link>
+                  <Link to="/register" className="flex items-center justify-center h-9 px-4 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-all">
+                    Inscription
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

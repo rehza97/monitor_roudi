@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
@@ -16,7 +16,7 @@ import {
   doc,
   serverTimestamp,
 } from "@/lib/firebase-firestore"
-import { COLLECTIONS, type FirestoreOrder } from "@/data/schema"
+import { COLLECTIONS, ORDER_KIND, type FirestoreOrder } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface OrderDoc extends FirestoreOrder {
@@ -230,16 +230,21 @@ function RequestModal({
 
 export default function ClientRequests() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
 
   const [orders, setOrders] = useState<OrderDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("Tous")
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "")
 
   const [showAdd, setShowAdd] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [editTarget, setEditTarget] = useState<OrderDoc | null>(null)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setSearch(searchParams.get("q") ?? "")
+  }, [searchParams])
 
   useEffect(() => {
     if (!db || !user?.organizationId) {
@@ -250,7 +255,6 @@ export default function ClientRequests() {
     const q = query(
       collection(db, COLLECTIONS.orders),
       where("organizationId", "==", user.organizationId),
-      where("kind", "==", "client_request"),
       orderBy("createdAt", "desc"),
     )
 
@@ -267,6 +271,8 @@ export default function ClientRequests() {
     const matchSearch =
       !q ||
       (o.requestType ?? "").toLowerCase().includes(q) ||
+      (o.materialName ?? "").toLowerCase().includes(q) ||
+      (o.kind ?? "").toLowerCase().includes(q) ||
       o.id.toLowerCase().includes(q) ||
       (o.status ?? "").toLowerCase().includes(q)
     return matchTab && matchSearch
@@ -329,6 +335,7 @@ export default function ClientRequests() {
   }
 
   function openEdit(o: OrderDoc) {
+    if (o.kind !== ORDER_KIND.clientRequest) return
     setEditTarget(o)
     setShowEdit(true)
   }
@@ -434,10 +441,25 @@ export default function ClientRequests() {
                         {o.id.slice(0, 8).toUpperCase()}
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900 dark:text-white max-w-[180px] truncate">
-                        {o.requestType ?? "—"}
+                        {o.kind === ORDER_KIND.materialSupply
+                          ? (o.materialName ?? "Commande matériel")
+                          : (o.requestType ?? "—")}
+                        <div className="mt-1">
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                              o.kind === ORDER_KIND.materialSupply
+                                ? "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400"
+                                : "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400"
+                            }`}
+                          >
+                            {o.kind === ORDER_KIND.materialSupply ? "Matériel" : "Software / Demande"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {o.budgetLabel ?? "—"}
+                        {o.kind === ORDER_KIND.materialSupply
+                          ? `${o.quantity ?? 1} unité(s)`
+                          : (o.budgetLabel ?? "—")}
                       </td>
                       <td className="px-4 py-3">
                         {o.priority ? (
@@ -462,18 +484,24 @@ export default function ClientRequests() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Link
-                            to={`/client/requests/${o.id}`}
-                            className="text-[#db143c] hover:opacity-80 text-xs font-semibold"
-                          >
-                            Voir
-                          </Link>
-                          <button
-                            onClick={() => openEdit(o)}
-                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                          </button>
+                          {o.kind === ORDER_KIND.clientRequest ? (
+                            <>
+                              <Link
+                                to={`/client/requests/${o.id}`}
+                                className="text-[#db143c] hover:opacity-80 text-xs font-semibold"
+                              >
+                                Voir
+                              </Link>
+                              <button
+                                onClick={() => openEdit(o)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-slate-400">Suivi en attente</span>
+                          )}
                         </div>
                       </td>
                     </tr>

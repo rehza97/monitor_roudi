@@ -26,6 +26,11 @@ function wsUrl(): string {
   return `${proto}://${window.location.host}/__dev/ssh/ws`
 }
 
+function requiresDevTunnel(): boolean {
+  const host = window.location.hostname
+  return !(host === "localhost" || host === "127.0.0.1")
+}
+
 export default function EngineerRemoteControl() {
   const [servers, setServers] = useState<RemoteTarget[]>([])
   const [serverIdx, setServerIdx] = useState(0)
@@ -43,6 +48,7 @@ export default function EngineerRemoteControl() {
   const [errorText, setErrorText] = useState<string | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
+  const devTunnelRequired = requiresDevTunnel()
 
   const server = servers[serverIdx]
 
@@ -216,6 +222,10 @@ export default function EngineerRemoteControl() {
   return (
     <DashboardLayout role="engineer" navItems={engineerNav} pageTitle="Contrôle à Distance">
       <div className="p-6 w-full space-y-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-300">
+          Cette page dépend du tunnel WebSocket SSH `__dev/ssh/ws`.
+          {devTunnelRequired ? " Ouvrez l’application via l’environnement dev local pour activer la connexion." : " Vérifiez que le serveur dev expose bien cet endpoint."}
+        </div>
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
             <div className="lg:col-span-2">

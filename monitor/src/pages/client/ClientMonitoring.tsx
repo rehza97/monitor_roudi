@@ -83,12 +83,6 @@ function MiniBar({ value }: { value: number }) {
 
 // ─── ServiceModal ─────────────────────────────────────────────────────────────
 
-const RESTART_HISTORY = [
-  { time: "Hier 03:14", reason: "Mise à jour déployée", by: "Admin" },
-  { time: "Il y a 3j 11:52", reason: "Crash mémoire détecté", by: "Système" },
-  { time: "Il y a 7j 22:05", reason: "Redémarrage planifié", by: "Admin" },
-]
-
 function ServiceModal({
   dep,
   onClose,
@@ -97,6 +91,7 @@ function ServiceModal({
   onClose: () => void
 }) {
   const { user } = useAuth()
+  const [restartHistory, setRestartHistory] = useState<Array<{ time: string; reason: string; by: string }>>([])
   const [reportText, setReportText] = useState("")
   const [reportOpen, setReportOpen] = useState(false)
   const [sending, setSending] = useState(false)
@@ -105,6 +100,42 @@ function ServiceModal({
   const health = normalizeHealth(dep.health)
   const sc = statusConfig[health]
   const appName = dep.name ?? dep.clientListName ?? dep.productSlug ?? "Application"
+
+  useEffect(() => {
+    if (!db) return
+    const q = query(
+      collection(db, COLLECTIONS.supportTickets),
+      where("deploymentId", "==", dep.id),
+    )
+    const unsub = onSnapshot(q, (snap) => {
+      const rows = snap.docs.map((d) => {
+        const data = d.data() as Record<string, unknown>
+        const by =
+          (typeof data.assignedToId === "string" && data.assignedToId) ||
+          (typeof data.createdByUserId === "string" && data.createdByUserId) ||
+          "Système"
+        const createdAt = data.createdAt as unknown
+        const time = createdAt && typeof createdAt === "object" && "toDate" in createdAt
+          ? (createdAt as { toDate: () => Date }).toDate().toLocaleString("fr-DZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+          : "—"
+        return {
+          reason: typeof data.subject === "string" && data.subject ? data.subject : "Incident",
+          by,
+          ms: createdAt && typeof createdAt === "object" && "toDate" in createdAt
+            ? (createdAt as { toDate: () => Date }).toDate().getTime()
+            : 0,
+          time,
+        }
+      })
+      setRestartHistory(
+        rows
+          .sort((a, b) => b.ms - a.ms)
+          .slice(0, 3)
+          .map(({ reason, by, time }) => ({ reason, by, time })),
+      )
+    })
+    return unsub
+  }, [dep.id])
 
   async function handleSignaler() {
     if (!reportText.trim() || !db || !user) return
@@ -214,7 +245,7 @@ function ServiceModal({
             Historique des redémarrages
           </p>
           <div className="space-y-2">
-            {RESTART_HISTORY.map((r, i) => (
+            {restartHistory.map((r, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between text-xs px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg"
@@ -226,6 +257,9 @@ function ServiceModal({
                 <span className="text-slate-400 shrink-0 ml-3">{r.time}</span>
               </div>
             ))}
+            {restartHistory.length === 0 && (
+              <div className="text-xs text-slate-400 px-2 py-1">Aucun historique pour ce service.</div>
+            )}
           </div>
         </div>
 

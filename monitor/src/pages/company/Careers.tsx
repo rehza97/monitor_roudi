@@ -1,7 +1,20 @@
 import PublicLayout from "@/components/layouts/PublicLayout"
 import { Link } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { db } from "@/config/firebase"
+import { COLLECTIONS, type FirestoreCareerJob } from "@/data/schema"
+import { collection, onSnapshot } from "@/lib/firebase-firestore"
 
-const jobs = [
+type JobRow = {
+  title: string
+  team: string
+  location: string
+  type: string
+  badge: string | null
+  badgeColor: string
+}
+
+const fallbackJobs: JobRow[] = [
   { title: "Senior Backend Engineer",     team: "Engineering", location: "Alger (hybride)",  type: "CDI",        badge: "Nouveau",  badgeColor: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400" },
   { title: "Lead Frontend React",         team: "Engineering", location: "Alger / Remote",   type: "CDI",        badge: null,       badgeColor: "" },
   { title: "DevOps / SRE",                team: "Infra",       location: "Oran (full remote)",type: "CDI",       badge: "Urgent",   badgeColor: "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400" },
@@ -20,6 +33,44 @@ const perks = [
 ]
 
 export default function Careers() {
+  const [jobs, setJobs] = useState<JobRow[]>(fallbackJobs)
+
+  useEffect(() => {
+    if (!db) return
+    const unsub = onSnapshot(collection(db, COLLECTIONS.contentCareersJobs), (snap) => {
+      const rows = snap.docs
+        .map((d) => {
+          const data = d.data() as FirestoreCareerJob
+          const published = typeof data.published === "boolean" ? data.published : true
+          if (!published) return null
+          const badge = typeof data.badge === "string" && data.badge.trim() ? data.badge.trim() : null
+          const badgeColor =
+            badge === "Nouveau"
+              ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400"
+              : badge === "Urgent"
+                ? "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400"
+                : badge === "Stage"
+                  ? "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400"
+                  : ""
+          const order = typeof data.order === "number" ? data.order : Number.MAX_SAFE_INTEGER
+          return {
+            title: data.title || "Poste",
+            team: data.team || "Équipe",
+            location: data.location || "Remote",
+            type: data.type || "CDI",
+            badge,
+            badgeColor,
+            order,
+          }
+        })
+        .filter((v): v is JobRow & { order: number } => v !== null)
+        .sort((a, b) => a.order - b.order)
+        .map(({ order: _order, ...rest }) => rest)
+      if (rows.length > 0) setJobs(rows)
+    })
+    return unsub
+  }, [])
+
   return (
     <PublicLayout>
       {/* Hero */}
@@ -27,7 +78,7 @@ export default function Careers() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-6 border border-blue-100 dark:border-blue-800">
             <span className="material-symbols-outlined text-[16px]">work</span>
-            6 postes ouverts
+            {jobs.length} poste{jobs.length > 1 ? "s" : ""} ouvert{jobs.length > 1 ? "s" : ""}
           </span>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white mb-6">
             Construisez <span className="text-blue-600">l'avenir du DevOps</span> avec nous

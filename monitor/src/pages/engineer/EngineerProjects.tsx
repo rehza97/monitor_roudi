@@ -7,6 +7,7 @@ import { db } from "@/config/firebase"
 import { collection, query, where, orderBy, onSnapshot } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder } from "@/data/schema"
+import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface Order extends FirestoreOrder { id: string }
@@ -42,7 +43,10 @@ export default function EngineerProjects() {
       orderBy("createdAt", "desc"),
     )
     const unsub = onSnapshot(q, snap => {
-      setOrders(snap.docs.map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) })))
+      const visible = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) }))
+        .filter((row) => canEngineerAccessOrder(row, user?.id))
+      setOrders(visible)
       setLoading(false)
     })
     return unsub

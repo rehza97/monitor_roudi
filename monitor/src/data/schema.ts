@@ -103,6 +103,8 @@ export interface FirestoreOrder {
   organizationId: string
   kind: OrderKind
   createdByUserId: string
+  /** Staff owner for triage/processing flows (engineer/technician) */
+  assignedToId?: string
   status: string
   /** Demande client */
   clientLabel?: string
@@ -119,6 +121,8 @@ export interface FirestoreOrder {
   quantity?: number
   supplier?: string
   notes?: string
+  /** Optional link to `invoices/{invoiceId}` once billing is created */
+  invoiceId?: string
   createdAt?: unknown
   updatedAt?: unknown
 }
@@ -358,6 +362,9 @@ export const OPTIONAL_ROOT_COLLECTIONS = {
   permissionRoleTemplates: "permission_role_templates",
   fieldServiceClients: "field_service_clients",
   platformConfig: "platform_config",
+  contactLeads: "contact_leads",
+  contentBlogPosts: "content_blog_posts",
+  contentCareersJobs: "content_careers_jobs",
 } as const
 
 /** Firestore `permission_role_templates/{id}` */
@@ -371,6 +378,18 @@ export interface FirestoreRoleTemplate {
 }
 
 /** Firestore `platform_config/main` — single-document platform settings */
+export interface InvoiceCompanyConfig {
+  companyName: string
+  companyTagline: string
+  companyAddress: string
+  companyEmail: string
+  companyPhone: string
+  bankName: string
+  bankIBAN: string
+  bankSWIFT: string
+  bankNote: string
+}
+
 export interface FirestorePlatformConfig {
   name: string
   email: string
@@ -381,6 +400,7 @@ export interface FirestorePlatformConfig {
     connLogs: boolean
     ipWhitelist: boolean
   }
+  invoiceConfig?: Partial<InvoiceCompanyConfig>
   updatedAt?: unknown
 }
 
@@ -388,6 +408,7 @@ export interface FirestorePlatformConfig {
 export interface FirestoreSupportTicket {
   subject: string
   description?: string
+  topic?: "software" | "material" | "unknown"
   priority: "Basse" | "Normale" | "Haute" | "Urgente"
   status: "Ouvert" | "En cours" | "Résolu" | "Fermé"
   createdByUserId: string
@@ -425,16 +446,36 @@ export interface FirestoreNotification {
   createdAt?: unknown
 }
 
+export interface InvoiceLineItem {
+  description: string
+  qty: number
+  unitPrice: number
+  total: number
+}
+
 /** Firestore `invoices/{id}` */
 export interface FirestoreInvoice {
   title: string
   amount: number
   status: "En attente" | "Payée" | "En retard"
   organizationId: string
+  orderId?: string
+  clientEmail?: string
+  clientLabel?: string
+  clientAddress?: string
+  clientPhone?: string
+  taxRate?: number
+  lineItems?: InvoiceLineItem[]
+  notes?: string
+  pdfUrl?: string
+  sentAt?: unknown
+  sentByUserId?: string
+  sentByName?: string
   createdByUserId?: string
   issuedAt?: unknown
   dueAt?: unknown
   createdAt?: unknown
+  updatedAt?: unknown
 }
 
 /** Firestore `field_service_clients/{id}` */
@@ -451,6 +492,45 @@ export interface FirestoreFieldServiceClient {
   lastIntervention?: string
   createdAt?: unknown
   updatedAt?: unknown
+}
+
+/** Firestore `contact_leads/{id}` */
+export interface FirestoreContactLead {
+  firstName: string
+  lastName: string
+  email: string
+  subject: string
+  message: string
+  sourcePath?: string
+  status?: "new" | "processed"
+  createdAt?: unknown
+}
+
+/** Firestore `content_blog_posts/{id}` */
+export interface FirestoreBlogPost {
+  category: string
+  title: string
+  excerpt: string
+  author: string
+  authorInitials?: string
+  authorColor?: string
+  dateLabel?: string
+  readTime?: string
+  featured?: boolean
+  published?: boolean
+  createdAt?: unknown
+}
+
+/** Firestore `content_careers_jobs/{id}` */
+export interface FirestoreCareerJob {
+  title: string
+  team: string
+  location: string
+  type: string
+  badge?: string | null
+  published?: boolean
+  order?: number
+  createdAt?: unknown
 }
 
 /** Backward-compatible aggregate for imports that expect a single constant. */

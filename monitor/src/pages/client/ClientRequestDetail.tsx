@@ -2,9 +2,11 @@ import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
+import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import { doc, getDoc } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreOrder } from "@/data/schema"
+import { canClientAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate, formatFirestoreDateTime } from "@/lib/utils"
 
 const statusColor: Record<string, string> = {
@@ -112,6 +114,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 export default function ClientRequestDetail() {
+  const { user } = useAuth()
   const { id } = useParams<{ id: string }>()
 
   const [order, setOrder] = useState<(FirestoreOrder & { id: string }) | null>(null)
@@ -132,7 +135,13 @@ export default function ClientRequestDetail() {
         if (!snap.exists()) {
           setNotFound(true)
         } else {
-          setOrder({ id: snap.id, ...(snap.data() as FirestoreOrder) })
+          const data = snap.data() as FirestoreOrder
+          if (!canClientAccessOrder(data, user)) {
+            setNotFound(true)
+            setOrder(null)
+          } else {
+            setOrder({ id: snap.id, ...data })
+          }
         }
       } catch {
         setNotFound(true)
@@ -142,7 +151,7 @@ export default function ClientRequestDetail() {
     }
 
     fetchOrder()
-  }, [id])
+  }, [id, user])
 
   return (
     <DashboardLayout role="client" navItems={clientNav} pageTitle="Détail de la demande">

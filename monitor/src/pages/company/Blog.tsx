@@ -1,6 +1,23 @@
 import PublicLayout from "@/components/layouts/PublicLayout"
+import { useEffect, useMemo, useState } from "react"
+import { db } from "@/config/firebase"
+import { COLLECTIONS, type FirestoreBlogPost } from "@/data/schema"
+import { collection, onSnapshot } from "@/lib/firebase-firestore"
 
-const posts = [
+type PostRow = {
+  category: string
+  categoryColor: string
+  title: string
+  excerpt: string
+  author: string
+  authorInitials: string
+  authorColor: string
+  date: string
+  readTime: string
+  featured: boolean
+}
+
+const fallbackPosts: PostRow[] = [
   {
     category: "Produit",    categoryColor: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
     title:    "Lancement d'EcoTrack Pro v2.0 — Ce qui change",
@@ -44,7 +61,67 @@ const posts = [
 ]
 
 export default function Blog() {
-  const [featured, ...rest] = posts
+  const [posts, setPosts] = useState<PostRow[]>(fallbackPosts)
+
+  useEffect(() => {
+    if (!db) return
+    const unsub = onSnapshot(collection(db, COLLECTIONS.contentBlogPosts), (snap) => {
+      const rows = snap.docs
+        .map((d) => {
+          const data = d.data() as FirestoreBlogPost
+          const published = typeof data.published === "boolean" ? data.published : true
+          if (!published) return null
+          const category = data.category || "Produit"
+          const palette =
+            category.toLowerCase() === "engineering"
+              ? { categoryColor: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20", authorColor: "bg-indigo-600" }
+              : category.toLowerCase() === "devops"
+                ? { categoryColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20", authorColor: "bg-emerald-600" }
+                : category.toLowerCase() === "sécurité" || category.toLowerCase() === "securite"
+                  ? { categoryColor: "text-rose-600 bg-rose-50 dark:bg-rose-900/20", authorColor: "bg-rose-600" }
+                  : category.toLowerCase() === "culture"
+                    ? { categoryColor: "text-amber-600 bg-amber-50 dark:bg-amber-900/20", authorColor: "bg-amber-600" }
+                    : { categoryColor: "text-blue-600 bg-blue-50 dark:bg-blue-900/20", authorColor: "bg-blue-600" }
+          const author = data.author || "Rodaina Team"
+          const initials =
+            data.authorInitials ||
+            author
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((p) => p[0] ?? "")
+              .join("")
+              .toUpperCase()
+          const createdMs =
+            data.createdAt && typeof data.createdAt === "object" && "toMillis" in data.createdAt
+              ? (data.createdAt as { toMillis: () => number }).toMillis()
+              : 0
+          return {
+            category,
+            categoryColor: palette.categoryColor,
+            title: data.title || "Article",
+            excerpt: data.excerpt || "Résumé non disponible.",
+            author,
+            authorInitials: initials || "RT",
+            authorColor: data.authorColor || palette.authorColor,
+            date: data.dateLabel || "Date inconnue",
+            readTime: data.readTime || "5 min",
+            featured: !!data.featured,
+            sortMs: createdMs,
+          }
+        })
+        .filter((v): v is PostRow & { sortMs: number } => v !== null)
+        .sort((a, b) => {
+          if (a.featured !== b.featured) return a.featured ? -1 : 1
+          return b.sortMs - a.sortMs
+        })
+        .map(({ sortMs: _sortMs, ...rest }) => rest)
+      if (rows.length > 0) setPosts(rows)
+    })
+    return unsub
+  }, [])
+
+  const [featured, ...rest] = useMemo(() => posts, [posts])
   return (
     <PublicLayout>
       {/* Header */}

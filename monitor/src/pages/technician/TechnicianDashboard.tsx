@@ -7,6 +7,7 @@ import { db } from "@/config/firebase"
 import { collection, onSnapshot, orderBy, query, limit } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreSupportTicket } from "@/data/schema"
+import { canTechnicianAccessTicket } from "@/lib/access-control"
 import { formatFirestoreDateTime, firestoreToMillis } from "@/lib/utils"
 
 interface TicketDoc extends FirestoreSupportTicket {
@@ -49,11 +50,14 @@ export default function TechnicianDashboard() {
       limit(50),
     )
     const unsub = onSnapshot(q, (snap) => {
-      setTickets(snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) })))
+      const visible = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
+        .filter((t) => canTechnicianAccessTicket(t, user?.id))
+      setTickets(visible)
       setLoading(false)
     })
     return unsub
-  }, [])
+  }, [user?.id])
 
   const today = new Date()
   const todayTickets = tickets.filter((t) => {

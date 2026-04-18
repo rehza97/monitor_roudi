@@ -166,7 +166,7 @@ export default function DevAutofillButton() {
   if (!import.meta.env.DEV) return null
 
   return (
-    <div className="fixed bottom-4 left-4 z-[1000] flex gap-2">
+    <div className="fixed bottom-4 right-4 z-[1000] flex gap-2">
       <button
         type="button"
         onClick={() => {

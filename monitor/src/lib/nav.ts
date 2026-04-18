@@ -3,9 +3,11 @@ import type { NavItem } from "@/components/layouts/DashboardLayout"
 export const clientNav: NavItem[] = [
   { icon: "dashboard",      label: "Tableau de bord",   to: "/client/dashboard" },
   { icon: "apps",           label: "Mes Applications",  to: "/client/apps" },
+  { icon: "deployed_code",  label: "Produits Software", to: "/client/software-store" },
+  { icon: "inventory_2",    label: "Produits Matériels",to: "/client/material-store" },
   { icon: "description",    label: "Mes Demandes",      to: "/client/requests" },
   { icon: "monitoring",     label: "Monitoring",        to: "/client/monitoring" },
-  { icon: "chat_bubble",    label: "Messagerie",        to: "/client/messages",       badge: 2 },
+  { icon: "chat_bubble",    label: "Messagerie",        to: "/client/messages" },
   { icon: "notifications",  label: "Notifications",     to: "/client/notifications" },
   { icon: "receipt_long",   label: "Factures",          to: "/client/payments" },
   { icon: "support_agent",  label: "Support",           to: "/client/support" },
@@ -14,6 +16,7 @@ export const clientNav: NavItem[] = [
 
 export const adminNav: NavItem[] = [
   { icon: "dashboard",            label: "Tableau de bord",     to: "/admin/dashboard" },
+  { icon: "deployed_code",        label: "Catalogue Apps",      to: "/admin/catalog-apps" },
   { icon: "shield_person",        label: "Admins",              to: "/admin/users/admins" },
   { icon: "business_center",      label: "Clients",             to: "/admin/users/clients" },
   { icon: "construction",         label: "Techniciens",         to: "/admin/users/technicians" },
@@ -23,6 +26,7 @@ export const adminNav: NavItem[] = [
   { icon: "location_on",          label: "Localisation",        to: "/admin/location" },
   { icon: "chat",                 label: "Messagerie",          to: "/admin/messages" },
   { icon: "monitoring",           label: "Monitoring",          to: "/admin/monitoring" },
+  { icon: "receipt_long",         label: "Facturation",         to: "/admin/invoices" },
   { icon: "analytics",            label: "Rapports",            to: "/admin/reports" },
   { icon: "admin_panel_settings", label: "Rôles & Permissions", to: "/admin/roles" },
   { icon: "history",              label: "Historique",          to: "/admin/history" },

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { engineerNav } from "@/lib/nav"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import {
   collection, query, where, orderBy, limit,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder } from "@/data/schema"
+import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface Order extends FirestoreOrder { id: string }
@@ -111,11 +113,17 @@ function ProcessModal({ order, onClose, onSave }: ProcessModalProps) {
 }
 
 export default function EngineerRequests() {
+  const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [orders, setOrders]       = useState<Order[]>([])
   const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState("")
+  const [search, setSearch]       = useState(() => searchParams.get("q") ?? "")
   const [statusFilter, setStatus] = useState("Tous")
   const [processing, setProc]     = useState<Order | null>(null)
+
+  useEffect(() => {
+    setSearch(searchParams.get("q") ?? "")
+  }, [searchParams])
 
   useEffect(() => {
     if (!db) return
@@ -126,17 +134,21 @@ export default function EngineerRequests() {
       limit(100),
     )
     const unsub = onSnapshot(q, snap => {
-      setOrders(snap.docs.map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) })))
+      const visible = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) }))
+        .filter((row) => canEngineerAccessOrder(row, user?.id))
+      setOrders(visible)
       setLoading(false)
     })
     return unsub
-  }, [])
+  }, [user?.id])
 
   async function handleSave(status: string, comment: string) {
-    if (!db || !processing) return
+    if (!db || !processing || !user?.id) return
     await updateDoc(doc(db, COLLECTIONS.orders, processing.id), {
       status,
       adminComment: comment,
+      assignedToId: user.id,
       updatedAt: serverTimestamp(),
     })
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
+import OnboardingHint from "@/components/shared/OnboardingHint"
 import { adminNav } from "@/lib/nav"
 import { db, isFirebaseConfigured } from "@/config/firebase"
 import { COLLECTIONS, ORDER_KIND, type FirestoreOrder } from "@/data/schema"
@@ -102,6 +103,7 @@ export default function AdminDashboard() {
         date: formatFirestoreDate(o.data.createdAt),
       }))
   }, [orders])
+  const showOnboarding = !loading && recentOrders.length === 0 && deployments.length === 0 && engineers === 0
 
   const kpis = [
     {
@@ -145,6 +147,17 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Tableau de bord">
       <div className="p-6 space-y-6">
+        {showOnboarding && (
+          <OnboardingHint
+            title="Configuration initiale de la plateforme"
+            description="Commencez par créer des utilisateurs staff, ajouter des déploiements et préparer le catalogue matériel."
+            actions={[
+              { to: "/admin/users/engineers", label: "Créer un utilisateur staff" },
+              { to: "/admin/monitoring", label: "Ajouter un déploiement" },
+              { to: "/admin/materials", label: "Ajouter du matériel" },
+            ]}
+          />
+        )}
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

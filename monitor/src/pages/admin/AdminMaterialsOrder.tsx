@@ -8,9 +8,21 @@ import {
   COLLECTIONS,
   ORDER_KIND,
   PLATFORM_ORGANIZATION_ID,
+  type FirestoreOrder,
   type FirestoreInventoryItem,
 } from "@/data/schema"
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "@/lib/firebase-firestore"
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from "@/lib/firebase-firestore"
+import { formatFirestoreDate } from "@/lib/utils"
 
 const SUPPLIERS = [
   "Afrique Équipements",
@@ -20,14 +32,42 @@ const SUPPLIERS = [
   "Autre (préciser dans les notes)",
 ]
 
+type MaterialOrderStatus = "En attente" | "En cours" | "Validée" | "Livrée" | "Rejetée"
+
+type MaterialOrderRow = FirestoreOrder & { id: string }
+
+const STATUS_FLOW: MaterialOrderStatus[] = [
+  "En attente",
+  "En cours",
+  "Validée",
+  "Livrée",
+  "Rejetée",
+]
+
+const statusBadge: Record<MaterialOrderStatus, string> = {
+  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
+  "En cours": "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
+  "Validée": "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
+  "Livrée": "text-teal-700 bg-teal-50 dark:bg-teal-900/30 dark:text-teal-400",
+  "Rejetée": "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
+}
+
+function isMaterialOrderStatus(value: unknown): value is MaterialOrderStatus {
+  return typeof value === "string" && STATUS_FLOW.includes(value as MaterialOrderStatus)
+}
+
 export default function AdminMaterialsOrder() {
   const { user } = useAuth()
   const [materialOptions, setMaterialOptions] = useState<string[]>([])
+  const [orders, setOrders] = useState<MaterialOrderRow[]>([])
+  const [loadingOrders, setLoadingOrders] = useState(true)
   const [material, setMaterial] = useState("")
   const [qty, setQty] = useState("1")
   const [supplier, setSupplier] = useState("")
   const [notes, setNotes] = useState("")
   const [state, setState] = useState<"idle" | "submitting" | "done">("idle")
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<MaterialOrderStatus | "Tous">("Tous")
   const [lastOrderId, setLastOrderId] = useState<string | null>(null)
   const [error, setError] = useState("")
 
@@ -38,6 +78,36 @@ export default function AdminMaterialsOrder() {
       setMaterialOptions(snap.docs.map((d) => (d.data() as FirestoreInventoryItem).name || d.id))
     })
   }, [])
+
+  useEffect(() => {
+    if (!db) {
+      setLoadingOrders(false)
+      return
+    }
+    const q = query(
+      collection(db, COLLECTIONS.orders),
+      where("kind", "==", ORDER_KIND.materialSupply),
+      orderBy("createdAt", "desc"),
+    )
+    return onSnapshot(q, (snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreOrder) }))
+      setOrders(rows)
+      setLoadingOrders(false)
+    })
+  }, [])
+
+  async function updateOrderStatus(orderId: string, status: MaterialOrderStatus) {
+    if (!db) return
+    setUpdatingOrderId(orderId)
+    try {
+      await updateDoc(doc(db, COLLECTIONS.orders, orderId), {
+        status,
+        updatedAt: serverTimestamp(),
+      })
+    } finally {
+      setUpdatingOrderId(null)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -110,6 +180,11 @@ export default function AdminMaterialsOrder() {
       </DashboardLayout>
     )
   }
+
+  const filteredOrders = orders.filter((o) => {
+    if (activeFilter === "Tous") return true
+    return o.status === activeFilter
+  })
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Commander des matériels">
@@ -217,6 +292,100 @@ export default function AdminMaterialsOrder() {
             </button>
           </div>
         </form>
+
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-semibold text-slate-900 dark:text-white">Suivi des commandes matériel</h3>
+          </div>
+
+          <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 flex-wrap">
+            {(["Tous", ...STATUS_FLOW] as const).map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setActiveFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  activeFilter === status
+                    ? "bg-[#db143c] text-white"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-800/50">
+                <tr>
+                  {["Réf.", "Matériel", "Qté", "Fournisseur", "Statut", "Date", "Actions"].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {loadingOrders ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      Chargement des commandes…
+                    </td>
+                  </tr>
+                ) : filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                      Aucune commande pour ce filtre.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((o) => {
+                    const status = isMaterialOrderStatus(o.status) ? o.status : "En attente"
+                    return (
+                      <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                          {o.id.slice(0, 8).toUpperCase()}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                          {o.materialName ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{o.quantity ?? "—"}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{o.supplier ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge[status]}`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {formatFirestoreDate(o.createdAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {STATUS_FLOW.filter((s) => s !== status).map((next) => (
+                              <button
+                                key={next}
+                                type="button"
+                                disabled={updatingOrderId === o.id}
+                                onClick={() => void updateOrderStatus(o.id, next)}
+                                className="px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+                              >
+                                {next}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )

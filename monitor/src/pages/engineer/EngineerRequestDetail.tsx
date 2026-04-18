@@ -2,10 +2,12 @@ import { useState, useEffect } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { engineerNav } from "@/lib/nav"
 import { useParams, Link } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import { doc, getDoc, updateDoc, serverTimestamp } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder } from "@/data/schema"
+import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface Order extends FirestoreOrder { id: string }
@@ -22,6 +24,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function EngineerRequestDetail() {
+  const { user } = useAuth()
   const { id } = useParams<{ id: string }>()
   const [order, setOrder]     = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,21 +39,26 @@ export default function EngineerRequestDetail() {
     getDoc(doc(db, COLLECTIONS.orders, id)).then(snap => {
       if (!snap.exists()) { setNF(true); setLoading(false); return }
       const data = { id: snap.id, ...(snap.data() as FirestoreOrder) }
-      setOrder(data)
-      setStatus(data.status)
-      setComment(data.adminComment ?? "")
+      if (!canEngineerAccessOrder(data, user?.id)) {
+        setNF(true)
+      } else {
+        setOrder(data)
+        setStatus(data.status)
+        setComment(data.adminComment ?? "")
+      }
       setLoading(false)
     })
-  }, [id])
+  }, [id, user?.id])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!db || !id || !order) return
+    if (!db || !id || !order || !user?.id) return
     setSaving(true)
     try {
       await updateDoc(doc(db, COLLECTIONS.orders, id), {
         status,
         adminComment: comment,
+        assignedToId: user.id,
         updatedAt: serverTimestamp(),
       })
       setOrder(prev => prev ? { ...prev, status, adminComment: comment } : prev)

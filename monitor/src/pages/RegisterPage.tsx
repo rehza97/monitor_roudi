@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -218,13 +219,24 @@ export default function RegisterPage() {
                   <span className="material-symbols-outlined text-slate-400 text-[20px]">lock</span>
                 </div>
                 <input
-                  className="block w-full pl-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#252b36] text-slate-900 dark:text-white focus:ring-blue-600 focus:border-blue-600 text-sm h-11 outline-none focus:ring-2"
+                  className="block w-full pl-10 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#252b36] text-slate-900 dark:text-white focus:ring-blue-600 focus:border-blue-600 text-sm h-11 outline-none focus:ring-2"
                   id="password"
                   placeholder="••••••••"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? "visibility" : "visibility_off"}
+                  </span>
+                </button>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Minimum 8 caracteres. Le role cree par defaut est `client`.

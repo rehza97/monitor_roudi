@@ -9,7 +9,8 @@ import {
   doc, serverTimestamp,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { FirestoreTask } from "@/data/schema"
+import type { FirestoreOrder, FirestoreTask } from "@/data/schema"
+import { canEngineerAccessOrder } from "@/lib/access-control"
 
 interface Task extends FirestoreTask { id: string }
 
@@ -155,16 +156,21 @@ export default function EngineerDashboard() {
   }, [user?.id])
 
   useEffect(() => {
-    if (!db) return
+    if (!db || !user?.id) return
     const q = query(
       collection(db, COLLECTIONS.orders),
       where("kind", "==", "client_request"),
       orderBy("createdAt", "desc"),
-      limit(5),
+      limit(100),
     )
-    const unsub = onSnapshot(q, snap => setRecentOrders(snap.size))
+    const unsub = onSnapshot(q, snap => {
+      const visible = snap.docs
+        .map((d) => d.data() as FirestoreOrder)
+        .filter((d) => canEngineerAccessOrder(d, user.id))
+      setRecentOrders(visible.length)
+    })
     return unsub
-  }, [])
+  }, [user?.id])
 
   useEffect(() => {
     if (!db) return
