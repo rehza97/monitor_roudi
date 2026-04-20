@@ -21,6 +21,8 @@ import Privacy             from "./pages/legal/Privacy"
 import Terms               from "./pages/legal/Terms"
 import LegalNotice         from "./pages/legal/LegalNotice"
 import Cookies             from "./pages/legal/Cookies"
+import MeetingsPlannerPage from "./pages/meetings/MeetingsPlannerPage"
+import AgentsShowcasePage  from "./pages/ai/AgentsShowcasePage"
 
 // Client
 import ClientDashboard     from "./pages/client/ClientDashboard"
@@ -36,6 +38,7 @@ import ClientNotifications from "./pages/client/ClientNotifications"
 import ClientProfile       from "./pages/client/ClientProfile"
 import ClientPayments      from "./pages/client/ClientPayments"
 import ClientSupport       from "./pages/client/ClientSupport"
+import { clientNav, adminNav, engineerNav, technicianNav } from "./lib/nav"
 
 // Admin
 import AdminDashboard        from "./pages/admin/AdminDashboard"
@@ -79,6 +82,7 @@ import TechnicianCalendar       from "./pages/technician/TechnicianCalendar"
 import TechnicianClients        from "./pages/technician/TechnicianClients"
 import TechnicianInventory      from "./pages/technician/TechnicianInventory"
 import TechnicianRemoteControl  from "./pages/technician/TechnicianRemoteControl"
+import TechnicianMessages       from "./pages/technician/TechnicianMessages"
 import TechnicianNotifications  from "./pages/technician/TechnicianNotifications"
 import TechnicianSettings       from "./pages/technician/TechnicianSettings"
 
@@ -115,6 +119,7 @@ export default function App() {
       <Route path="/client/requests/new"     element={<ProtectedRoute role="client"><ClientRequestNew /></ProtectedRoute>} />
       <Route path="/client/requests/:id"     element={<ProtectedRoute role="client"><ClientRequestDetail /></ProtectedRoute>} />
       <Route path="/client/monitoring"       element={<ProtectedRoute role="client"><ClientMonitoring /></ProtectedRoute>} />
+      <Route path="/client/meetings"         element={<ProtectedRoute role="client"><MeetingsPlannerPage role="client" navItems={clientNav} canManage={false} /></ProtectedRoute>} />
       <Route path="/client/messages"         element={<ProtectedRoute role="client"><ClientMessages /></ProtectedRoute>} />
       <Route path="/client/notifications"    element={<ProtectedRoute role="client"><ClientNotifications /></ProtectedRoute>} />
       <Route path="/client/payments"         element={<ProtectedRoute role="client"><ClientPayments /></ProtectedRoute>} />
@@ -132,6 +137,8 @@ export default function App() {
       <Route path="/admin/materials"         element={<ProtectedRoute role="admin"><AdminMaterials /></ProtectedRoute>} />
       <Route path="/admin/materials/order"   element={<ProtectedRoute role="admin"><AdminMaterialsOrder /></ProtectedRoute>} />
       <Route path="/admin/location"          element={<ProtectedRoute role="admin"><AdminClientsLocation /></ProtectedRoute>} />
+      <Route path="/admin/ai-agents"         element={<ProtectedRoute role="admin"><AgentsShowcasePage role="admin" navItems={adminNav} /></ProtectedRoute>} />
+      <Route path="/admin/meetings"          element={<ProtectedRoute role="admin"><MeetingsPlannerPage role="admin" navItems={adminNav} canManage /></ProtectedRoute>} />
       <Route path="/admin/clients/:id"       element={<ProtectedRoute role="admin"><AdminClientDetail /></ProtectedRoute>} />
       <Route path="/admin/messages"          element={<ProtectedRoute role="admin"><AdminMessages /></ProtectedRoute>} />
       <Route path="/admin/monitoring"        element={<ProtectedRoute role="admin"><AdminMonitoring /></ProtectedRoute>} />
@@ -154,6 +161,8 @@ export default function App() {
       <Route path="/engineer/requests"             element={<ProtectedRoute role="engineer"><EngineerRequests /></ProtectedRoute>} />
       <Route path="/engineer/requests/:id"         element={<ProtectedRoute role="engineer"><EngineerRequestDetail /></ProtectedRoute>} />
       <Route path="/engineer/monitoring"           element={<ProtectedRoute role="engineer"><EngineerMonitoring /></ProtectedRoute>} />
+      <Route path="/engineer/ai-agents"            element={<ProtectedRoute role="engineer"><AgentsShowcasePage role="engineer" navItems={engineerNav} /></ProtectedRoute>} />
+      <Route path="/engineer/meetings"             element={<ProtectedRoute role="engineer"><MeetingsPlannerPage role="engineer" navItems={engineerNav} canManage /></ProtectedRoute>} />
       <Route path="/engineer/remote"               element={<ProtectedRoute role="engineer"><EngineerRemoteControl /></ProtectedRoute>} />
       <Route path="/engineer/messages"             element={<ProtectedRoute role="engineer"><EngineerMessages /></ProtectedRoute>} />
       <Route path="/engineer/notifications"        element={<ProtectedRoute role="engineer"><EngineerNotifications /></ProtectedRoute>} />
@@ -169,6 +178,8 @@ export default function App() {
       <Route path="/technician/clients"          element={<ProtectedRoute role="technician"><TechnicianClients /></ProtectedRoute>} />
       <Route path="/technician/inventory"        element={<ProtectedRoute role="technician"><TechnicianInventory /></ProtectedRoute>} />
       <Route path="/technician/remote"           element={<ProtectedRoute role="technician"><TechnicianRemoteControl /></ProtectedRoute>} />
+      <Route path="/technician/meetings"         element={<ProtectedRoute role="technician"><MeetingsPlannerPage role="technician" navItems={technicianNav} canManage={false} /></ProtectedRoute>} />
+      <Route path="/technician/messages"         element={<ProtectedRoute role="technician"><TechnicianMessages /></ProtectedRoute>} />
       <Route path="/technician/notifications"    element={<ProtectedRoute role="technician"><TechnicianNotifications /></ProtectedRoute>} />
       <Route path="/technician/settings"         element={<ProtectedRoute role="technician"><TechnicianSettings /></ProtectedRoute>} />
 

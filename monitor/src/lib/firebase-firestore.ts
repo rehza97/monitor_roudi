@@ -46,10 +46,12 @@ function extractRootPath(path: string): string {
 function deriveActivityCategory(path: string): string {
   const root = extractRootPath(path)
   if (root === COLLECTIONS.orders) return "Demandes"
+  if (root === COLLECTIONS.projects) return "Projets"
   if (root === COLLECTIONS.users || root === COLLECTIONS.engineers) return "Utilisateurs"
   if (root === COLLECTIONS.inventoryItems) return "Matériels"
   if (root === COLLECTIONS.deployments) return "Applications"
   if (root === COLLECTIONS.invoices) return "Finance"
+  if (root === COLLECTIONS.meetings) return "Planning"
   return "Autre"
 }
 
@@ -58,11 +60,13 @@ function shouldAutoLogActivity(path: string): boolean {
   if (!root || root === COLLECTIONS.activityEvents) return false
   const trackedRoots: string[] = [
     COLLECTIONS.orders,
+    COLLECTIONS.projects,
     COLLECTIONS.users,
     COLLECTIONS.engineers,
     COLLECTIONS.inventoryItems,
     COLLECTIONS.deployments,
     COLLECTIONS.invoices,
+    COLLECTIONS.meetings,
     COLLECTIONS.supportTickets,
     COLLECTIONS.fieldServiceClients,
     COLLECTIONS.permissionRoleTemplates,
@@ -96,6 +100,8 @@ async function writeAutoActivityEvent(
   const rootLabel =
     root === COLLECTIONS.orders
       ? "commande/demande"
+      : root === COLLECTIONS.projects
+        ? "projet"
       : root === COLLECTIONS.users
         ? "utilisateur"
         : root === COLLECTIONS.engineers
@@ -106,6 +112,8 @@ async function writeAutoActivityEvent(
               ? "déploiement"
               : root === COLLECTIONS.invoices
                 ? "facture"
+                : root === COLLECTIONS.meetings
+                  ? "réunion"
                 : root === COLLECTIONS.supportTickets
                   ? "ticket"
                   : "ressource"

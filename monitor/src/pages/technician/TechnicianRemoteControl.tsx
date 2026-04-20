@@ -1,285 +1,478 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
-import { db } from "@/config/firebase"
-import { COLLECTIONS } from "@/data/schema"
-import { collection, onSnapshot } from "@/lib/firebase-firestore"
 
-type Device = { id: string; label: string; ip: string; type: string }
-type ActionState = "idle" | "loading" | "done" | "error"
-const SIMULATION_MODE = true
+type WsEvent =
+  | { type: "status"; connected?: boolean; message?: string }
+  | { type: "output"; data: string }
+  | { type: "error"; message: string }
 
-function mapDeploymentToDevice(id: string, data: Record<string, unknown>): Device {
-  const label =
-    (typeof data.name === "string" && data.name) ||
-    (typeof data.clientListName === "string" && data.clientListName) ||
-    (typeof data.productSlug === "string" && data.productSlug) ||
-    `Déploiement ${id.slice(0, 6)}`
-
-  const ip =
-    (typeof data.ip === "string" && data.ip) ||
-    (typeof data.host === "string" && data.host) ||
-    (typeof data.address === "string" && data.address) ||
-    "N/A"
-
-  const env = typeof data.environment === "string" ? data.environment : "Production"
-  return { id, label, ip, type: env }
+type PerfSnapshot = {
+  cpuPercent: number | null
+  loadAvg: string | null
+  memUsedMb: number | null
+  memTotalMb: number | null
+  diskUsedMb: number | null
+  diskTotalMb: number | null
+  diskPercent: string | null
+  runningContainers: number | null
+  updatedAtMs: number | null
 }
 
-function ConfirmDialog({
-  title,
-  message,
-  onConfirm,
-  onCancel,
-}: {
-  title: string
-  message: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">{message}</p>
-        <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-            Annuler
-          </button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-lg transition-colors">
-            Confirmer
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+const AUTO_HOST = "194.146.13.22"
+const AUTO_PORT = "22"
+const AUTO_USERNAME = "root"
+const AUTO_PASSWORD = "fetho125"
+
+function wsUrl(): string {
+  const proto = window.location.protocol === "https:" ? "wss" : "ws"
+  return `${proto}://${window.location.host}/__dev/ssh/ws`
+}
+
+function requiresDevTunnel(): boolean {
+  const host = window.location.hostname
+  return !(host === "localhost" || host === "127.0.0.1")
+}
+
+function buildAutoMonitorScript(): string {
+  return [
+    "echo '__MON__ CONTAINERS='$(docker ps -q | wc -l | tr -d ' ')",
+    "echo '__MON__ LOAD='$(awk '{print $1\",\"$2\",\"$3}' /proc/loadavg)",
+    "echo '__MON__ MEM='$(free -m | awk '/Mem:/ {print $3\",\"$2}')",
+    "echo '__MON__ DISK='$(df -Pm / | awk 'NR==2 {print $3\",\"$2\",\"$5}')",
+    "echo '__MON__ CPU='$(vmstat 1 2 | tail -1 | awk '{print 100-$15}')",
+  ].join("\\n")
+}
+
+function initialPerf(): PerfSnapshot {
+  return {
+    cpuPercent: null,
+    loadAvg: null,
+    memUsedMb: null,
+    memTotalMb: null,
+    diskUsedMb: null,
+    diskTotalMb: null,
+    diskPercent: null,
+    runningContainers: null,
+    updatedAtMs: null,
+  }
 }
 
 export default function TechnicianRemoteControl() {
-  const [devices, setDevices] = useState<Device[]>([])
-  const [loading, setLoading] = useState(true)
-  const [deviceIdx, setDeviceIdx] = useState(0)
+  const [host, setHost] = useState(AUTO_HOST)
+  const [port, setPort] = useState(AUTO_PORT)
+  const [username, setUsername] = useState(AUTO_USERNAME)
+  const [password, setPassword] = useState(AUTO_PASSWORD)
+
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
-  const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
-  const [confirm, setConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
-  const [log, setLog] = useState<string[]>([])
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [output, setOutput] = useState("")
+  const [cmd, setCmd] = useState("")
+  const [history, setHistory] = useState<string[]>([])
+  const [histIdx, setHistIdx] = useState(-1)
+  const [errorText, setErrorText] = useState<string | null>(null)
+  const [autoTried, setAutoTried] = useState(false)
+  const [perf, setPerf] = useState<PerfSnapshot>(initialPerf)
+
+  const socketRef = useRef<WebSocket | null>(null)
+  const terminalRef = useRef<HTMLDivElement>(null)
+  const parseBufferRef = useRef("")
+  const monitorTimerRef = useRef<number | null>(null)
+  const devTunnelRequired = requiresDevTunnel()
 
   useEffect(() => {
-    if (!db) {
-      setLoading(false)
-      return
+    if (!terminalRef.current) return
+    terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+  }, [output])
+
+  useEffect(() => {
+    return () => {
+      if (monitorTimerRef.current) {
+        window.clearInterval(monitorTimerRef.current)
+        monitorTimerRef.current = null
+      }
+      socketRef.current?.close()
+      socketRef.current = null
     }
-    const unsub = onSnapshot(collection(db, COLLECTIONS.deployments), (snap) => {
-      const rows = snap.docs
-        .map((d) => mapDeploymentToDevice(d.id, d.data() as Record<string, unknown>))
-        .sort((a, b) => a.label.localeCompare(b.label, "fr"))
-      setDevices(rows)
-      setLoading(false)
-      setDeviceIdx((prev) => (rows.length === 0 ? 0 : Math.min(prev, rows.length - 1)))
-    })
-    return unsub
   }, [])
 
-  const device = devices[deviceIdx]
-
-  function addLog(msg: string) {
-    setLog((prev) => [...prev.slice(-19), `[${new Date().toLocaleTimeString("fr-DZ")}] ${msg}`])
+  function appendOutput(text: string) {
+    setOutput((prev) => {
+      const next = `${prev}${text}`
+      return next.slice(-140_000)
+    })
   }
 
-  function handleConnect() {
-    if (!device) return
-    if (connected) {
-      setConnected(false)
-      addLog(`Déconnecté de ${device.label}`)
-      return
+  function disconnect() {
+    if (monitorTimerRef.current) {
+      window.clearInterval(monitorTimerRef.current)
+      monitorTimerRef.current = null
     }
-    setConnecting(true)
-    addLog(`Connexion à ${device.ip}…`)
-    setTimeout(() => {
-      setConnecting(false)
-      setConnected(true)
-      addLog(`Connecté — ${device.label} (${device.type})`)
-    }, 900)
+    if (socketRef.current) {
+      try {
+        socketRef.current.send(JSON.stringify({ type: "disconnect" }))
+      } catch {
+        // noop
+      }
+      socketRef.current.close()
+      socketRef.current = null
+    }
+    setConnected(false)
+    setConnecting(false)
   }
 
-  function runAction(key: string, label: string, delay = 700) {
-    setActionStates((s) => ({ ...s, [key]: "loading" }))
-    addLog(`${label}…`)
-    setTimeout(() => {
-      setActionStates((s) => ({ ...s, [key]: "done" }))
-      addLog(`${label} — OK`)
-      setTimeout(() => setActionStates((s) => ({ ...s, [key]: "idle" })), 1500)
-    }, delay)
-  }
+  function parseMonitorLines(chunk: string) {
+    const merged = `${parseBufferRef.current}${chunk}`
+    const lines = merged.split(/\r?\n/)
+    parseBufferRef.current = lines.pop() ?? ""
 
-  function handleAction(key: string, label: string, needsConfirm = false) {
-    if (!connected || !device) return
-    if (needsConfirm) {
-      setConfirm({
-        title: label,
-        message: `Confirmer l'action "${label}" sur ${device.label} ?`,
-        onConfirm: () => {
-          setConfirm(null)
-          runAction(key, label)
-        },
+    for (const raw of lines) {
+      const line = raw.trim()
+      if (!line.startsWith("__MON__ ")) continue
+      const payload = line.replace("__MON__ ", "")
+      const eqIdx = payload.indexOf("=")
+      if (eqIdx <= 0) continue
+      const key = payload.slice(0, eqIdx)
+      const value = payload.slice(eqIdx + 1)
+
+      setPerf((prev) => {
+        const next: PerfSnapshot = { ...prev, updatedAtMs: Date.now() }
+        if (key === "CONTAINERS") {
+          const n = Number(value)
+          next.runningContainers = Number.isFinite(n) ? n : prev.runningContainers
+        } else if (key === "LOAD") {
+          next.loadAvg = value || prev.loadAvg
+        } else if (key === "MEM") {
+          const [used, total] = value.split(",").map((x) => Number(x))
+          next.memUsedMb = Number.isFinite(used) ? used : prev.memUsedMb
+          next.memTotalMb = Number.isFinite(total) ? total : prev.memTotalMb
+        } else if (key === "DISK") {
+          const [used, total, pct] = value.split(",")
+          const usedN = Number(used)
+          const totalN = Number(total)
+          next.diskUsedMb = Number.isFinite(usedN) ? usedN : prev.diskUsedMb
+          next.diskTotalMb = Number.isFinite(totalN) ? totalN : prev.diskTotalMb
+          next.diskPercent = pct ?? prev.diskPercent
+        } else if (key === "CPU") {
+          const n = Number(value)
+          next.cpuPercent = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : prev.cpuPercent
+        }
+        return next
       })
+    }
+  }
+
+  function connect() {
+    if (!host.trim() || !username.trim()) {
+      setErrorText("Host et utilisateur sont obligatoires.")
       return
     }
-    runAction(key, label)
+
+    setErrorText(null)
+    setConnecting(true)
+
+    const ws = new WebSocket(wsUrl())
+    socketRef.current = ws
+
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: "connect",
+          host: host.trim(),
+          port: Number(port) || 22,
+          username: username.trim(),
+          password: password || undefined,
+        }),
+      )
+    }
+
+    ws.onmessage = (event) => {
+      let data: WsEvent
+      try {
+        data = JSON.parse(String(event.data)) as WsEvent
+      } catch {
+        return
+      }
+
+      if (data.type === "status") {
+        if (typeof data.connected === "boolean") {
+          setConnected(data.connected)
+          if (!data.connected) setConnecting(false)
+          if (data.connected) {
+            appendOutput(`\r\n[connected to ${host}]\r\n`)
+            appendOutput("[auto-run] docker ps + background VPS performance monitoring (15s)\\n")
+            ws.send(JSON.stringify({ type: "input", data: "docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'\\n" }))
+            ws.send(JSON.stringify({ type: "input", data: `${buildAutoMonitorScript()}\n` }))
+            if (monitorTimerRef.current) window.clearInterval(monitorTimerRef.current)
+            monitorTimerRef.current = window.setInterval(() => {
+              if (!socketRef.current || socketRef.current.readyState !== 1) return
+              socketRef.current.send(JSON.stringify({ type: "input", data: `${buildAutoMonitorScript()}\n` }))
+            }, 15_000)
+          }
+        }
+        if (data.message && !data.connected) appendOutput(`\r\n[${data.message}]\r\n`)
+        return
+      }
+
+      if (data.type === "output") {
+        setConnecting(false)
+        parseMonitorLines(data.data)
+        appendOutput(data.data)
+        return
+      }
+
+      if (data.type === "error") {
+        setErrorText(data.message)
+        appendOutput(`\r\n[error] ${data.message}\r\n`)
+        setConnecting(false)
+      }
+    }
+
+    ws.onclose = () => {
+      if (monitorTimerRef.current) {
+        window.clearInterval(monitorTimerRef.current)
+        monitorTimerRef.current = null
+      }
+      setConnected(false)
+      setConnecting(false)
+      appendOutput("\r\n[connection closed]\r\n")
+    }
+
+    ws.onerror = () => {
+      setErrorText("Impossible d'ouvrir le tunnel SSH (dev server).")
+      setConnecting(false)
+    }
   }
 
-  function handleFileUpload() {
-    if (!connected) return
-    fileRef.current?.click()
+  useEffect(() => {
+    if (autoTried || connecting || connected) return
+    setAutoTried(true)
+    connect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTried, connecting, connected])
+
+  function sendLine(line: string) {
+    if (!connected || !socketRef.current) return
+    const trimmed = line.trim()
+    if (!trimmed) return
+    socketRef.current.send(JSON.stringify({ type: "input", data: `${line}\n` }))
+    setHistory((h) => [trimmed, ...h])
+    setHistIdx(-1)
   }
 
-  function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    addLog(`Envoi fichier : ${file.name} (${(file.size / 1024).toFixed(1)} Ko)…`)
-    setActionStates((s) => ({ ...s, upload: "loading" }))
-    setTimeout(() => {
-      setActionStates((s) => ({ ...s, upload: "done" }))
-      addLog(`Fichier ${file.name} envoyé avec succès`)
-      setTimeout(() => setActionStates((s) => ({ ...s, upload: "idle" })), 1500)
-    }, 1000)
-    e.target.value = ""
+  function handleKey(e: ReactKeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      sendLine(cmd)
+      setCmd("")
+      return
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault()
+      const next = Math.min(histIdx + 1, history.length - 1)
+      setHistIdx(next)
+      setCmd(history[next] ?? "")
+      return
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault()
+      const next = Math.max(histIdx - 1, -1)
+      setHistIdx(next)
+      setCmd(next === -1 ? "" : (history[next] ?? ""))
+    }
   }
 
-  const quickActions = [
-    { key: "restart", icon: "restart_alt", label: "Redémarrer", needsConfirm: true },
-    { key: "shutdown", icon: "power_settings_new", label: "Éteindre", needsConfirm: true },
-    { key: "screenshot", icon: "screenshot", label: "Capture", needsConfirm: false },
-    { key: "upload", icon: "file_upload", label: "Envoyer fichier", needsConfirm: false },
+  const quickCmds = [
+    "docker ps",
+    "docker stats --no-stream",
+    "docker compose ps",
+    "uptime",
+    "free -h",
+    "df -h",
   ]
 
-  if (loading) {
-    return (
-      <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
-        <div className="p-6 text-slate-500 dark:text-slate-400 text-sm">Chargement des équipements…</div>
-      </DashboardLayout>
-    )
-  }
-
-  if (devices.length === 0) {
-    return (
-      <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
-        <div className="p-6 text-slate-500 dark:text-slate-400 text-sm">Aucun équipement disponible. Ajoutez des déploiements dans Firestore (`deployments`).</div>
-      </DashboardLayout>
-    )
-  }
+  const memPercent =
+    perf.memUsedMb != null && perf.memTotalMb && perf.memTotalMb > 0
+      ? Math.round((perf.memUsedMb / perf.memTotalMb) * 100)
+      : null
+  const diskPercentNum = perf.diskPercent ? Number(perf.diskPercent.replace("%", "")) : null
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
       <div className="p-6 w-full space-y-6">
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-4">
-          <span className="material-symbols-outlined text-amber-500 text-[24px] shrink-0">devices</span>
-          <select
-            value={deviceIdx}
-            onChange={(e) => {
-              setDeviceIdx(Number(e.target.value))
-              setConnected(false)
-              setLog([])
-            }}
-            className="flex-1 h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            {devices.map((d, i) => (
-              <option key={d.id} value={i}>{d.label}</option>
-            ))}
-          </select>
-          <button
-            onClick={handleConnect}
-            disabled={connecting}
-            className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 ${
-              connected ? "bg-rose-500 hover:bg-rose-600" : "bg-amber-500 hover:bg-amber-600 disabled:opacity-60"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">
-              {connecting ? "hourglass_empty" : connected ? "link_off" : "settings_remote"}
-            </span>
-            {connecting ? "Connexion…" : connected ? "Déconnecter" : "Connecter"}
-          </button>
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-300">
+          Monitoring Docker via tunnel SSH WebSocket `__dev/ssh/ws`.
+          {devTunnelRequired ? " Ouvrez cette interface depuis l'environnement dev local pour activer la connexion." : ""}
         </div>
 
-        {SIMULATION_MODE && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
-            Mode simulation: les actions de contrôle à distance sont démonstratives (pas d’exécution réseau réelle).
-          </div>
-        )}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+            <div className="lg:col-span-2">
+              <label className="text-xs text-slate-500">Host</label>
+              <input
+                value={host}
+                onChange={(e) => setHost(e.target.value)}
+                disabled={connected || connecting}
+                className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                placeholder="194.146.13.22"
+              />
+            </div>
 
-        <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+            <div>
+              <label className="text-xs text-slate-500">Port</label>
+              <input
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+                disabled={connected || connecting}
+                className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                placeholder="22"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-slate-500">Utilisateur SSH</label>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={connected || connecting}
+                className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                placeholder="root"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-500">Mot de passe</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={connected || connecting}
+              className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+              placeholder="password"
+            />
+          </div>
+
+          {errorText ? <p className="text-xs text-rose-600">{errorText}</p> : null}
+
+          <div className="flex justify-end">
+            <button
+              onClick={connected ? disconnect : connect}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                connected ? "bg-rose-600 hover:bg-rose-700" : "bg-amber-500 hover:bg-amber-600"
+              }`}
+              disabled={connecting}
+            >
+              {connecting ? "Connexion..." : connected ? "Déconnecter" : "Connecter SSH"}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-xs text-slate-500">Containers running</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{perf.runningContainers ?? "—"}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-xs text-slate-500">CPU</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {perf.cpuPercent != null ? `${perf.cpuPercent.toFixed(1)}%` : "—"}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">Load: {perf.loadAvg ?? "—"}</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-xs text-slate-500">Memory</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {memPercent != null ? `${memPercent}%` : "—"}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {perf.memUsedMb != null && perf.memTotalMb != null ? `${perf.memUsedMb} / ${perf.memTotalMb} MB` : "—"}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+            <p className="text-xs text-slate-500">Disk /</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {perf.diskPercent ?? "—"}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {perf.diskUsedMb != null && perf.diskTotalMb != null ? `${perf.diskUsedMb} / ${perf.diskTotalMb} MB` : "—"}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Background Monitoring</p>
+            <p className="text-[11px] text-slate-500">
+              {connected ? "Active (every 15s)" : "Inactive"}{perf.updatedAtMs ? ` · Last update ${new Date(perf.updatedAtMs).toLocaleTimeString("fr-FR")}` : ""}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div className="h-full bg-amber-500" style={{ width: `${perf.cpuPercent ?? 0}%` }} />
+            </div>
+            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div className="h-full bg-blue-500" style={{ width: `${memPercent ?? 0}%` }} />
+            </div>
+            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+              <div className="h-full bg-emerald-500" style={{ width: `${Number.isFinite(diskPercentNum as number) ? diskPercentNum : 0}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 dark:bg-black rounded-xl border border-slate-700 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
-            <div className="flex items-center gap-2">
-              <div className="size-3 rounded-full bg-rose-500" />
-              <div className="size-3 rounded-full bg-amber-500" />
-              <div className="size-3 rounded-full bg-emerald-500" />
-            </div>
-            <span className="text-slate-400 text-xs font-mono">RDP — {device.label} — {device.ip}</span>
-            <span className={`text-xs flex items-center gap-1.5 ${connected ? "text-emerald-400" : "text-slate-500"}`}>
-              <span className={`size-1.5 rounded-full ${connected ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
-              {connected ? "Connecté" : "Déconnecté"}
+            <span className="text-slate-300 text-xs font-mono">{`ssh ${username || "user"}@${host || "host"}`}</span>
+            <span className={`text-xs ${connected ? "text-emerald-400" : "text-slate-500"}`}>
+              {connected ? "Connecté" : connecting ? "Connexion..." : "Hors ligne"}
             </span>
           </div>
-          <div className="h-64 flex items-center justify-center">
-            {connected ? (
-              <div className="text-center">
-                <span className="material-symbols-outlined text-slate-400 text-[48px] block mb-2">desktop_windows</span>
-                <p className="text-slate-400 text-sm">Session bureau à distance active</p>
-                <p className="text-slate-600 text-xs mt-1">{device.type} · {device.ip}</p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <span className="material-symbols-outlined text-slate-700 text-[48px] block mb-2">power_off</span>
-                <p className="text-slate-600 text-sm">Aucune session active</p>
-                <p className="text-slate-700 text-xs mt-1">Sélectionnez un appareil et cliquez sur Connecter</p>
-              </div>
-            )}
+
+          <div
+            ref={terminalRef}
+            className="p-4 min-h-[360px] max-h-[460px] overflow-y-auto text-[13px] leading-5 font-mono whitespace-pre-wrap text-slate-200"
+          >
+            {output || "Connexion automatique en cours..."}
+          </div>
+
+          <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-700">
+            <span className="text-emerald-400 font-mono text-sm shrink-0">$</span>
+            <input
+              value={cmd}
+              onChange={(e) => setCmd(e.target.value)}
+              onKeyDown={handleKey}
+              disabled={!connected}
+              className="flex-1 bg-transparent font-mono text-sm text-white focus:outline-none disabled:cursor-not-allowed placeholder:text-slate-600"
+              placeholder={connected ? "Entrer une commande shell" : "Connectez-vous d'abord"}
+            />
+            <button
+              onClick={() => {
+                sendLine(cmd)
+                setCmd("")
+              }}
+              disabled={!connected}
+              className="size-8 flex items-center justify-center rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">send</span>
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {quickActions.map((a) => {
-            const state = actionStates[a.key] ?? "idle"
-            return (
-              <button
-                key={a.key}
-                onClick={() => (a.key === "upload" ? handleFileUpload() : handleAction(a.key, a.label, a.needsConfirm))}
-                disabled={!connected || state === "loading"}
-                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                  state === "done"
-                    ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
-                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
-              >
-                <span className={`material-symbols-outlined text-[24px] ${state === "done" ? "text-emerald-500" : "text-amber-500"}`}>
-                  {state === "loading" ? "hourglass_empty" : state === "done" ? "check_circle" : a.icon}
-                </span>
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{a.label}</span>
-              </button>
-            )
-          })}
+        <div className="flex flex-wrap gap-2">
+          {quickCmds.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => sendLine(c)}
+              disabled={!connected}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40"
+            >
+              {c}
+            </button>
+          ))}
         </div>
-
-        {log.length > 0 && (
-          <div className="bg-slate-900 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Journal d'activité</p>
-              <button onClick={() => setLog([])} className="text-xs text-slate-500 hover:text-slate-300">Effacer</button>
-            </div>
-            <div className="space-y-1 font-mono text-xs max-h-40 overflow-y-auto">
-              {log.map((l, i) => (
-                <p key={i} className="text-emerald-400">{l}</p>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
-
-      <input ref={fileRef} type="file" className="hidden" onChange={onFileSelected} />
-      {confirm && <ConfirmDialog {...confirm} onCancel={() => setConfirm(null)} />}
     </DashboardLayout>
   )
 }

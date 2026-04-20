@@ -4,20 +4,25 @@ import { engineerNav } from "@/lib/nav"
 import { Link } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
-import { collection, query, where, orderBy, onSnapshot } from "@/lib/firebase-firestore"
+import { collection, query, where, onSnapshot, limit } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { FirestoreOrder } from "@/data/schema"
-import { canEngineerAccessOrder } from "@/lib/access-control"
+import type { FirestoreProject } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
 
-interface Order extends FirestoreOrder { id: string }
+interface Project extends FirestoreProject { id: string }
+
+const PROJECT_STATUS_LABEL: Record<FirestoreProject["status"], string> = {
+  pending: "Validée",
+  active: "En cours",
+  delivered: "Livré",
+  cancelled: "Annulé",
+}
 
 const statusColors: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400",
   "Validée":    "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
   "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
-  "Rejetée":    "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400",
   "Livré":      "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400",
+  "Annulé":     "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400",
 }
 
 const priorityDot: Record<string, string> = {
@@ -26,50 +31,68 @@ const priorityDot: Record<string, string> = {
   Basse:   "bg-slate-400",
 }
 
-const ALL_STATUSES = ["Tous", "En cours", "Validée", "En attente", "Rejetée", "Livré"]
+const ALL_STATUSES = ["Tous", "En cours", "Validée", "Livré", "Annulé"]
+
+function toMillis(value: unknown): number {
+  if (!value) return 0
+  if (typeof value === "object" && value !== null && "toMillis" in value && typeof (value as { toMillis: unknown }).toMillis === "function") {
+    return ((value as { toMillis: () => number }).toMillis?.() ?? 0)
+  }
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === "string") {
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
 
 export default function EngineerProjects() {
   const { user } = useAuth()
-  const [orders, setOrders]     = useState<Order[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading]   = useState(true)
   const [statusTab, setStatus]  = useState("Tous")
   const [search, setSearch]     = useState("")
 
   useEffect(() => {
-    if (!db) return
+    if (!db || !user?.id) return
     const q = query(
-      collection(db, COLLECTIONS.orders),
-      where("kind", "==", "client_request"),
-      orderBy("createdAt", "desc"),
+      collection(db, COLLECTIONS.projects),
+      where("assignedEngineerId", "==", user.id),
+      limit(120),
     )
     const unsub = onSnapshot(q, snap => {
-      const visible = snap.docs
-        .map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) }))
-        .filter((row) => canEngineerAccessOrder(row, user?.id))
-      setOrders(visible)
+      const visible = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreProject) }))
+      const sorted = visible.sort((a, b) => {
+        const aDate = toMillis(a.startedAt) || toMillis(a.createdAt)
+        const bDate = toMillis(b.startedAt) || toMillis(b.createdAt)
+        return bDate - aDate
+      })
+      setProjects(sorted)
       setLoading(false)
     })
     return unsub
   }, [user?.id])
 
-  const filtered = orders.filter(o => {
-    const matchStatus = statusTab === "Tous" || o.status === statusTab
+  const filtered = projects.filter((project) => {
+    const uiStatus = PROJECT_STATUS_LABEL[project.status] ?? "Validée"
+    const matchStatus = statusTab === "Tous" || uiStatus === statusTab
     const term = search.toLowerCase()
     const matchSearch = !term ||
-      (o.clientLabel ?? "").toLowerCase().includes(term) ||
-      (o.requestType ?? "").toLowerCase().includes(term) ||
-      (o.description ?? "").toLowerCase().includes(term)
+      (project.title ?? "").toLowerCase().includes(term) ||
+      (project.clientLabel ?? "").toLowerCase().includes(term) ||
+      (project.requestType ?? "").toLowerCase().includes(term) ||
+      (project.description ?? "").toLowerCase().includes(term)
     return matchStatus && matchSearch
   })
 
-  const enCours    = orders.filter(o => o.status === "En cours").length
-  const validees   = orders.filter(o => o.status === "Validée").length
-  const enAttente  = orders.filter(o => o.status === "En attente").length
+  const enCours = projects.filter((project) => project.status === "active").length
+  const validees = projects.filter((project) => project.status === "pending").length
+  const livres = projects.filter((project) => project.status === "delivered").length
 
   const kpis = [
     { label: "En cours",   value: enCours,   icon: "sync",       color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-900/20" },
     { label: "Validées",   value: validees,  icon: "check",      color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-    { label: "En attente", value: enAttente, icon: "hourglass_empty", color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-900/20" },
+    { label: "Livrés", value: livres, icon: "inventory_2", color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-900/20" },
   ]
 
   return (
@@ -78,7 +101,7 @@ export default function EngineerProjects() {
         {/* Header */}
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Mes Projets</h2>
-          <p className="text-slate-500 text-sm mt-1">Vue d'ensemble des demandes clients assignées.</p>
+            <p className="text-slate-500 text-sm mt-1">Projets réels créés à partir des demandes clients acceptées.</p>
         </div>
 
         {/* KPIs */}
@@ -130,35 +153,38 @@ export default function EngineerProjects() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map(o => (
-              <Link key={o.id} to={`/engineer/requests/${o.id}`}
+            {filtered.map((project) => {
+              const uiStatus = PROJECT_STATUS_LABEL[project.status] ?? "Validée"
+              const openOrderId = project.orderId || project.id
+              return (
+              <Link key={project.id} to={`/engineer/requests/${openOrderId}`}
                 className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-blue-400 dark:hover:border-blue-600 transition-colors group">
                 <div className="flex items-start justify-between mb-3">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColors[o.status] ?? statusColors["En attente"]}`}>
-                    {o.status}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColors[uiStatus] ?? statusColors["Validée"]}`}>
+                    {uiStatus}
                   </span>
-                  {o.priority && (
+                  {project.priority && (
                     <div className="flex items-center gap-1.5">
-                      <span className={`size-2 rounded-full ${priorityDot[o.priority] ?? "bg-slate-400"}`} />
-                      <span className="text-xs text-slate-500">{o.priority}</span>
+                      <span className={`size-2 rounded-full ${priorityDot[project.priority] ?? "bg-slate-400"}`} />
+                      <span className="text-xs text-slate-500">{project.priority}</span>
                     </div>
                   )}
                 </div>
                 <h4 className="font-semibold text-slate-900 dark:text-white text-sm line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {o.clientLabel ?? "Client inconnu"}
+                  {project.title || project.clientLabel || "Projet client"}
                 </h4>
-                {o.requestType && (
-                  <p className="text-xs text-slate-500 mt-1">{o.requestType}</p>
+                {project.clientLabel && (
+                  <p className="text-xs text-slate-500 mt-1">{project.clientLabel}</p>
                 )}
-                {o.description && (
-                  <p className="text-xs text-slate-400 mt-2 line-clamp-2">{o.description}</p>
+                {project.description && (
+                  <p className="text-xs text-slate-400 mt-2 line-clamp-2">{project.description}</p>
                 )}
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-xs text-slate-400">{formatFirestoreDate(o.createdAt)}</span>
+                  <span className="text-xs text-slate-400">{formatFirestoreDate(project.startedAt ?? project.createdAt)}</span>
                   <span className="text-xs text-blue-600 dark:text-blue-400 font-medium group-hover:underline">Voir le projet →</span>
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         )}
       </div>

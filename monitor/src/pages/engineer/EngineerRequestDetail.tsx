@@ -4,9 +4,12 @@ import { engineerNav } from "@/lib/nav"
 import { useParams, Link } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
-import { doc, getDoc, updateDoc, serverTimestamp } from "@/lib/firebase-firestore"
+import {
+  doc, getDoc, updateDoc, serverTimestamp,
+  collection, query, where, limit, getDocs, addDoc,
+} from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { FirestoreOrder } from "@/data/schema"
+import type { FirestoreOrder, FirestoreProject } from "@/data/schema"
 import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
@@ -21,6 +24,13 @@ const statusColors: Record<string, string> = {
   "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
   "Rejetée":    "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400",
   "Livré":      "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400",
+}
+
+function mapOrderToProjectStatus(status: string): FirestoreProject["status"] {
+  if (status === "Livré") return "delivered"
+  if (status === "Rejetée") return "cancelled"
+  if (status === "En cours") return "active"
+  return "pending"
 }
 
 export default function EngineerRequestDetail() {
@@ -55,12 +65,70 @@ export default function EngineerRequestDetail() {
     if (!db || !id || !order || !user?.id) return
     setSaving(true)
     try {
+      const now = serverTimestamp()
       await updateDoc(doc(db, COLLECTIONS.orders, id), {
         status,
         adminComment: comment,
         assignedToId: user.id,
-        updatedAt: serverTimestamp(),
+        updatedAt: now,
       })
+
+      const projectStatus = mapOrderToProjectStatus(status)
+      const projectsRef = collection(db, COLLECTIONS.projects)
+      const existingProjectSnap = await getDocs(
+        query(projectsRef, where("orderId", "==", id), limit(1)),
+      )
+
+      if (existingProjectSnap.empty) {
+        const baseProject: FirestoreProject = {
+          orderId: id,
+          organizationId: order.organizationId,
+          createdByUserId: order.createdByUserId,
+          assignedEngineerId: user.id,
+          assignedEngineerName: user.name,
+          title: order.requestType?.trim() || "Projet client",
+          clientLabel: order.clientLabel ?? "",
+          clientEmail: order.clientEmail ?? "",
+          requestType: order.requestType ?? "",
+          priority: order.priority ?? "",
+          description: order.description ?? "",
+          status: projectStatus,
+          lastOrderStatus: status,
+          createdAt: now,
+          updatedAt: now,
+        }
+        if (projectStatus === "active" || projectStatus === "delivered") {
+          baseProject.startedAt = now
+        }
+        if (projectStatus === "delivered") {
+          baseProject.deliveredAt = now
+        }
+        await addDoc(projectsRef, baseProject)
+      } else {
+        const projectDoc = existingProjectSnap.docs[0]
+        const existing = projectDoc?.data() as FirestoreProject
+        const payload: Partial<FirestoreProject> = {
+          status: projectStatus,
+          lastOrderStatus: status,
+          assignedEngineerId: user.id,
+          assignedEngineerName: user.name,
+          title: existing.title || order.requestType?.trim() || "Projet client",
+          clientLabel: order.clientLabel ?? existing.clientLabel ?? "",
+          clientEmail: order.clientEmail ?? existing.clientEmail ?? "",
+          requestType: order.requestType ?? existing.requestType ?? "",
+          priority: order.priority ?? existing.priority ?? "",
+          description: order.description ?? existing.description ?? "",
+          updatedAt: now,
+        }
+        if ((projectStatus === "active" || projectStatus === "delivered") && !existing.startedAt) {
+          payload.startedAt = now
+        }
+        if (projectStatus === "delivered") {
+          payload.deliveredAt = now
+        }
+        await updateDoc(doc(db, COLLECTIONS.projects, projectDoc.id), payload)
+      }
+
       setOrder(prev => prev ? { ...prev, status, adminComment: comment } : prev)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)

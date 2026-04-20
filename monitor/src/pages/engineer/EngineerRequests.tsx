@@ -6,10 +6,10 @@ import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import {
   collection, query, where, orderBy, limit,
-  onSnapshot, updateDoc, doc, serverTimestamp,
+  onSnapshot, updateDoc, doc, serverTimestamp, getDocs, addDoc,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { FirestoreOrder } from "@/data/schema"
+import type { FirestoreOrder, FirestoreProject } from "@/data/schema"
 import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
@@ -143,14 +143,80 @@ export default function EngineerRequests() {
     return unsub
   }, [user?.id])
 
+  function mapOrderToProjectStatus(status: string): FirestoreProject["status"] {
+    if (status === "Livré") return "delivered"
+    if (status === "Rejetée") return "cancelled"
+    if (status === "En cours") return "active"
+    return "pending"
+  }
+
   async function handleSave(status: string, comment: string) {
     if (!db || !processing || !user?.id) return
+    const now = serverTimestamp()
     await updateDoc(doc(db, COLLECTIONS.orders, processing.id), {
       status,
       adminComment: comment,
       assignedToId: user.id,
-      updatedAt: serverTimestamp(),
+      updatedAt: now,
     })
+
+    const projectStatus = mapOrderToProjectStatus(status)
+    const projectsRef = collection(db, COLLECTIONS.projects)
+    const existingProjectSnap = await getDocs(
+      query(projectsRef, where("orderId", "==", processing.id), limit(1)),
+    )
+
+    if (existingProjectSnap.empty) {
+      const baseProject: FirestoreProject = {
+        orderId: processing.id,
+        organizationId: processing.organizationId,
+        createdByUserId: processing.createdByUserId,
+        assignedEngineerId: user.id,
+        assignedEngineerName: user.name,
+        title: processing.requestType?.trim() || "Projet client",
+        clientLabel: processing.clientLabel ?? "",
+        clientEmail: processing.clientEmail ?? "",
+        requestType: processing.requestType ?? "",
+        priority: processing.priority ?? "",
+        description: processing.description ?? "",
+        status: projectStatus,
+        lastOrderStatus: status,
+        createdAt: now,
+        updatedAt: now,
+      }
+      if (projectStatus === "active" || projectStatus === "delivered") {
+        baseProject.startedAt = now
+      }
+      if (projectStatus === "delivered") {
+        baseProject.deliveredAt = now
+      }
+      await addDoc(projectsRef, baseProject)
+      return
+    }
+
+    const projectDoc = existingProjectSnap.docs[0]
+    const existing = projectDoc?.data() as FirestoreProject
+    const payload: Partial<FirestoreProject> = {
+      status: projectStatus,
+      lastOrderStatus: status,
+      assignedEngineerId: user.id,
+      assignedEngineerName: user.name,
+      title: existing.title || processing.requestType?.trim() || "Projet client",
+      clientLabel: processing.clientLabel ?? existing.clientLabel ?? "",
+      clientEmail: processing.clientEmail ?? existing.clientEmail ?? "",
+      requestType: processing.requestType ?? existing.requestType ?? "",
+      priority: processing.priority ?? existing.priority ?? "",
+      description: processing.description ?? existing.description ?? "",
+      updatedAt: now,
+    }
+    if ((projectStatus === "active" || projectStatus === "delivered") && !existing.startedAt) {
+      payload.startedAt = now
+    }
+    if (projectStatus === "delivered") {
+      payload.deliveredAt = now
+    }
+
+    await updateDoc(doc(db, COLLECTIONS.projects, projectDoc.id), payload)
   }
 
   const filtered = orders.filter(o => {

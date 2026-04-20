@@ -127,6 +127,27 @@ export interface FirestoreOrder {
   updatedAt?: unknown
 }
 
+/** Firestore `projects/{id}` — engineer execution project created from validated client requests */
+export interface FirestoreProject {
+  orderId: string
+  organizationId: string
+  createdByUserId: string
+  assignedEngineerId: string
+  assignedEngineerName?: string
+  title: string
+  clientLabel?: string
+  clientEmail?: string
+  requestType?: string
+  priority?: string
+  description?: string
+  status: "pending" | "active" | "delivered" | "cancelled"
+  lastOrderStatus?: string
+  startedAt?: unknown
+  deliveredAt?: unknown
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
 /** Firestore `inventory_items/{id}` — Gestion des matériels */
 export interface FirestoreInventoryItem {
   sku: string
@@ -332,10 +353,12 @@ export const ROOT_COLLECTIONS = {
   deployments: "deployments",
   invoices: "invoices",
   orders: "orders",
+  projects: "projects",
   supportTickets: "support_tickets",
   notifications: "notifications",
   activityEvents: "activity_events",
   tasks: "tasks",
+  meetings: "meetings",
   inventoryItems: "inventory_items",
   conversations: "conversations",
   stackServices: "stack_services",
@@ -429,6 +452,25 @@ export interface FirestoreTask {
   dueDate?: string
   done: boolean
   assignedToId?: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `meetings/{id}` */
+export interface FirestoreMeeting {
+  title: string
+  description?: string
+  platform: "zoom" | "google_meet" | "microsoft_teams" | "other"
+  status: "scheduled" | "cancelled" | "postponed"
+  meetingLink: string
+  meetingCode?: string
+  scheduledAt: unknown
+  postponedFromAt?: unknown
+  statusNote?: string
+  targetUserIds: string[]
+  targetUserNames?: string[]
+  createdByUserId: string
+  createdByName?: string
   createdAt?: unknown
   updatedAt?: unknown
 }
