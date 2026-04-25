@@ -19,10 +19,9 @@ type PerfSnapshot = {
   updatedAtMs: number | null
 }
 
-const AUTO_HOST = "194.146.13.22"
-const AUTO_PORT = "22"
-const AUTO_USERNAME = "root"
-const AUTO_PASSWORD = "fetho125"
+const AUTO_HOST = import.meta.env.VITE_REMOTE_DEFAULT_HOST ?? ""
+const AUTO_PORT = import.meta.env.VITE_REMOTE_DEFAULT_PORT ?? "22"
+const AUTO_USERNAME = import.meta.env.VITE_REMOTE_DEFAULT_USERNAME ?? ""
 
 function wsUrl(): string {
   const proto = window.location.protocol === "https:" ? "wss" : "ws"
@@ -62,7 +61,7 @@ export default function TechnicianRemoteControl() {
   const [host, setHost] = useState(AUTO_HOST)
   const [port, setPort] = useState(AUTO_PORT)
   const [username, setUsername] = useState(AUTO_USERNAME)
-  const [password, setPassword] = useState(AUTO_PASSWORD)
+  const [password, setPassword] = useState("")
 
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -71,7 +70,6 @@ export default function TechnicianRemoteControl() {
   const [history, setHistory] = useState<string[]>([])
   const [histIdx, setHistIdx] = useState(-1)
   const [errorText, setErrorText] = useState<string | null>(null)
-  const [autoTried, setAutoTried] = useState(false)
   const [perf, setPerf] = useState<PerfSnapshot>(initialPerf)
 
   const socketRef = useRef<WebSocket | null>(null)
@@ -244,13 +242,6 @@ export default function TechnicianRemoteControl() {
     }
   }
 
-  useEffect(() => {
-    if (autoTried || connecting || connected) return
-    setAutoTried(true)
-    connect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoTried, connecting, connected])
-
   function sendLine(line: string) {
     if (!connected || !socketRef.current) return
     const trimmed = line.trim()
@@ -302,7 +293,7 @@ export default function TechnicianRemoteControl() {
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
       <div className="p-6 w-full space-y-6">
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-300">
-          Monitoring Docker via tunnel SSH WebSocket `__dev/ssh/ws`.
+          Monitoring Docker via tunnel SSH WebSocket `__dev/ssh/ws`. Les identifiants ne sont plus embarqués dans le frontend.
           {devTunnelRequired ? " Ouvrez cette interface depuis l'environnement dev local pour activer la connexion." : ""}
         </div>
 
@@ -433,7 +424,7 @@ export default function TechnicianRemoteControl() {
             ref={terminalRef}
             className="p-4 min-h-[360px] max-h-[460px] overflow-y-auto text-[13px] leading-5 font-mono whitespace-pre-wrap text-slate-200"
           >
-            {output || "Connexion automatique en cours..."}
+            {output || "Connectez-vous pour lancer la session SSH."}
           </div>
 
           <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-700">

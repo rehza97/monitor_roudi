@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
-import { onSnapshot, addDoc, collection, query, where } from "@/lib/firebase-firestore"
+import { onSnapshot, addDoc, collection, query, where, orderBy, serverTimestamp } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { DeploymentEnvironment } from "@/data/schema"
 
@@ -102,10 +102,12 @@ function ServiceModal({
   const appName = dep.name ?? dep.clientListName ?? dep.productSlug ?? "Application"
 
   useEffect(() => {
-    if (!db) return
+    if (!db || !user?.organizationId) return
     const q = query(
       collection(db, COLLECTIONS.supportTickets),
+      where("organizationId", "==", user.organizationId),
       where("deploymentId", "==", dep.id),
+      orderBy("createdAt", "desc"),
     )
     const unsub = onSnapshot(q, (snap) => {
       const rows = snap.docs.map((d) => {
@@ -135,7 +137,7 @@ function ServiceModal({
       )
     })
     return unsub
-  }, [dep.id])
+  }, [dep.id, user?.organizationId])
 
   async function handleSignaler() {
     if (!reportText.trim() || !db || !user) return
@@ -149,8 +151,11 @@ function ServiceModal({
           priority: "Normale",
           status: "Ouvert",
           createdByUserId: user.id,
+          assignedToId: null,
           organizationId: user.organizationId ?? "",
           deploymentId: dep.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         } as Record<string, unknown>,
       )
       setSent(true)

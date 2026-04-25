@@ -27,6 +27,7 @@ interface FirestoreConversation {
   lastMessageAt?: unknown
   lastSenderUserId?: string
   name?: string
+  support?: boolean
   createdAt?: unknown
 }
 
@@ -35,9 +36,10 @@ interface ConversationDoc extends FirestoreConversation {
 }
 
 interface FirestoreMessage {
-  text: string
+  text?: string
+  body?: string
   senderUserId: string
-  senderName: string
+  senderName?: string
   createdAt?: unknown
 }
 
@@ -88,6 +90,12 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
+const SUPPORT_CONVERSATION_NAME = "Support Rodaina"
+
+function messageText(msg: FirestoreMessage): string {
+  return msg.text ?? msg.body ?? ""
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ClientMessages() {
@@ -99,6 +107,7 @@ export default function ClientMessages() {
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [msgText, setMsgText] = useState("")
   const [sending, setSending] = useState(false)
+  const [creatingConversation, setCreatingConversation] = useState(false)
   const [search, setSearch] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -187,6 +196,7 @@ export default function ClientMessages() {
       )
       await addDoc(msgsRef as Parameters<typeof addDoc>[0], {
         text,
+        body: text,
         senderUserId: user.id,
         senderName: user.name,
         createdAt: serverTimestamp(),
@@ -203,6 +213,54 @@ export default function ClientMessages() {
       setMsgText("")
     } finally {
       setSending(false)
+    }
+  }
+
+  async function startSupportConversation() {
+    if (!db || !user) return
+
+    const existing = conversations.find(
+      (conv) => conv.support || conv.name === SUPPORT_CONVERSATION_NAME,
+    )
+    if (existing) {
+      setActiveConvId(existing.id)
+      return
+    }
+
+    setCreatingConversation(true)
+    try {
+      const introText = "Bonjour, j'ai besoin d'aide."
+      const convRef = await addDoc(collection(db, COLLECTIONS.conversations), {
+        participantIds: [user.id],
+        participantNames: {
+          [user.id]: user.name,
+          support: SUPPORT_CONVERSATION_NAME,
+        },
+        name: SUPPORT_CONVERSATION_NAME,
+        support: true,
+        organizationId: user.organizationId ?? null,
+        createdByUserId: user.id,
+        lastMessage: introText,
+        lastMessageText: introText,
+        lastMessageAt: serverTimestamp(),
+        lastSenderUserId: user.id,
+        createdAt: serverTimestamp(),
+      } as Record<string, unknown>)
+
+      await addDoc(
+        collection(db, COLLECTIONS.conversations, convRef.id, COLLECTIONS.messages),
+        {
+          text: introText,
+          body: introText,
+          senderUserId: user.id,
+          senderName: user.name,
+          createdAt: serverTimestamp(),
+        } as Record<string, unknown>,
+      )
+
+      setActiveConvId(convRef.id)
+    } finally {
+      setCreatingConversation(false)
     }
   }
 
@@ -236,6 +294,17 @@ export default function ClientMessages() {
             <p className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
               Messages
             </p>
+            <button
+              type="button"
+              onClick={() => void startSupportConversation()}
+              disabled={creatingConversation}
+              className="mb-3 w-full h-9 rounded-lg bg-[#db143c] text-white text-xs font-semibold hover:bg-[#b01030] disabled:opacity-60 flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[15px]">
+                {creatingConversation ? "hourglass_empty" : "add_comment"}
+              </span>
+              {creatingConversation ? "Création…" : "Démarrer support"}
+            </button>
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
                 search
@@ -273,6 +342,14 @@ export default function ClientMessages() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Aucune conversation. Contactez le support.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => void startSupportConversation()}
+                  disabled={creatingConversation}
+                  className="mt-4 px-4 py-2 rounded-lg bg-[#db143c] text-white text-xs font-semibold hover:bg-[#b01030] disabled:opacity-60"
+                >
+                  {creatingConversation ? "Création…" : "Démarrer une conversation"}
+                </button>
               </div>
             )}
 
@@ -326,6 +403,16 @@ export default function ClientMessages() {
                   ? "Aucune conversation. Contactez le support."
                   : "Sélectionnez une conversation pour afficher les messages."}
               </p>
+              {conversations.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => void startSupportConversation()}
+                  disabled={creatingConversation}
+                  className="mt-4 px-4 py-2 rounded-lg bg-[#db143c] text-white text-xs font-semibold hover:bg-[#b01030] disabled:opacity-60"
+                >
+                  {creatingConversation ? "Création…" : "Démarrer une conversation support"}
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -376,7 +463,7 @@ export default function ClientMessages() {
                     const mine = msg.senderUserId === user?.id
                     const senderInitials = mine
                       ? (user?.initials ?? getInitials(user?.name ?? ""))
-                      : getInitials(msg.senderName)
+                      : getInitials(msg.senderName ?? "Support")
                     const avatarColor = mine ? "#db143c" : "#64748b"
                     return (
                       <div
@@ -396,7 +483,7 @@ export default function ClientMessages() {
                         <div className={`max-w-xs lg:max-w-md ${mine ? "items-end" : "items-start"} flex flex-col`}>
                           {!mine && (
                             <p className="text-xs text-slate-400 mb-1 ml-1">
-                              {msg.senderName}
+                              {msg.senderName ?? "Support"}
                             </p>
                           )}
                           <div
@@ -406,7 +493,7 @@ export default function ClientMessages() {
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl rounded-bl-sm"
                             }`}
                           >
-                            <p>{msg.text}</p>
+                            <p>{messageText(msg)}</p>
                             <p
                               className={`text-[10px] mt-1 ${mine ? "text-rose-200" : "text-slate-400"}`}
                             >

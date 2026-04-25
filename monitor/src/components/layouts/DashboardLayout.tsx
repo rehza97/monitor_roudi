@@ -224,19 +224,18 @@ export default function DashboardLayout({
         : "Demandes (client, réf., type…)"
 
   const sidebarNavItems = useMemo(() => {
-    if (role !== "client") return navItems
     return navItems.map((item) => {
-      if (item.to === "/client/messages") {
+      if (item.to.endsWith("/messages")) {
         return messageUnread > 0 ? { ...item, badge: messageUnread } : { ...item, badge: undefined }
       }
-      if (item.to === "/client/notifications") {
+      if (item.to.endsWith("/notifications")) {
         return notificationUnread > 0
           ? { ...item, badge: notificationUnread }
           : { ...item, badge: undefined }
       }
       return item
     })
-  }, [role, navItems, messageUnread, notificationUnread])
+  }, [navItems, messageUnread, notificationUnread])
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans">

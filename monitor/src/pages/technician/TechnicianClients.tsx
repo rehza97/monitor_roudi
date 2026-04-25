@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
+import { useAuth } from "@/contexts/AuthContext"
 import { COLLECTIONS, type FirestoreFieldServiceClient } from "@/data/schema"
 import { collection, onSnapshot } from "@/lib/firebase-firestore"
 
@@ -14,6 +15,9 @@ type Client = {
   city: string
   tickets: number
   status: string
+  zone?: string
+  assignedTechnicianId?: string
+  assignedTechnicianIds?: string[]
   address: string
   since: string
   lastIntervention: string
@@ -29,6 +33,9 @@ function mapClient(id: string, data: FirestoreFieldServiceClient): Client {
     city: data.city || "—",
     tickets: typeof data.tickets === "number" ? data.tickets : 0,
     status: data.status || "Actif",
+    zone: data.zone,
+    assignedTechnicianId: data.assignedTechnicianId,
+    assignedTechnicianIds: Array.isArray(data.assignedTechnicianIds) ? data.assignedTechnicianIds : undefined,
     address: data.address || "—",
     since: data.since || "—",
     lastIntervention: data.lastIntervention || "—",
@@ -97,6 +104,7 @@ function ClientModal({ client, onClose }: { client: Client; onClose: () => void 
 }
 
 export default function TechnicianClients() {
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Client | null>(null)
   const [clients, setClients] = useState<Client[]>([])
@@ -118,14 +126,22 @@ export default function TechnicianClients() {
   }, [])
 
   const filtered = useMemo(
-    () =>
-      clients.filter(
-        (c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          c.city.toLowerCase().includes(search.toLowerCase()) ||
-          c.contact.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [clients, search],
+    () => {
+      const scoped = clients.filter((c) => {
+        if (!user?.id) return false
+        if (c.assignedTechnicianIds?.length) return c.assignedTechnicianIds.includes(user.id)
+        if (c.assignedTechnicianId) return c.assignedTechnicianId === user.id
+        if (c.zone && user.zone) return c.zone === user.zone
+        return true
+      })
+      return scoped.filter(
+          (c) =>
+            c.name.toLowerCase().includes(search.toLowerCase()) ||
+            c.city.toLowerCase().includes(search.toLowerCase()) ||
+            c.contact.toLowerCase().includes(search.toLowerCase()),
+        )
+    },
+    [clients, search, user?.id, user?.zone],
   )
 
   return (
@@ -134,7 +150,7 @@ export default function TechnicianClients() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Clients</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{clients.length} clients assignés</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{filtered.length} clients assignés</p>
           </div>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>

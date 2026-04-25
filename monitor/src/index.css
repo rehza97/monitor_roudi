@@ -5,11 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ─── Typography ─────────────────────────────────────────── */
-/* Inter is loaded via index.html from Google Fonts           */
+/* Fonts and icon fonts are bundled locally from @fontsource. */
 
 @theme inline {
-    --font-sans: 'Inter', 'Geist Variable', system-ui, sans-serif;
-    --font-heading: 'Inter', 'Geist Variable', system-ui, sans-serif;
+    --font-sans: 'Geist Variable', system-ui, sans-serif;
+    --font-heading: 'Geist Variable', system-ui, sans-serif;
     --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
 
     /* ─── Layout constants ────────────────────────────────── */
@@ -152,6 +152,22 @@
         font-feature-settings: "cv11", "ss01";
         font-variation-settings: "opsz" 32;
     }
+}
+
+.material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
 }
 
 /* Leaflet client markers (Admin location map) */

@@ -1,8 +1,240 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function role() {
+      return signedIn() && request.auth.token.role is string
+        ? request.auth.token.role
+        : signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          ? profile(request.auth.uid).role
+          : null;
+    }
+
+    function orgId() {
+      return signedIn() && request.auth.token.organizationId is string
+        ? request.auth.token.organizationId
+        : signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          ? profile(request.auth.uid).organizationId
+          : null;
+    }
+
+    function isAdmin() {
+      return role() == "admin";
+    }
+
+    function isEngineer() {
+      return role() == "engineer";
+    }
+
+    function isTechnician() {
+      return role() == "technician";
+    }
+
+    function isClient() {
+      return role() == "client";
+    }
+
+    function isStaff() {
+      return isAdmin() || isEngineer() || isTechnician();
+    }
+
+    function sameOrg(data) {
+      return signedIn() && data.organizationId is string && data.organizationId == orgId();
+    }
+
+    function ownsCreatedRecord(data) {
+      return signedIn() && data.createdByUserId == request.auth.uid;
+    }
+
+    function assignedOrUnassigned(data) {
+      return !("assignedToId" in data) || data.assignedToId == null || data.assignedToId == "" || data.assignedToId == request.auth.uid;
+    }
+
+    function onlyReadFlagChanged() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(["read"]);
+    }
+
+    match /organizations/{org} {
+      allow read: if isAdmin() || (signedIn() && org == orgId()) || isStaff();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isAdmin() || request.auth.uid == uid || (isStaff() && resource.data.role == "client");
+      allow create: if request.auth.uid == uid || isAdmin();
+      allow update: if isAdmin() || (request.auth.uid == uid && !request.resource.data.diff(resource.data).changedKeys().hasAny(["role", "organizationId", "active"]));
+      allow delete: if isAdmin();
+    }
+
+    match /catalog_products/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /content_blog_posts/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /content_careers_jobs/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /contact_leads/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /deployments/{deploymentId} {
+      allow read: if isAdmin() || isEngineer() || sameOrg(resource.data);
+      allow create, update, delete: if isAdmin();
+
+      match /components/{componentId} {
+        allow read: if isAdmin() || isEngineer() || sameOrg(get(/databases/$(database)/documents/deployments/$(deploymentId)).data);
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /metrics/{metricId} {
+        allow read: if isAdmin() || isEngineer() || sameOrg(get(/databases/$(database)/documents/deployments/$(deploymentId)).data);
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin()
+        || (isClient() && sameOrg(resource.data))
+        || (isEngineer() && resource.data.kind == "client_request" && assignedOrUnassigned(resource.data))
+        || (isTechnician() && resource.data.kind == "material_supply");
+      allow create: if isAdmin()
+        || (isClient() && sameOrg(request.resource.data) && ownsCreatedRecord(request.resource.data))
+        || (isTechnician() && request.resource.data.kind == "material_supply");
+      allow update: if isAdmin()
+        || (isClient() && sameOrg(resource.data) && ownsCreatedRecord(resource.data) && resource.data.status in ["En attente", "Brouillon"])
+        || (isEngineer() && resource.data.kind == "client_request" && assignedOrUnassigned(resource.data));
+      allow delete: if isAdmin() || (isClient() && sameOrg(resource.data) && ownsCreatedRecord(resource.data) && resource.data.status in ["En attente", "Brouillon"]);
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAdmin() || sameOrg(resource.data) || (isEngineer() && resource.data.assignedEngineerId == request.auth.uid);
+      allow create: if isAdmin() || isEngineer();
+      allow update: if isAdmin() || (isEngineer() && resource.data.assignedEngineerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAdmin() || sameOrg(resource.data);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /support_tickets/{ticketId} {
+      allow read: if isAdmin()
+        || (isClient() && sameOrg(resource.data))
+        || (isTechnician() && assignedOrUnassigned(resource.data))
+        || isEngineer();
+      allow create: if isAdmin()
+        || (isClient() && sameOrg(request.resource.data) && ownsCreatedRecord(request.resource.data))
+        || isTechnician()
+        || isEngineer();
+      allow update: if isAdmin()
+        || (isClient() && sameOrg(resource.data) && ownsCreatedRecord(resource.data))
+        || (isTechnician() && assignedOrUnassigned(resource.data))
+        || isEngineer();
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.assignedToId == request.auth.uid);
+      allow create: if isAdmin() || isEngineer() || isTechnician();
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.assignedToId == request.auth.uid);
+    }
+
+    match /meetings/{meetingId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid in resource.data.targetUserIds) || resource.data.createdByUserId == request.auth.uid;
+      allow create: if isAdmin() || isEngineer();
+      allow update: if isAdmin() || resource.data.createdByUserId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /inventory_items/{itemId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /field_service_clients/{clientId} {
+      allow read: if isAdmin() || isTechnician();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /engineers/{engineerId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /permission_role_templates/{roleId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /platform_config/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /stack_services/{serviceId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid)
+        || (signedIn() && resource.data.organizationId == orgId());
+      allow create: if isStaff();
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid && onlyReadFlagChanged())
+        || (signedIn() && resource.data.organizationId == orgId() && onlyReadFlagChanged());
+      allow delete: if isAdmin();
+    }
+
+    match /activity_events/{eventId} {
+      allow read: if isAdmin() || isStaff() || (isClient() && sameOrg(resource.data));
+      allow create, update, delete: if false;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid in resource.data.participantIds);
+      allow create: if signedIn() && (isAdmin() || request.auth.uid in request.resource.data.participantIds);
+      allow update: if isAdmin() || (signedIn() && request.auth.uid in resource.data.participantIds);
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAdmin() || (signedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
+        allow create: if signedIn()
+          && request.resource.data.senderUserId == request.auth.uid
+          && (isAdmin() || request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds);
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /organization_invites/{inviteId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /attachments/{attachmentId} {
+      allow read: if isAdmin() || isStaff() || sameOrg(resource.data);
+      allow create, update, delete: if false;
+    }
+
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

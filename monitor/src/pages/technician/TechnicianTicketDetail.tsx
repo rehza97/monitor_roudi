@@ -7,7 +7,7 @@ import { db } from "@/config/firebase"
 import { COLLECTIONS, type FirestoreSupportTicket } from "@/data/schema"
 import { doc, getDoc, serverTimestamp, updateDoc } from "@/lib/firebase-firestore"
 import { canTechnicianAccessTicket } from "@/lib/access-control"
-import { formatFirestoreDateTime } from "@/lib/utils"
+import { formatFirestoreDateTime, firestoreToMillis } from "@/lib/utils"
 
 type ChecklistItem = { label: string; done: boolean }
 
@@ -44,12 +44,39 @@ function statusBadge(status: string): string {
   return "text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300"
 }
 
+function toLocalInputValue(value: unknown): string {
+  const ms = firestoreToMillis(value)
+  if (!ms) return ""
+  const date = new Date(ms)
+  const offsetMs = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
+}
+
+function readBrowserLocation(): Promise<{ latitude: number; longitude: number; accuracy?: number | null } | null> {
+  if (!navigator.geolocation) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000 },
+    )
+  })
+}
+
 export default function TechnicianTicketDetail() {
   const { user } = useAuth()
   const { id } = useParams()
   const [ticket, setTicket] = useState<TicketDoc | null>(null)
   const [loading, setLoading] = useState(true)
   const [report, setReport] = useState("")
+  const [scheduledAt, setScheduledAt] = useState("")
+  const [siteAddress, setSiteAddress] = useState("")
+  const [estimatedDuration, setEstimatedDuration] = useState("")
+  const [visitWindow, setVisitWindow] = useState("")
   const [checklist, setChecklist] = useState<ChecklistItem[]>(DEFAULT_CHECKLIST)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
   const [error, setError] = useState("")
@@ -71,6 +98,10 @@ export default function TechnicianTicketDetail() {
       } else {
         setTicket({ id: snap.id, ...data, checklist: parseChecklist(data.checklist) })
         setReport(typeof data.report === "string" ? data.report : "")
+        setScheduledAt(toLocalInputValue(data.scheduledAt))
+        setSiteAddress(typeof data.siteAddress === "string" ? data.siteAddress : "")
+        setEstimatedDuration(typeof data.estimatedDuration === "string" ? data.estimatedDuration : "")
+        setVisitWindow(typeof data.visitWindow === "string" ? data.visitWindow : "")
         setChecklist(parseChecklist(data.checklist))
       }
       setLoading(false)
@@ -112,6 +143,61 @@ export default function TechnicianTicketDetail() {
     }
   }
 
+  async function handleSaveSchedule() {
+    if (!db || !id) return
+    setSaveState("saving")
+    setError("")
+    try {
+      await persist({
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        siteAddress: siteAddress.trim(),
+        estimatedDuration: estimatedDuration.trim(),
+        visitWindow: visitWindow.trim(),
+      })
+      setTicket((prev) => prev ? {
+        ...prev,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        siteAddress: siteAddress.trim(),
+        estimatedDuration: estimatedDuration.trim(),
+        visitWindow: visitWindow.trim(),
+      } : prev)
+      setSaveState("saved")
+      setTimeout(() => setSaveState("idle"), 1800)
+    } catch {
+      setSaveState("idle")
+      setError("Impossible de sauvegarder la planification.")
+    }
+  }
+
+  async function handlePresence(kind: "checkIn" | "checkOut") {
+    if (!db || !id) return
+    setError("")
+    const location = await readBrowserLocation()
+    const patch = kind === "checkIn"
+      ? { checkInAt: serverTimestamp(), checkInLocation: location }
+      : { checkOutAt: serverTimestamp(), checkOutLocation: location }
+    try {
+      await persist(patch)
+      const snap = await getDoc(doc(db, COLLECTIONS.supportTickets, id))
+      if (snap.exists()) setTicket({ id: snap.id, ...(snap.data() as FirestoreSupportTicket), checklist })
+    } catch {
+      setError("Impossible d'enregistrer la présence.")
+    }
+  }
+
+  async function handleDispatch(action: "accept" | "reject") {
+    if (!db || !id || !user?.id) return
+    const patch: Partial<FirestoreSupportTicket> = action === "accept"
+      ? { assignedToId: user.id, status: "En cours" }
+      : { assignedToId: null, status: "Ouvert", technicianRejectedBy: user.id }
+    try {
+      await persist(patch)
+      setTicket((prev) => prev ? { ...prev, ...patch } : prev)
+    } catch {
+      setError("Impossible de mettre à jour l'assignation.")
+    }
+  }
+
   if (loading) {
     return (
       <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Détails du ticket">
@@ -146,6 +232,25 @@ export default function TechnicianTicketDetail() {
           <span className={`text-sm font-semibold px-3 py-1.5 rounded-full shrink-0 ${statusBadge(ticket.status)}`}>{ticket.priority}</span>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          {ticket.assignedToId !== user?.id && (
+            <button
+              onClick={() => void handleDispatch("accept")}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg"
+            >
+              Accepter l'intervention
+            </button>
+          )}
+          {ticket.assignedToId === user?.id && ticket.status !== "Résolu" && (
+            <button
+              onClick={() => void handleDispatch("reject")}
+              className="px-4 py-2 border border-rose-300 text-rose-600 text-sm font-semibold rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20"
+            >
+              Refuser / libérer
+            </button>
+          )}
+        </div>
+
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -153,6 +258,57 @@ export default function TechnicianTicketDetail() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
               <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Description du problème</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">{ticket.description || "Aucune description."}</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+              <h3 className="font-semibold text-slate-900 dark:text-white">Planification terrain</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <input
+                  value={visitWindow}
+                  onChange={(e) => setVisitWindow(e.target.value)}
+                  placeholder="Fenêtre: 09:00-11:00"
+                  className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <input
+                  value={estimatedDuration}
+                  onChange={(e) => setEstimatedDuration(e.target.value)}
+                  placeholder="Durée estimée: 2h"
+                  className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <input
+                  value={siteAddress}
+                  onChange={(e) => setSiteAddress(e.target.value)}
+                  placeholder="Adresse du site"
+                  className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => void handleSaveSchedule()}
+                  disabled={saveState === "saving"}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg"
+                >
+                  Sauvegarder la planification
+                </button>
+                <button
+                  onClick={() => void handlePresence("checkIn")}
+                  className="px-4 py-2 border border-emerald-300 text-emerald-700 dark:text-emerald-400 text-sm font-semibold rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                >
+                  Check-in
+                </button>
+                <button
+                  onClick={() => void handlePresence("checkOut")}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  Check-out
+                </button>
+              </div>
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
@@ -223,6 +379,9 @@ export default function TechnicianTicketDetail() {
                 { label: "Priorité", value: ticket.priority },
                 { label: "Créé le", value: formatFirestoreDateTime(ticket.createdAt) },
                 { label: "Dernière MAJ", value: formatFirestoreDateTime(ticket.updatedAt) },
+                { label: "Planifié", value: formatFirestoreDateTime(ticket.scheduledAt) || "—" },
+                { label: "Check-in", value: formatFirestoreDateTime(ticket.checkInAt) || "—" },
+                { label: "Check-out", value: formatFirestoreDateTime(ticket.checkOutAt) || "—" },
                 { label: "Assigné à", value: ticket.assignedToId ?? "—" },
               ].map((i) => (
                 <div key={i.label} className="flex justify-between text-sm">

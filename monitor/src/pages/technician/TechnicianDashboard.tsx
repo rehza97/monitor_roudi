@@ -4,7 +4,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
-import { collection, onSnapshot, orderBy, query, limit } from "@/lib/firebase-firestore"
+import { collection, onSnapshot, query, where } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreSupportTicket } from "@/data/schema"
 import { canTechnicianAccessTicket } from "@/lib/access-control"
@@ -43,20 +43,51 @@ export default function TechnicianDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!db) return
-    const q = query(
-      collection(db, COLLECTIONS.supportTickets),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    )
-    const unsub = onSnapshot(q, (snap) => {
-      const visible = snap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
-        .filter((t) => canTechnicianAccessTicket(t, user?.id))
-      setTickets(visible)
+    if (!db || !user?.id) {
       setLoading(false)
+      return
+    }
+
+    let assignedRows: TicketDoc[] = []
+    let unassignedRows: TicketDoc[] = []
+    let assignedLoaded = false
+    let unassignedLoaded = false
+    const sync = () => {
+      if (!assignedLoaded || !unassignedLoaded) return
+      const byId = new Map<string, TicketDoc>()
+      assignedRows.forEach((ticket) => byId.set(ticket.id, ticket))
+      unassignedRows.forEach((ticket) => byId.set(ticket.id, ticket))
+      setTickets(
+        Array.from(byId.values())
+          .filter((t) => canTechnicianAccessTicket(t, user.id))
+          .sort((a, b) => (firestoreToMillis(b.createdAt) ?? 0) - (firestoreToMillis(a.createdAt) ?? 0))
+          .slice(0, 50),
+      )
+      setLoading(false)
+    }
+
+    const assignedQ = query(
+      collection(db, COLLECTIONS.supportTickets),
+      where("assignedToId", "==", user.id),
+    )
+    const unassignedQ = query(
+      collection(db, COLLECTIONS.supportTickets),
+      where("assignedToId", "==", null),
+    )
+    const unsubAssigned = onSnapshot(assignedQ, (snap) => {
+      assignedRows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
+      assignedLoaded = true
+      sync()
     })
-    return unsub
+    const unsubUnassigned = onSnapshot(unassignedQ, (snap) => {
+      unassignedRows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
+      unassignedLoaded = true
+      sync()
+    })
+    return () => {
+      unsubAssigned()
+      unsubUnassigned()
+    }
   }, [user?.id])
 
   const today = new Date()

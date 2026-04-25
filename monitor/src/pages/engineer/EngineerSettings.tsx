@@ -23,13 +23,13 @@ const notifRows: { key: NotifKey; label: string; desc: string }[] = [
   { key: "digest", label: "Résumé quotidien", desc: "Email récapitulatif chaque matin à 8h" },
 ]
 
-type Integration = { name: string; icon: string; desc: string; connected: boolean }
+type Integration = { name: string; icon: string; placeholder: string; apiKey: string; connected: boolean }
 
 const defaultIntegrations: Record<IntKey, Integration> = {
-  github: { name: "GitHub", icon: "code", desc: "github.com", connected: false },
-  slack: { name: "Slack", icon: "chat", desc: "workspace", connected: false },
-  pagerduty: { name: "PagerDuty", icon: "alarm", desc: "Non connecté", connected: false },
-  datadog: { name: "Datadog", icon: "monitoring", desc: "Non connecté", connected: false },
+  github:    { name: "GitHub",    icon: "code",       placeholder: "ghp_xxxxxxxxxxxxxxxxxxxx",      apiKey: "", connected: false },
+  slack:     { name: "Slack",     icon: "chat",       placeholder: "https://hooks.slack.com/…",     apiKey: "", connected: false },
+  pagerduty: { name: "PagerDuty", icon: "alarm",      placeholder: "Clé d'intégration PagerDuty",  apiKey: "", connected: false },
+  datadog:   { name: "Datadog",   icon: "monitoring", placeholder: "Clé API Datadog",              apiKey: "", connected: false },
 }
 
 const defaultThresholds = { cpu: "80", ram: "85", latency: "500", errorRate: "5" }
@@ -82,7 +82,7 @@ export default function EngineerSettings() {
             next[k] = {
               ...prev[k],
               connected: typeof r.connected === "boolean" ? r.connected : prev[k].connected,
-              desc: typeof r.desc === "string" ? r.desc : prev[k].desc,
+              apiKey: typeof r.apiKey === "string" ? r.apiKey : prev[k].apiKey,
             }
           }
         })
@@ -107,14 +107,10 @@ export default function EngineerSettings() {
     setSaveState("idle")
   }
 
-  function toggleIntegration(key: IntKey) {
+  function setApiKey(key: IntKey, value: string) {
     setIntegrations((p) => ({
       ...p,
-      [key]: {
-        ...p[key],
-        connected: !p[key].connected,
-        desc: p[key].connected ? "Non connecté" : `${p[key].name} connecté`,
-      },
+      [key]: { ...p[key], apiKey: value, connected: value.trim().length > 0 },
     }))
     setSaveState("idle")
   }
@@ -185,32 +181,35 @@ export default function EngineerSettings() {
           ))}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-          <h3 className="font-bold text-slate-900 dark:text-white">Intégrations</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white">Intégrations</h3>
+            <p className="text-xs text-slate-500 mt-1">Les clés sont sauvegardées dans Firebase et masquées à la prochaine visite.</p>
+          </div>
           {(Object.keys(integrations) as IntKey[]).map((key) => {
             const i = integrations[key]
             return (
-              <div key={key} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <div key={key} className="space-y-2 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
                 <div className="flex items-center gap-3">
-                  <div className="size-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <div className="size-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-[18px] text-slate-600 dark:text-slate-300">{i.icon}</span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">{i.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{i.desc}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{i.name}</p>
+                      {i.connected && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600">Connecté</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleIntegration(key)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                    i.connected
-                      ? "text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                      : "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  }`}
-                >
-                  {i.connected ? "Déconnecter" : "Connecter"}
-                </button>
+                <input
+                  type="password"
+                  value={i.apiKey}
+                  onChange={(e) => setApiKey(key, e.target.value)}
+                  placeholder={i.placeholder}
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
               </div>
             )
           })}

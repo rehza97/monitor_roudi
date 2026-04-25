@@ -45,6 +45,7 @@ const INPUT_CLS =
 const TEXTAREA_CLS =
   "w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c] resize-none"
 const LABEL_CLS = "text-sm font-medium text-slate-700 dark:text-slate-300"
+const EDITABLE_STATUSES = new Set(["En attente", "Brouillon"])
 
 interface FormData {
   requestType: string
@@ -228,6 +229,10 @@ function RequestModal({
   )
 }
 
+function canEditOrDeleteOrder(order: OrderDoc): boolean {
+  return order.kind === ORDER_KIND.clientRequest && EDITABLE_STATUSES.has(order.status)
+}
+
 export default function ClientRequests() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
@@ -305,7 +310,7 @@ export default function ClientRequests() {
   }
 
   async function handleEdit(data: FormData) {
-    if (!db || !editTarget) return
+    if (!db || !editTarget || !canEditOrDeleteOrder(editTarget)) return
     setSaving(true)
     try {
       await updateDoc(doc(db, COLLECTIONS.orders, editTarget.id), {
@@ -328,14 +333,14 @@ export default function ClientRequests() {
   }
 
   async function handleDelete() {
-    if (!db || !editTarget) return
+    if (!db || !editTarget || !canEditOrDeleteOrder(editTarget)) return
     await deleteDoc(doc(db, COLLECTIONS.orders, editTarget.id))
     setShowEdit(false)
     setEditTarget(null)
   }
 
   function openEdit(o: OrderDoc) {
-    if (o.kind !== ORDER_KIND.clientRequest) return
+    if (!canEditOrDeleteOrder(o)) return
     setEditTarget(o)
     setShowEdit(true)
   }
@@ -492,12 +497,22 @@ export default function ClientRequests() {
                               >
                                 Voir
                               </Link>
-                              <button
-                                onClick={() => openEdit(o)}
-                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">edit</span>
-                              </button>
+                              {canEditOrDeleteOrder(o) ? (
+                                <button
+                                  onClick={() => openEdit(o)}
+                                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                  title="Modifier"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                                </button>
+                              ) : (
+                                <span
+                                  className="text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                                  title="Modification disponible uniquement pour En attente ou Brouillon"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">lock</span>
+                                </span>
+                              )}
                             </>
                           ) : (
                             <span className="text-xs text-slate-400">Suivi en attente</span>

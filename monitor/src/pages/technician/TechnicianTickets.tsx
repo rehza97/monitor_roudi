@@ -7,13 +7,12 @@ import { db } from "@/config/firebase"
 import {
   collection,
   onSnapshot,
-  orderBy,
   query,
-  limit,
   addDoc,
   updateDoc,
   doc,
   serverTimestamp,
+  where,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreSupportTicket } from "@/data/schema"
@@ -73,20 +72,52 @@ export default function TechnicianTickets() {
   }, [searchParams])
 
   useEffect(() => {
-    if (!db) return
-    const q = query(
-      collection(db, COLLECTIONS.supportTickets),
-      orderBy("createdAt", "desc"),
-      limit(250),
-    )
-    const unsub = onSnapshot(q, (snap) => {
-      const visible = snap.docs
-        .map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
-        .filter((t) => canTechnicianAccessTicket(t, user?.id))
-      setTickets(visible)
+    if (!db || !user?.id) {
       setLoading(false)
+      return
+    }
+
+    let assignedRows: TicketDoc[] = []
+    let unassignedRows: TicketDoc[] = []
+    let assignedLoaded = false
+    let unassignedLoaded = false
+    const sync = () => {
+      if (!assignedLoaded || !unassignedLoaded) return
+      const byId = new Map<string, TicketDoc>()
+      assignedRows.forEach((ticket) => byId.set(ticket.id, ticket))
+      unassignedRows.forEach((ticket) => byId.set(ticket.id, ticket))
+      setTickets(
+        Array.from(byId.values())
+          .filter((t) => canTechnicianAccessTicket(t, user.id))
+          .sort((a, b) => {
+            const aMs = typeof a.createdAt === "object" && a.createdAt && "toDate" in a.createdAt
+              ? (a.createdAt as { toDate: () => Date }).toDate().getTime()
+              : 0
+            const bMs = typeof b.createdAt === "object" && b.createdAt && "toDate" in b.createdAt
+              ? (b.createdAt as { toDate: () => Date }).toDate().getTime()
+              : 0
+            return bMs - aMs
+          }),
+      )
+      setLoading(false)
+    }
+
+    const assignedQ = query(collection(db, COLLECTIONS.supportTickets), where("assignedToId", "==", user.id))
+    const unassignedQ = query(collection(db, COLLECTIONS.supportTickets), where("assignedToId", "==", null))
+    const unsubAssigned = onSnapshot(assignedQ, (snap) => {
+      assignedRows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
+      assignedLoaded = true
+      sync()
     })
-    return unsub
+    const unsubUnassigned = onSnapshot(unassignedQ, (snap) => {
+      unassignedRows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreSupportTicket) }))
+      unassignedLoaded = true
+      sync()
+    })
+    return () => {
+      unsubAssigned()
+      unsubUnassigned()
+    }
   }, [user?.id])
 
   const filtered = tickets.filter((t) => {
@@ -120,6 +151,7 @@ export default function TechnicianTickets() {
         priority: form.priority,
         status: "Ouvert",
         createdByUserId: user.id,
+        assignedToId: null,
         organizationId: form.organizationId.trim() || undefined,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -231,7 +263,7 @@ export default function TechnicianTickets() {
                                 onClick={(e) => handleTakeOver(e, t)}
                                 className="text-xs px-2.5 py-1 rounded-lg font-semibold bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors whitespace-nowrap"
                               >
-                                Prendre en charge
+                                Accepter
                               </button>
                             )}
                             <Link

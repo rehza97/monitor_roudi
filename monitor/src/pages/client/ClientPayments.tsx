@@ -5,16 +5,19 @@ import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import {
   onSnapshot,
-  updateDoc,
   collection,
-  doc,
   query,
   where,
   orderBy,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreInvoice } from "@/data/schema"
-import { buildInvoicePdfDataUri, downloadInvoicePdf } from "@/lib/invoice-pdf"
+import { submitBaridiMobPayment } from "@/lib/client-payments"
+import {
+  buildBaridiMobReceiptPdfDataUri,
+  buildInvoicePdfDataUri,
+  downloadInvoicePdf,
+} from "@/lib/invoice-pdf"
 import { formatFirestoreDate } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -97,13 +100,24 @@ export default function ClientPayments() {
   }, [user?.organizationId])
 
   async function handlePay(inv: InvoiceDoc) {
-    if (!db) return
     setPaying(inv.id)
-    await new Promise((r) => setTimeout(r, 800))
     try {
-      await updateDoc(doc(db, COLLECTIONS.invoices, inv.id), {
-        status: "Payée",
-      } as Partial<FirestoreInvoice>)
+      const receipt = await submitBaridiMobPayment({ invoiceId: inv.id })
+      const dataUri = buildBaridiMobReceiptPdfDataUri({
+        receiptReference: receipt.receiptReference,
+        invoiceNumber: inv.id,
+        invoiceTitle: inv.title,
+        amount: inv.amount ?? 0,
+        amountLabel: formatAmount(inv.amount ?? 0),
+        paidAtIso: receipt.paidAtIso,
+        clientLabel: inv.clientLabel,
+        clientEmail: inv.clientEmail,
+        organizationId: inv.organizationId,
+      })
+      downloadInvoicePdf(dataUri, `recu-baridimob-${receipt.receiptReference}.pdf`)
+    } catch (error) {
+      console.error(error)
+      window.alert("Le paiement BaridiMob n'a pas pu être envoyé. Réessayez plus tard.")
     } finally {
       setPaying(null)
     }
@@ -287,7 +301,7 @@ export default function ClientPayments() {
                         <span className="material-symbols-outlined text-[14px]">
                           {paying === inv.id ? "hourglass_empty" : "payments"}
                         </span>
-                        {paying === inv.id ? "Traitement…" : "Payer"}
+                        {paying === inv.id ? "Envoi…" : "Envoyer reçu BaridiMob"}
                       </button>
                     )}
 

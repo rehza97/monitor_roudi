@@ -8,6 +8,21 @@ import { COLLECTIONS, type FirestoreSupportTicket } from "@/data/schema"
 import { doc, getDoc, serverTimestamp, updateDoc } from "@/lib/firebase-firestore"
 import { canTechnicianAccessTicket } from "@/lib/access-control"
 
+function parseMaterialUsage(value: string): Array<{ label: string; quantity?: number }> {
+  return value
+    .split(/\n|,/)
+    .map((raw) => raw.trim())
+    .filter(Boolean)
+    .map((raw) => {
+      const match = raw.match(/^(\d+(?:[.,]\d+)?)\s*[x×-]?\s*(.+)$/i)
+      if (!match) return { label: raw }
+      return {
+        quantity: Number(match[1]!.replace(",", ".")),
+        label: match[2]!.trim(),
+      }
+    })
+}
+
 export default function TechnicianTicketValidate() {
   const { user } = useAuth()
   const { id } = useParams()
@@ -47,10 +62,14 @@ export default function TechnicianTicketValidate() {
   async function handleConfirm() {
     if (!db || !id) return
     setSubmitting(true)
+    const materialUsageItems = parseMaterialUsage(materials)
     await updateDoc(doc(db, COLLECTIONS.supportTickets, id), {
       status: "Résolu",
+      checkOutAt: serverTimestamp(),
       duration: duration.trim() || undefined,
       materialsUsed: materials.trim() || undefined,
+      materialUsageItems,
+      inventoryAdjustmentStatus: materialUsageItems.length > 0 ? "pending_review" : "none",
       report: finalReport.trim(),
       updatedAt: serverTimestamp(),
     })

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { engineerNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
@@ -169,6 +170,12 @@ export default function EngineerMonitoring() {
                   <span>CPU {s.cpu}%</span>
                   <span>MEM {s.mem}%</span>
                 </div>
+                <Link
+                  to={`/engineer/logs/${s.id}`}
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+                >
+                  Logs →
+                </Link>
               </div>
             ))}
           </div>

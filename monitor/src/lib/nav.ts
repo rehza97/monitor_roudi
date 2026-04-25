@@ -41,12 +41,15 @@ export const engineerNav: NavItem[] = [
   { icon: "folder_open",     label: "Mes Projets",      to: "/engineer/projects" },
   { icon: "assignment",      label: "Demandes",         to: "/engineer/requests",   badge: 3 },
   { icon: "monitoring",      label: "Monitoring",       to: "/engineer/monitoring" },
+  { icon: "timer",           label: "Suivi du temps",   to: "/engineer/time-tracking" },
   { icon: "smart_toy",       label: "AI Agents",        to: "/engineer/ai-agents" },
+  { icon: "calendar_today",  label: "Calendrier",       to: "/engineer/calendar" },
   { icon: "calendar_month",  label: "Réunions",         to: "/engineer/meetings" },
   { icon: "settings_remote", label: "Contrôle distant", to: "/engineer/remote" },
   { icon: "chat",            label: "Messagerie",       to: "/engineer/messages" },
   { icon: "notifications",   label: "Notifications",    to: "/engineer/notifications" },
   { icon: "settings",        label: "Paramètres",       to: "/engineer/settings" },
+  { icon: "person",          label: "Mon Profil",       to: "/engineer/profile" },
 ]
 
 export const technicianNav: NavItem[] = [

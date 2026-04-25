@@ -72,6 +72,10 @@ import EngineerRemoteControl   from "./pages/engineer/EngineerRemoteControl"
 import EngineerMessages        from "./pages/engineer/EngineerMessages"
 import EngineerNotifications   from "./pages/engineer/EngineerNotifications"
 import EngineerSettings        from "./pages/engineer/EngineerSettings"
+import EngineerProfile         from "./pages/engineer/EngineerProfile"
+import EngineerCalendar        from "./pages/engineer/EngineerCalendar"
+import EngineerServiceLogs     from "./pages/engineer/EngineerServiceLogs"
+import EngineerTimeTracking    from "./pages/engineer/EngineerTimeTracking"
 
 // Technician
 import TechnicianDashboard      from "./pages/technician/TechnicianDashboard"
@@ -155,18 +159,22 @@ export default function App() {
 
       {/* ── Engineer ────────────────────────────────────── */}
       <Route path="/engineer" element={<Navigate to="/engineer/dashboard" replace />} />
-      <Route path="/engineer/dashboard"             element={<ProtectedRoute role="engineer"><EngineerDashboard /></ProtectedRoute>} />
-      <Route path="/engineer/projects"             element={<ProtectedRoute role="engineer"><EngineerProjects /></ProtectedRoute>} />
-      <Route path="/engineer/projects/:id/progress" element={<ProtectedRoute role="engineer"><EngineerProjectProgress /></ProtectedRoute>} />
-      <Route path="/engineer/requests"             element={<ProtectedRoute role="engineer"><EngineerRequests /></ProtectedRoute>} />
-      <Route path="/engineer/requests/:id"         element={<ProtectedRoute role="engineer"><EngineerRequestDetail /></ProtectedRoute>} />
-      <Route path="/engineer/monitoring"           element={<ProtectedRoute role="engineer"><EngineerMonitoring /></ProtectedRoute>} />
-      <Route path="/engineer/ai-agents"            element={<ProtectedRoute role="engineer"><AgentsShowcasePage role="engineer" navItems={engineerNav} /></ProtectedRoute>} />
-      <Route path="/engineer/meetings"             element={<ProtectedRoute role="engineer"><MeetingsPlannerPage role="engineer" navItems={engineerNav} canManage /></ProtectedRoute>} />
-      <Route path="/engineer/remote"               element={<ProtectedRoute role="engineer"><EngineerRemoteControl /></ProtectedRoute>} />
-      <Route path="/engineer/messages"             element={<ProtectedRoute role="engineer"><EngineerMessages /></ProtectedRoute>} />
-      <Route path="/engineer/notifications"        element={<ProtectedRoute role="engineer"><EngineerNotifications /></ProtectedRoute>} />
-      <Route path="/engineer/settings"             element={<ProtectedRoute role="engineer"><EngineerSettings /></ProtectedRoute>} />
+      <Route path="/engineer/dashboard"              element={<ProtectedRoute role="engineer"><EngineerDashboard /></ProtectedRoute>} />
+      <Route path="/engineer/projects"               element={<ProtectedRoute role="engineer"><EngineerProjects /></ProtectedRoute>} />
+      <Route path="/engineer/projects/:id/progress"  element={<ProtectedRoute role="engineer"><EngineerProjectProgress /></ProtectedRoute>} />
+      <Route path="/engineer/requests"               element={<ProtectedRoute role="engineer"><EngineerRequests /></ProtectedRoute>} />
+      <Route path="/engineer/requests/:id"           element={<ProtectedRoute role="engineer"><EngineerRequestDetail /></ProtectedRoute>} />
+      <Route path="/engineer/monitoring"             element={<ProtectedRoute role="engineer"><EngineerMonitoring /></ProtectedRoute>} />
+      <Route path="/engineer/logs/:serviceId"        element={<ProtectedRoute role="engineer"><EngineerServiceLogs /></ProtectedRoute>} />
+      <Route path="/engineer/calendar"               element={<ProtectedRoute role="engineer"><EngineerCalendar /></ProtectedRoute>} />
+      <Route path="/engineer/time-tracking"          element={<ProtectedRoute role="engineer"><EngineerTimeTracking /></ProtectedRoute>} />
+      <Route path="/engineer/profile"                element={<ProtectedRoute role="engineer"><EngineerProfile /></ProtectedRoute>} />
+      <Route path="/engineer/ai-agents"              element={<ProtectedRoute role="engineer"><AgentsShowcasePage role="engineer" navItems={engineerNav} /></ProtectedRoute>} />
+      <Route path="/engineer/meetings"               element={<ProtectedRoute role="engineer"><MeetingsPlannerPage role="engineer" navItems={engineerNav} canManage /></ProtectedRoute>} />
+      <Route path="/engineer/remote"                 element={<ProtectedRoute role="engineer"><EngineerRemoteControl /></ProtectedRoute>} />
+      <Route path="/engineer/messages"               element={<ProtectedRoute role="engineer"><EngineerMessages /></ProtectedRoute>} />
+      <Route path="/engineer/notifications"          element={<ProtectedRoute role="engineer"><EngineerNotifications /></ProtectedRoute>} />
+      <Route path="/engineer/settings"               element={<ProtectedRoute role="engineer"><EngineerSettings /></ProtectedRoute>} />
 
       {/* ── Technician ──────────────────────────────────── */}
       <Route path="/technician" element={<Navigate to="/technician/dashboard" replace />} />

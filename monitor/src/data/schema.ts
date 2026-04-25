@@ -21,6 +21,7 @@ export interface UserProfile {
   avatarColor: string
   /** Optional link to an organization (e.g. client tenant) */
   organizationId?: string
+  zone?: string
 }
 
 export interface Deployment {
@@ -104,7 +105,7 @@ export interface FirestoreOrder {
   kind: OrderKind
   createdByUserId: string
   /** Staff owner for triage/processing flows (engineer/technician) */
-  assignedToId?: string
+  assignedToId?: string | null
   status: string
   /** Demande client */
   clientLabel?: string
@@ -363,6 +364,8 @@ export const ROOT_COLLECTIONS = {
   conversations: "conversations",
   stackServices: "stack_services",
   engineers: "engineers",
+  organizationInvites: "organization_invites",
+  attachments: "attachments",
 } as const
 
 /**
@@ -436,10 +439,22 @@ export interface FirestoreSupportTicket {
   status: "Ouvert" | "En cours" | "Résolu" | "Fermé"
   createdByUserId: string
   organizationId?: string
-  assignedToId?: string
+  assignedToId?: string | null
+  technicianRejectedBy?: string
+  deploymentId?: string
+  scheduledAt?: unknown
+  siteAddress?: string
+  estimatedDuration?: string
+  visitWindow?: string
+  checkInAt?: unknown
+  checkOutAt?: unknown
+  checkInLocation?: { latitude: number; longitude: number; accuracy?: number | null }
+  checkOutLocation?: { latitude: number; longitude: number; accuracy?: number | null }
   report?: string
   duration?: string
   materialsUsed?: string
+  materialUsageItems?: Array<{ label: string; quantity?: number }>
+  inventoryAdjustmentStatus?: "none" | "pending_review" | "approved"
   createdAt?: unknown
   updatedAt?: unknown
 }
@@ -510,6 +525,17 @@ export interface FirestoreInvoice {
   lineItems?: InvoiceLineItem[]
   notes?: string
   pdfUrl?: string
+  paymentMethod?: string
+  paymentProvider?: string
+  paidAt?: unknown
+  paidByUserId?: string
+  paymentReceipt?: {
+    provider: string
+    reference: string
+    amount: number
+    submittedAt?: unknown
+    submittedByUserId?: string
+  }
   sentAt?: unknown
   sentByUserId?: string
   sentByName?: string
@@ -529,6 +555,9 @@ export interface FirestoreFieldServiceClient {
   city: string
   address: string
   status: string
+  zone?: string
+  assignedTechnicianId?: string
+  assignedTechnicianIds?: string[]
   tickets?: number
   since?: string
   lastIntervention?: string
@@ -575,9 +604,60 @@ export interface FirestoreCareerJob {
   createdAt?: unknown
 }
 
+/** Firestore `organization_invites/{id}` */
+export interface FirestoreOrganizationInvite {
+  email: string
+  organizationId: string
+  role: UserRole
+  code: string
+  status: "pending" | "accepted" | "expired" | "revoked"
+  createdByUserId: string
+  acceptedByUserId?: string
+  createdAt?: unknown
+  acceptedAt?: unknown
+  expiresAt?: unknown
+}
+
+/** Firestore `attachments/{id}` metadata; binary files live in Firebase Storage. */
+export interface FirestoreAttachment {
+  ownerType: "support_ticket" | "invoice" | "project" | "intervention_report" | string
+  ownerId: string
+  fileName: string
+  contentType?: string
+  storagePath: string
+  organizationId?: string
+  uploadedByUserId: string
+  createdAt?: unknown
+}
+
+/** Firestore `time_entries/{id}` — engineer billable hour logs */
+export interface FirestoreTimeEntry {
+  assignedToId: string
+  projectId?: string
+  projectTitle: string
+  date: string
+  hours: number
+  description: string
+  billable: boolean
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+/** Firestore `service_logs/{id}` — infra service log lines */
+export interface FirestoreServiceLog {
+  serviceId: string
+  serviceName?: string
+  level: "info" | "warning" | "error" | "debug"
+  message: string
+  source?: string
+  createdAt?: unknown
+}
+
 /** Backward-compatible aggregate for imports that expect a single constant. */
 export const COLLECTIONS = {
   ...ROOT_COLLECTIONS,
   ...SUBCOLLECTIONS,
   ...OPTIONAL_ROOT_COLLECTIONS,
+  timeEntries: "time_entries",
+  serviceLogs: "service_logs",
 } as const

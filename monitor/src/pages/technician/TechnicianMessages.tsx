@@ -26,6 +26,7 @@ type ConversationRow = {
   color: string
   initials: string
   participantNames: Record<string, string>
+  support?: boolean
 }
 
 type MessageBubble = {
@@ -39,6 +40,7 @@ type MessageBubble = {
 }
 
 const DEFAULT_AVATAR = "bg-slate-500"
+const SUPPORT_CONVERSATION_NAME = "Support Rodaina"
 
 function roleLabel(role: string): string {
   switch (role) {
@@ -93,6 +95,7 @@ export default function TechnicianMessages() {
   const [messages, setMessages] = useState<MessageBubble[]>([])
   const [input, setInput] = useState("")
   const [search, setSearch] = useState("")
+  const [creatingConversation, setCreatingConversation] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const selected = useMemo(() => threads.find((t) => t.id === selectedId) ?? null, [threads, selectedId])
@@ -123,7 +126,10 @@ export default function TechnicianMessages() {
           : []
 
         const otherId = participantIds.find((id) => id !== uid) ?? ""
-        const name = participantNames[otherId] ?? "Contact"
+        const name =
+          (typeof data.name === "string" && data.name.trim())
+            ? data.name.trim()
+            : participantNames[otherId] ?? "Contact"
         const lastSender = typeof data.lastSenderUserId === "string" ? data.lastSenderUserId : ""
 
         return {
@@ -136,6 +142,7 @@ export default function TechnicianMessages() {
           color: DEFAULT_AVATAR,
           initials: initialsFromName(name),
           participantNames,
+          support: data.support === true,
         } satisfies ConversationRow
       })
 
@@ -208,6 +215,45 @@ export default function TechnicianMessages() {
     })
   }
 
+  async function startSupportConversation() {
+    if (!db || !uid || !user) return
+    const existing = threads.find((thread) => thread.support || thread.name === SUPPORT_CONVERSATION_NAME)
+    if (existing) {
+      setSelectedId(existing.id)
+      return
+    }
+
+    setCreatingConversation(true)
+    try {
+      const introText = "Bonjour, j'ai besoin d'assistance terrain."
+      const ref = await addDoc(collection(db, COLLECTIONS.conversations), {
+        participantIds: [uid],
+        participantNames: {
+          [uid]: user.name,
+          support: SUPPORT_CONVERSATION_NAME,
+        },
+        name: SUPPORT_CONVERSATION_NAME,
+        support: true,
+        createdByUserId: uid,
+        lastMessageAt: serverTimestamp(),
+        lastMessageText: introText,
+        lastSenderUserId: uid,
+        createdAt: serverTimestamp(),
+      } as Record<string, unknown>)
+
+      await addDoc(collection(db, COLLECTIONS.conversations, ref.id, COLLECTIONS.messages), {
+        senderUserId: uid,
+        senderName: user.name,
+        body: introText,
+        text: introText,
+        createdAt: serverTimestamp(),
+      })
+      setSelectedId(ref.id)
+    } finally {
+      setCreatingConversation(false)
+    }
+  }
+
   const filtered = threads.filter((t) => {
     const q = search.toLowerCase()
     return t.name.toLowerCase().includes(q) || t.role.toLowerCase().includes(q)
@@ -218,6 +264,17 @@ export default function TechnicianMessages() {
       <div className="flex h-[calc(100vh-64px)]">
         <div className="w-72 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
           <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => void startSupportConversation()}
+              disabled={creatingConversation}
+              className="mb-3 w-full h-9 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[15px]">
+                {creatingConversation ? "hourglass_empty" : "add_comment"}
+              </span>
+              {creatingConversation ? "Création…" : "Démarrer support"}
+            </button>
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
               <input
@@ -230,8 +287,16 @@ export default function TechnicianMessages() {
           </div>
           <div className="flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-slate-400 px-4 text-center">
-                Aucune conversation.
+              <div className="h-full flex flex-col items-center justify-center text-sm text-slate-400 px-4 text-center gap-3">
+                <p>Aucune conversation.</p>
+                <button
+                  type="button"
+                  onClick={() => void startSupportConversation()}
+                  disabled={creatingConversation}
+                  className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold disabled:opacity-60"
+                >
+                  Démarrer support
+                </button>
               </div>
             ) : null}
             {filtered.map((t) => (

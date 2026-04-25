@@ -15,6 +15,7 @@ type TicketEvent = {
   priority: string
   address: string
   duration: string
+  window: string
 }
 
 const days = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
@@ -28,17 +29,19 @@ function startOfWeek(date: Date): Date {
 }
 
 function parseEvent(id: string, data: FirestoreSupportTicket): TicketEvent {
+  const scheduledMs = firestoreToMillis(data.scheduledAt)
   const createdMs = firestoreToMillis(data.createdAt)
   const updatedMs = firestoreToMillis(data.updatedAt)
-  const base = new Date(updatedMs ?? createdMs ?? Date.now())
+  const base = new Date(scheduledMs ?? updatedMs ?? createdMs ?? Date.now())
   return {
     id,
     date: base,
     title: data.subject || "Intervention",
     client: data.organizationId || "Client",
     priority: data.priority,
-    address: "Sur site",
-    duration: data.duration || "—",
+    address: data.siteAddress || "Sur site",
+    duration: data.estimatedDuration || data.duration || "—",
+    window: data.visitWindow || "",
   }
 }
 
@@ -67,6 +70,7 @@ function Modal({ event, onClose }: { event: TicketEvent; onClose: () => void }) 
             { icon: "person", label: event.client },
             { icon: "location_on", label: event.address },
             { icon: "schedule", label: `Durée : ${event.duration}` },
+            { icon: "event", label: event.window || "Fenêtre non définie" },
           ].map((r) => (
             <div key={r.icon} className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
               <span className="material-symbols-outlined text-[18px] text-amber-500">{r.icon}</span>
@@ -193,6 +197,7 @@ export default function TechnicianCalendar() {
                     <button key={ev.id} onClick={() => setSelectedEvent(ev)} className={`w-full text-left p-2.5 rounded-lg border text-xs hover:opacity-80 transition-opacity ${eventColor(ev.priority)}`}>
                       <p className="font-bold">{ev.date.toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit" })}</p>
                       <p className="font-medium leading-snug mt-0.5">{ev.title}</p>
+                      {ev.window && <p className="opacity-80 mt-0.5">{ev.window}</p>}
                       <p className="opacity-70 mt-0.5 truncate">{ev.client}</p>
                     </button>
                   ))}

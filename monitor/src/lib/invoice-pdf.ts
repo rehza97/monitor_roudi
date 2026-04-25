@@ -3,6 +3,7 @@ import type { InvoiceLineItem, InvoiceCompanyConfig } from "@/data/schema"
 
 export interface InvoicePdfInput {
   invoiceNumber: string
+  documentLabel?: string
   title: string
   amountLabel: string
   status: string
@@ -17,6 +18,18 @@ export interface InvoicePdfInput {
   lineItems?: InvoiceLineItem[]
   notes?: string
   company?: Partial<InvoiceCompanyConfig>
+}
+
+export interface BaridiMobReceiptPdfInput {
+  receiptReference: string
+  invoiceNumber: string
+  invoiceTitle: string
+  amount?: number
+  amountLabel: string
+  paidAtIso: string
+  clientLabel?: string
+  clientEmail?: string
+  organizationId?: string
 }
 
 // ─── Primitive PDF drawing helpers ───────────────────────────────────────────
@@ -122,6 +135,7 @@ function buildStream(input: InvoicePdfInput): string {
   const bankSWIFT      = co.bankSWIFT      || "CPAADZIAXXX"
   const bankNote       = co.bankNote       || "Virement bancaire uniquement. Merci d'indiquer le numero de facture en reference."
 
+  const documentLabel = input.documentLabel || "FACTURE"
   const ref      = (input.invoiceNumber || "").slice(0, 20).toUpperCase()
   const refShort = ref.slice(0, 8) || "N/A"
   const title    = input.title || "Facture de services"
@@ -162,9 +176,9 @@ function buildStream(input: InvoicePdfInput): string {
   ops.push(text(ML, H - 76, companyEmail, 8, "F1", [0.55, 0.62, 0.75]))
   ops.push(text(ML, H - 88, companyPhone, 8, "F1", [0.55, 0.62, 0.75]))
 
-  // Right: FACTURE + number + status pill
-  ops.push(text(W - MR - 190, H - 30, "FACTURE", 26, "F2", WHITE))
-  ops.push(text(W - MR - 190, H - 50, `N degrees  ${refShort}`, 9, "F1", [0.65, 0.72, 0.85]))
+  // Right: document label + number + status pill
+  ops.push(text(W - MR - 210, H - 30, documentLabel, documentLabel.length > 12 ? 19 : 26, "F2", WHITE))
+  ops.push(text(W - MR - 210, H - 50, `Ref ${refShort}`, 9, "F1", [0.65, 0.72, 0.85]))
 
   // Status pill (rounded via filled rect)
   const pillW = 96; const pillH = 18; const pillX = W - MR - 100; const pillY = H - 75
@@ -184,7 +198,7 @@ function buildStream(input: InvoicePdfInput): string {
   const COL2_X    = ML + COL1_W + 20
 
   // Column 1 — Bill To
-  ops.push(text(ML, BLOCK_TOP - 2, "FACTURE A", 7, "F2", [0.50, 0.53, 0.58]))
+  ops.push(text(ML, BLOCK_TOP - 2, documentLabel === "FACTURE" ? "FACTURE A" : "RECU POUR", 7, "F2", [0.50, 0.53, 0.58]))
   ops.push(hline(ML, ML + 200, BLOCK_TOP - 8, BORDER))
   ops.push(text(ML, BLOCK_TOP - 22, client, 11, "F2", DARK))
   if (email)   ops.push(text(ML, BLOCK_TOP - 37, email,   9, "F1", MID_GRAY))
@@ -342,6 +356,32 @@ function buildPdfBytes(input: InvoicePdfInput): Uint8Array {
 
 export function buildInvoicePdfDataUri(input: InvoicePdfInput): string {
   return `data:application/pdf;base64,${toBase64(buildPdfBytes(input))}`
+}
+
+export function buildBaridiMobReceiptPdfDataUri(input: BaridiMobReceiptPdfInput): string {
+  const paidAt = new Date(input.paidAtIso)
+  return buildInvoicePdfDataUri({
+    invoiceNumber: input.receiptReference,
+    documentLabel: "RECU BARIDIMOB",
+    title: `Recu BaridiMob - ${input.invoiceTitle}`,
+    amountLabel: input.amountLabel,
+    status: "Payée",
+    issuedAt: Number.isNaN(paidAt.getTime()) ? input.paidAtIso : paidAt,
+    dueAt: Number.isNaN(paidAt.getTime()) ? input.paidAtIso : paidAt,
+    clientLabel: input.clientLabel,
+    clientEmail: input.clientEmail,
+    organizationId: input.organizationId,
+    notes: `Paiement BaridiMob confirme. Reference recu: ${input.receiptReference}. Facture: ${input.invoiceNumber}.`,
+    taxRate: 0,
+    lineItems: [
+      {
+        description: `Paiement BaridiMob - ${input.invoiceTitle}`,
+        qty: 1,
+        unitPrice: input.amount ?? 0,
+        total: input.amount ?? 0,
+      },
+    ],
+  })
 }
 
 export function downloadInvoicePdf(dataUri: string, filename: string): void {

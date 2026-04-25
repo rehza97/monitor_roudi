@@ -19,8 +19,9 @@ interface NotifRow extends FirestoreNotification {
 }
 
 /**
- * Live unread counts for the client sidebar (Messagerie + Notifications).
- * Message unread: conversations where the last message is from someone else and is newer than the local read cursor (same idea as admin messenger).
+ * Live unread counts for dashboard sidebars (Messagerie + Notifications).
+ * Message unread: conversations where the last message is from someone else
+ * and is newer than the local read cursor.
  */
 export function useClientSidebarBadges(role: string, user: UserProfile | null) {
   const [messageUnread, setMessageUnread] = useState(0)
@@ -39,7 +40,7 @@ export function useClientSidebarBadges(role: string, user: UserProfile | null) {
   }, [])
 
   useEffect(() => {
-    if (role !== "client" || !user?.id || !db) {
+    if (!role || !user?.id || !db) {
       setMessageUnread(0)
       convDocsRef.current = []
       computeMsgUnreadRef.current = () => {}
@@ -88,12 +89,12 @@ export function useClientSidebarBadges(role: string, user: UserProfile | null) {
   }, [role, user?.id])
 
   useEffect(() => {
-    if (role !== "client" || !user?.id) return
+    if (!role || !user?.id) return
     computeMsgUnreadRef.current()
   }, [readTick, role, user?.id])
 
   useEffect(() => {
-    if (role !== "client" || !user?.id || !db) {
+    if (!role || !user?.id || !db) {
       setNotifsByUser([])
       setNotifsByOrg([])
       return
@@ -150,10 +151,5 @@ export function useClientSidebarBadges(role: string, user: UserProfile | null) {
     return [...merged.values()].filter((n) => n.read !== true).length
   }, [notifsByUser, notifsByOrg])
 
-  if (role !== "client") {
-    return { messageUnread: 0, notificationUnread: 0 }
-  }
-
   return { messageUnread, notificationUnread }
 }
-

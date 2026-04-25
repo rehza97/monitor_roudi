@@ -174,12 +174,13 @@ export default function ClientSupport() {
   const [successId, setSuccessId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!db || !user?.id) {
+    if (!db || !user?.id || !user?.organizationId) {
       setLoading(false)
       return
     }
 
     const constraints: Parameters<typeof query>[1][] = [
+      where("organizationId", "==", user.organizationId),
       where("createdByUserId", "==", user.id),
       orderBy("createdAt", "desc"),
     ]
@@ -193,7 +194,7 @@ export default function ClientSupport() {
     })
 
     return () => unsub()
-  }, [user?.id])
+  }, [user?.id, user?.organizationId])
 
   async function handleCreate(
     subject: string,
@@ -211,6 +212,7 @@ export default function ClientSupport() {
         priority: priority as FirestoreSupportTicket["priority"],
         status: "Ouvert",
         createdByUserId: user.id,
+        assignedToId: null,
         organizationId: user.organizationId ?? "",
         createdAt: serverTimestamp(),
       } as FirestoreSupportTicket)

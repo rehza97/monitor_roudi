@@ -24,8 +24,13 @@ type AppRow = {
   env: string
   cpu: number
   ram: number
+  disk: number
   requests: string
   status: UiStatus
+  host?: string
+  uptimeSeconds?: number
+  loadAverage?: number[]
+  runningProjects?: Array<Record<string, unknown>>
 }
 
 type ActionState = "idle" | "loading" | "done"
@@ -71,7 +76,10 @@ function parseDeployment(id: string, data: Record<string, unknown>, orgNames: Ma
   const env = typeof data.environment === "string" ? data.environment : "—"
   const cpu = typeof data.cpu === "number" ? data.cpu : Number(data.cpu)
   const ram = typeof data.ram === "number" ? data.ram : Number(data.ram)
+  const disk = typeof data.disk === "number" ? data.disk : Number(data.disk)
   const req = data.requests
+  const runtime = data.runtime && typeof data.runtime === "object" ? data.runtime as Record<string, unknown> : {}
+  const runningProjects = Array.isArray(runtime.runningProjects) ? runtime.runningProjects as Array<Record<string, unknown>> : []
 
   const client =
     (orgId && orgNames.get(orgId)) ||
@@ -87,9 +95,31 @@ function parseDeployment(id: string, data: Record<string, unknown>, orgNames: Ma
     env,
     cpu: Number.isFinite(cpu) ? Math.min(100, Math.max(0, cpu)) : 0,
     ram: Number.isFinite(ram) ? Math.min(100, Math.max(0, ram)) : 0,
+    disk: Number.isFinite(disk) ? Math.min(100, Math.max(0, disk)) : 0,
     requests: formatRequests(req),
     status: mapHealth(data.health),
+    host: typeof runtime.host === "string" ? runtime.host : undefined,
+    uptimeSeconds: typeof runtime.uptimeSeconds === "number" ? runtime.uptimeSeconds : undefined,
+    loadAverage: Array.isArray(runtime.loadAverage) ? runtime.loadAverage.map(Number).filter(Number.isFinite) : undefined,
+    runningProjects,
   }
+}
+
+function formatUptime(seconds: number | undefined): string {
+  if (!seconds || seconds < 0) return "—"
+  const days = Math.floor(seconds / 86_400)
+  const hours = Math.floor((seconds % 86_400) / 3_600)
+  const minutes = Math.floor((seconds % 3_600) / 60)
+  if (days > 0) return `${days}j ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+function projectLabel(project: Record<string, unknown>): string {
+  const name = typeof project.name === "string" ? project.name : "process"
+  const status = typeof project.status === "string" ? project.status : "running"
+  const type = typeof project.type === "string" ? project.type : "service"
+  return `${name} · ${type} · ${status}`
 }
 
 function AppDetailModal({
@@ -156,7 +186,11 @@ function AppDetailModal({
           ))}
         </div>
 
-        {[{ label: "CPU", val: app.cpu }, { label: "RAM", val: app.ram }].map(b => (
+        {[
+          { label: "CPU", val: app.cpu },
+          { label: "RAM", val: app.ram },
+          { label: "Disque", val: app.disk },
+        ].map(b => (
           <div key={b.label} className="mb-3">
             <div className="flex justify-between text-xs text-slate-500 mb-1">
               <span>{b.label}</span>
@@ -170,6 +204,43 @@ function AppDetailModal({
             </div>
           </div>
         ))}
+
+        <div className="mt-5 rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950/40">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">VPS agent</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-slate-500">Host</p>
+              <p className="font-medium text-slate-900 dark:text-white truncate">{app.host || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Uptime</p>
+              <p className="font-medium text-slate-900 dark:text-white">{formatUptime(app.uptimeSeconds)}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-xs text-slate-500">Load average</p>
+              <p className="font-medium text-slate-900 dark:text-white">
+                {app.loadAverage?.length ? app.loadAverage.map(n => n.toFixed(2)).join(" / ") : "—"}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <p className="text-xs text-slate-500 mb-2">Projets / services en cours</p>
+            {app.runningProjects?.length ? (
+              <div className="space-y-1.5 max-h-28 overflow-auto pr-1">
+                {app.runningProjects.slice(0, 8).map((project, index) => (
+                  <div
+                    key={`${String(project.name ?? "project")}-${index}`}
+                    className="text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-2 text-slate-700 dark:text-slate-300"
+                  >
+                    {projectLabel(project)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">Aucun projet detecte par Docker/PM2.</p>
+            )}
+          </div>
+        </div>
 
         <div className="flex gap-2 mt-5">
           <button

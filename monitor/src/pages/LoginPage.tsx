@@ -2,11 +2,79 @@ import { useState, useRef, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 
+type DemoAccount = {
+  id: string
+  label: string
+  role: string
+  email: string
+  password: string
+}
+
+const DEFAULT_ACCOUNTS: DemoAccount[] = [
+  {
+    id: "admin-main",
+    label: "Admin principal",
+    role: "Admin",
+    email: "admin@roudi.dz",
+    password: "admin123",
+  },
+  {
+    id: "admin-ops",
+    label: "Admin operations",
+    role: "Admin",
+    email: "ops.admin@roudi.dz",
+    password: "admin123",
+  },
+  {
+    id: "client-sonatrach",
+    label: "Client Sonatrach",
+    role: "Client",
+    email: "nadia.khelifa@sonatrach.dz",
+    password: "admin123",
+  },
+  {
+    id: "client-cevital",
+    label: "Client Cevital",
+    role: "Client",
+    email: "yacine.merabet@cevital.dz",
+    password: "admin123",
+  },
+  {
+    id: "engineer-karim",
+    label: "Ingenieur Karim",
+    role: "Ingenieur",
+    email: "karim.touati@roudi.dz",
+    password: "admin123",
+  },
+  {
+    id: "engineer-meriem",
+    label: "Ingenieur Meriem",
+    role: "Ingenieur",
+    email: "meriem.aitouali@roudi.dz",
+    password: "admin123",
+  },
+  {
+    id: "technician-samir",
+    label: "Technicien Samir",
+    role: "Technicien",
+    email: "samir.charef@roudi.dz",
+    password: "admin123",
+  },
+  {
+    id: "technician-ines",
+    label: "Technicien Ines",
+    role: "Technicien",
+    email: "ines.boulahbel@roudi.dz",
+    password: "admin123",
+  },
+]
+
 export default function LoginPage() {
   const { login, resetPassword, authError, loading } = useAuth()
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState("")
+  const [selectedAccountId, setSelectedAccountId] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [resettingPassword, setResettingPassword] = useState(false)
@@ -27,6 +95,22 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function handleAccountSelect(accountId: string) {
+    setSelectedAccountId(accountId)
+    setError("")
+    setResetMessage("")
+
+    const account = DEFAULT_ACCOUNTS.find((item) => item.id === accountId)
+    if (!account) {
+      if (emailRef.current) emailRef.current.value = ""
+      if (passwordRef.current) passwordRef.current.value = ""
+      return
+    }
+
+    if (emailRef.current) emailRef.current.value = account.email
+    if (passwordRef.current) passwordRef.current.value = account.password
   }
 
   async function handleResetPassword(e: React.MouseEvent) {
@@ -75,6 +159,36 @@ export default function LoginPage() {
             </div>
           )}
 
+          <div className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/70 p-3 dark:border-blue-900/40 dark:bg-blue-950/20">
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined mt-0.5 text-[18px] text-blue-600 dark:text-blue-400">
+                manage_accounts
+              </span>
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 dark:text-slate-100" htmlFor="quick-account">
+                  Connexion rapide
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Choisissez un compte par defaut pour remplir les champs.
+                </p>
+              </div>
+            </div>
+            <select
+              id="quick-account"
+              value={selectedAccountId}
+              onChange={(e) => handleAccountSelect(e.target.value)}
+              disabled={loading || submitting}
+              className="block w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-blue-900 dark:bg-slate-900 dark:text-white"
+            >
+              <option value="">Selectionner un compte...</option>
+              {DEFAULT_ACCOUNTS.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.role} - {account.label} ({account.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="email">
               Email
@@ -88,7 +202,10 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               disabled={loading || submitting}
-              onChange={() => setError("")}
+              onChange={() => {
+                setError("")
+                setSelectedAccountId("")
+              }}
             />
           </div>
 
@@ -106,7 +223,10 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 disabled={loading || submitting}
-                onChange={() => setError("")}
+                onChange={() => {
+                  setError("")
+                  setSelectedAccountId("")
+                }}
               />
               <button
                 type="button"
@@ -138,7 +258,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-            Les acces de demonstration ont ete retires. Utilisez un compte Firebase reel.
+            Les comptes rapides remplissent uniquement les champs. La connexion reste verifiee par Firebase.
           </p>
         </form>
 
