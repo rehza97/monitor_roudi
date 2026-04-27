@@ -55,7 +55,6 @@ import AdminMessages         from "./pages/admin/AdminMessages"
 import AdminMonitoring       from "./pages/admin/AdminMonitoring"
 import AdminInvoices         from "./pages/admin/AdminInvoices"
 import AdminReports          from "./pages/admin/AdminReports"
-import AdminRoles            from "./pages/admin/AdminRoles"
 import AdminHistory          from "./pages/admin/AdminHistory"
 import AdminSettings         from "./pages/admin/AdminSettings"
 import AdminUsersRolePage    from "./pages/admin/AdminUsersRolePage"
@@ -148,7 +147,6 @@ export default function App() {
       <Route path="/admin/monitoring"        element={<ProtectedRoute role="admin"><AdminMonitoring /></ProtectedRoute>} />
       <Route path="/admin/invoices"          element={<ProtectedRoute role="admin"><AdminInvoices /></ProtectedRoute>} />
       <Route path="/admin/reports"           element={<ProtectedRoute role="admin"><AdminReports /></ProtectedRoute>} />
-      <Route path="/admin/roles"             element={<ProtectedRoute role="admin"><AdminRoles /></ProtectedRoute>} />
       <Route path="/admin/history"           element={<ProtectedRoute role="admin"><AdminHistory /></ProtectedRoute>} />
       <Route path="/admin/settings"          element={<ProtectedRoute role="admin"><AdminSettings /></ProtectedRoute>} />
       <Route path="/admin/users/admins"      element={<ProtectedRoute role="admin"><AdminUsersRolePage role="admin" pageTitle="CRUD Admins" /></ProtectedRoute>} />

@@ -10,7 +10,6 @@ import {
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder, FirestoreProject } from "@/data/schema"
-import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
 
 interface Order extends FirestoreOrder { id: string }
@@ -126,18 +125,16 @@ export default function EngineerRequests() {
   }, [searchParams])
 
   useEffect(() => {
-    if (!db) return
+    if (!db || !user?.id) return
     const q = query(
       collection(db, COLLECTIONS.orders),
       where("kind", "==", "client_request"),
+      where("assignedToId", "==", user.id),
       orderBy("createdAt", "desc"),
       limit(100),
     )
     const unsub = onSnapshot(q, snap => {
-      const visible = snap.docs
-        .map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) }))
-        .filter((row) => canEngineerAccessOrder(row, user?.id))
-      setOrders(visible)
+      setOrders(snap.docs.map(d => ({ id: d.id, ...(d.data() as FirestoreOrder) })))
       setLoading(false)
     })
     return unsub
@@ -156,7 +153,6 @@ export default function EngineerRequests() {
     await updateDoc(doc(db, COLLECTIONS.orders, processing.id), {
       status,
       adminComment: comment,
-      assignedToId: user.id,
       updatedAt: now,
     })
 

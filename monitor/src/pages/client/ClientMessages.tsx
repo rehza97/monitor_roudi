@@ -6,6 +6,7 @@ import { db } from "@/config/firebase"
 import {
   onSnapshot,
   addDoc,
+  getDocs,
   updateDoc,
   collection,
   doc,
@@ -109,6 +110,7 @@ export default function ClientMessages() {
   const [sending, setSending] = useState(false)
   const [creatingConversation, setCreatingConversation] = useState(false)
   const [search, setSearch] = useState("")
+  const [supportError, setSupportError] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // ── Conversations listener ────────────────────────────────────────────────
@@ -218,11 +220,53 @@ export default function ClientMessages() {
 
   async function startSupportConversation() {
     if (!db || !user) return
+    setSupportError("")
+
+    const techSnap = await getDocs(
+      query(collection(db, COLLECTIONS.users), where("role", "==", "technician")),
+    )
+    const technicians = techSnap.docs
+      .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
+      .filter(({ data }) => {
+        if (!user.organizationId) return true
+        return typeof data.organizationId === "string" && data.organizationId === user.organizationId
+      })
+      .map(({ id, data }) => ({
+        id,
+        name:
+          (typeof data.name === "string" && data.name.trim()) ||
+          (typeof data.email === "string" && data.email.trim()) ||
+          `Technicien ${id.slice(0, 6)}`,
+      }))
+
+    if (technicians.length === 0) {
+      setSupportError("Aucun technicien disponible pour votre organisation.")
+      return
+    }
+
+    const techIds = technicians.map((t) => t.id)
+    const techNames = Object.fromEntries(technicians.map((t) => [t.id, t.name]))
 
     const existing = conversations.find(
       (conv) => conv.support || conv.name === SUPPORT_CONVERSATION_NAME,
     )
     if (existing) {
+      const mergedIds = Array.from(new Set([user.id, ...existing.participantIds, ...techIds]))
+      const needsParticipantSync =
+        mergedIds.length !== existing.participantIds.length
+      if (needsParticipantSync) {
+        await updateDoc(doc(db, COLLECTIONS.conversations, existing.id), {
+          participantIds: mergedIds,
+          participantNames: {
+            ...(existing.participantNames ?? {}),
+            [user.id]: user.name,
+            ...techNames,
+          },
+          support: true,
+          name: SUPPORT_CONVERSATION_NAME,
+          updatedAt: serverTimestamp(),
+        } as Record<string, unknown>)
+      }
       setActiveConvId(existing.id)
       return
     }
@@ -231,10 +275,10 @@ export default function ClientMessages() {
     try {
       const introText = "Bonjour, j'ai besoin d'aide."
       const convRef = await addDoc(collection(db, COLLECTIONS.conversations), {
-        participantIds: [user.id],
+        participantIds: [user.id, ...techIds],
         participantNames: {
           [user.id]: user.name,
-          support: SUPPORT_CONVERSATION_NAME,
+          ...techNames,
         },
         name: SUPPORT_CONVERSATION_NAME,
         support: true,
@@ -294,6 +338,9 @@ export default function ClientMessages() {
             <p className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
               Messages
             </p>
+            {supportError ? (
+              <p className="mb-2 text-xs text-rose-600 dark:text-rose-400">{supportError}</p>
+            ) : null}
             <button
               type="button"
               onClick={() => void startSupportConversation()}

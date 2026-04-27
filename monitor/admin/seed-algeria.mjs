@@ -295,7 +295,6 @@ async function main() {
     conversations: ["conv-admin-client-sona", "conv-admin-engineer-1", "conv-admin-tech-1"],
     engineers: ["eng-roster-1", "eng-roster-2"],
     stackServices: ["stack-auth", "stack-firestore", "stack-notify"],
-    roleTemplates: ["role-super-admin", "role-support", "role-analyst"],
     fieldServiceClients: ["fsc-sona", "fsc-cevital", "fsc-condor"],
     catalogProducts: ["securegate", "logiops", "observe360", "helpdesk-pro"],
   }
@@ -315,7 +314,6 @@ async function main() {
       await deleteDocSafe("conversations", id)
       await deleteDocSafe("engineers", id)
       await deleteDocSafe("stack_services", id)
-      await deleteDocSafe("permission_role_templates", id)
       await deleteDocSafe("field_service_clients", id)
       await deleteDocSafe("catalog_products", id)
     }
@@ -326,6 +324,9 @@ async function main() {
     await deleteSubDocSafe("conversations", "conv-admin-engineer-1", "messages", "msg-004")
     await deleteSubDocSafe("conversations", "conv-admin-tech-1", "messages", "msg-005")
     await deleteSubDocSafe("conversations", "conv-admin-tech-1", "messages", "msg-006")
+    for (const id of ["role-super-admin", "role-support", "role-analyst"]) {
+      await deleteDocSafe("permission_role_templates", id)
+    }
   }
 
   for (const org of organizations) {
@@ -1009,42 +1010,6 @@ async function main() {
     latency: "85ms",
     cpu: 71,
     mem: 62,
-    updatedAt: FieldValue.serverTimestamp(),
-  })
-
-  await setDoc("permission_role_templates", "role-super-admin", {
-    name: "Super Admin",
-    users: 2,
-    perms: [
-      "Lecture",
-      "Écriture",
-      "Suppression",
-      "Gestion utilisateurs",
-      "Gestion ingénieurs",
-      "Gestion matériels",
-      "Validation demandes",
-      "Accès rapports",
-      "Accès monitoring",
-      "Configuration plateforme",
-    ],
-    color: "bg-[#db143c]",
-    createdAt: daysAgo(200),
-    updatedAt: FieldValue.serverTimestamp(),
-  })
-  await setDoc("permission_role_templates", "role-support", {
-    name: "Support Technique",
-    users: 2,
-    perms: ["Lecture", "Écriture", "Gestion matériels", "Accès monitoring"],
-    color: "bg-amber-500",
-    createdAt: daysAgo(170),
-    updatedAt: FieldValue.serverTimestamp(),
-  })
-  await setDoc("permission_role_templates", "role-analyst", {
-    name: "Analyste Reporting",
-    users: 1,
-    perms: ["Lecture", "Accès rapports", "Accès monitoring"],
-    color: "bg-blue-600",
-    createdAt: daysAgo(160),
     updatedAt: FieldValue.serverTimestamp(),
   })
 

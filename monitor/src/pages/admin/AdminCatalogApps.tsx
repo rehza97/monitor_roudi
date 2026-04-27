@@ -12,13 +12,15 @@ import {
   serverTimestamp,
   updateDoc,
 } from "@/lib/firebase-firestore"
-import { parseCatalogProductDoc, type CatalogProduct } from "@/lib/catalog-products"
+import { parseCatalogProductDoc, type CatalogProduct, type CatalogFeature, type CatalogHardware } from "@/lib/catalog-products"
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage"
 
 type CatalogDoc = CatalogProduct & {
   createdAt?: unknown
   updatedAt?: unknown
 }
+
+const DESCRIPTION_PLACEHOLDER = "Aucune description disponible."
 
 interface FormState {
   name: string
@@ -91,11 +93,35 @@ function toFormState(docData: CatalogDoc): FormState {
     supportOSText: (docData.supportOS ?? []).join("\n"),
     badgeLabel: docData.badge?.label ?? "",
     badgeClassName: docData.badge?.className ?? "bg-white/90 text-slate-800",
-    descriptionText: (docData.description ?? []).join("\n"),
+    descriptionText: (docData.description ?? [])
+      .filter((line) => line && line !== DESCRIPTION_PLACEHOLDER)
+      .join("\n"),
     galleryText: (docData.gallery ?? []).join("\n"),
     featuresText: (docData.features ?? []).map((f) => f.title).join("\n"),
     hardwareText: (docData.hardware ?? []).map((h) => h.name).join("\n"),
   }
+}
+
+function mergeFeatures(lines: string[], existing: CatalogFeature[]): CatalogFeature[] {
+  const byTitle = new Map(existing.map((f) => [f.title, f]))
+  return lines.map((title) => {
+    const prev = byTitle.get(title)
+    return prev ?? {
+      icon: "check_circle",
+      iconBg: "bg-blue-100 dark:bg-blue-900/30",
+      iconColor: "text-blue-600",
+      title,
+      desc: "",
+    }
+  })
+}
+
+function mergeHardware(lines: string[], existing: CatalogHardware[]): CatalogHardware[] {
+  const byName = new Map(existing.map((h) => [h.name, h]))
+  return lines.map((name) => {
+    const prev = byName.get(name)
+    return prev ?? { icon: "memory", name, detail: "" }
+  })
 }
 
 const CATEGORIES = ["DevOps", "Sécurité", "Réseau", "IoT", "Monitoring", "Analytics", "Cloud", "IA / ML", "Autre"]
@@ -180,22 +206,32 @@ function AppEditorModal({
   isEdit: boolean
   saving: boolean
   onClose: () => void
-  onSave: (payload: FormState, imageFile: File | null, galleryFiles: File[]) => Promise<void>
+  onSave: (
+    payload: FormState,
+    imageFile: File | null,
+    galleryFiles: File[],
+    keptGalleryUrls: string[],
+    removeMainImage: boolean,
+  ) => Promise<void>
   onDelete?: () => Promise<void>
 }) {
   const [form, setForm] = useState<FormState>(initial)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [removeMainImage, setRemoveMainImage] = useState(false)
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([])
+  const [keptGalleryUrls, setKeptGalleryUrls] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     setForm(initial)
     setImageFile(null)
     setImagePreview(null)
+    setRemoveMainImage(false)
     setGalleryFiles([])
     setGalleryPreviews([])
+    setKeptGalleryUrls(normalizeLines(initial.galleryText))
   }, [initial, open])
 
   if (!open) return null
@@ -215,6 +251,7 @@ function AppEditorModal({
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null
     setImageFile(file)
+    setRemoveMainImage(false)
     if (file) {
       const url = URL.createObjectURL(file)
       setImagePreview(url)
@@ -223,10 +260,26 @@ function AppEditorModal({
     }
   }
 
+  function clearMainImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    setRemoveMainImage(true)
+  }
+
   function handleGalleryChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
-    setGalleryFiles(files)
-    setGalleryPreviews(files.map((file) => URL.createObjectURL(file)))
+    setGalleryFiles((prev) => [...prev, ...files])
+    setGalleryPreviews((prev) => [...prev, ...files.map((file) => URL.createObjectURL(file))])
+    e.target.value = ""
+  }
+
+  function removeKeptGalleryUrl(url: string) {
+    setKeptGalleryUrls((prev) => prev.filter((u) => u !== url))
+  }
+
+  function removePendingGalleryFile(idx: number) {
+    setGalleryFiles((prev) => prev.filter((_, i) => i !== idx))
+    setGalleryPreviews((prev) => prev.filter((_, i) => i !== idx))
   }
 
   async function handleDelete() {
@@ -240,7 +293,7 @@ function AppEditorModal({
     }
   }
 
-  const displayImage = imagePreview || form.image || null
+  const displayImage = imagePreview || (removeMainImage ? null : form.image) || null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -275,7 +328,7 @@ function AppEditorModal({
           className="overflow-y-auto flex-1 p-6 space-y-6"
           onSubmit={(e) => {
             e.preventDefault()
-            void onSave(form, imageFile, galleryFiles)
+            void onSave(form, imageFile, galleryFiles, keptGalleryUrls, removeMainImage)
           }}
         >
 
@@ -491,32 +544,47 @@ function AppEditorModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <div>
                 <FieldLabel>Image principale</FieldLabel>
-                <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/40 cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group">
-                  {displayImage ? (
-                    <img src={displayImage} alt="preview" className="h-full w-full object-contain rounded-xl p-1" />
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-slate-300 group-hover:text-[#db143c]/60 text-[32px] transition">cloud_upload</span>
-                      <span className="text-xs text-slate-400 group-hover:text-slate-600 transition">
-                        PNG, JPEG, WEBP, SVG
-                      </span>
-                    </>
+                <div className="relative">
+                  <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/40 cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group overflow-hidden">
+                    {displayImage ? (
+                      <img src={displayImage} alt="preview" className="h-full w-full object-contain rounded-xl p-1" />
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-slate-300 group-hover:text-[#db143c]/60 text-[32px] transition">cloud_upload</span>
+                        <span className="text-xs text-slate-400 group-hover:text-slate-600 transition">
+                          PNG, JPEG, WEBP, SVG
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                  {displayImage && (
+                    <button
+                      type="button"
+                      onClick={clearMainImage}
+                      title="Retirer l'image"
+                      className="absolute top-1.5 right-1.5 size-6 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm transition"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
                   )}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
+                </div>
                 {imageFile && (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">check_circle</span>
                     {imageFile.name}
                   </p>
                 )}
-                {!imageFile && form.image && (
+                {!imageFile && !removeMainImage && form.image && (
                   <p className="text-xs text-slate-400 mt-1.5">Image actuelle conservée.</p>
+                )}
+                {removeMainImage && !imageFile && (
+                  <p className="text-xs text-rose-500 mt-1.5">Image actuelle sera supprimée à l'enregistrement.</p>
                 )}
               </div>
               <div>
@@ -534,25 +602,44 @@ function AppEditorModal({
                     className="hidden"
                   />
                 </label>
-                {galleryFiles.length > 0 ? (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5">
-                    {galleryFiles.length} image{galleryFiles.length > 1 ? "s" : ""} sélectionnée{galleryFiles.length > 1 ? "s" : ""}
-                  </p>
-                ) : null}
-                {galleryPreviews.length > 0 ? (
+                {(keptGalleryUrls.length > 0 || galleryPreviews.length > 0) && (
                   <div className="mt-2 grid grid-cols-3 gap-2">
+                    {keptGalleryUrls.map((url) => (
+                      <div key={`kept-${url}`} className="relative h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 group">
+                        <img src={url} alt="gallery" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeKeptGalleryUrl(url)}
+                          title="Retirer cette image"
+                          className="absolute top-1 right-1 size-5 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">close</span>
+                        </button>
+                      </div>
+                    ))}
                     {galleryPreviews.map((src, idx) => (
-                      <div key={`${src}-${idx}`} className="h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                      <div key={`new-${idx}-${src}`} className="relative h-16 rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 group">
                         <img src={src} alt={`preview-${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePendingGalleryFile(idx)}
+                          title="Retirer ce fichier"
+                          className="absolute top-1 right-1 size-5 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">close</span>
+                        </button>
                       </div>
                     ))}
                   </div>
-                ) : null}
-                {galleryFiles.length === 0 && normalizeLines(form.galleryText).length > 0 ? (
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    {normalizeLines(form.galleryText).length} image{normalizeLines(form.galleryText).length > 1 ? "s" : ""} déjà enregistrée{normalizeLines(form.galleryText).length > 1 ? "s" : ""}.
-                  </p>
-                ) : null}
+                )}
+                <p className="text-xs text-slate-400 mt-1.5">
+                  {keptGalleryUrls.length} existante{keptGalleryUrls.length > 1 ? "s" : ""}
+                  {galleryFiles.length > 0 && (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {" "}+ {galleryFiles.length} nouvelle{galleryFiles.length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
@@ -686,24 +773,71 @@ export default function AdminCatalogApps() {
     const safeName = imageFile.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const storagePath = `catalog_products/${slug || "app"}/${Date.now()}-${safeName}`
     const imageRef = ref(storage, storagePath)
-    await uploadBytes(imageRef, imageFile)
-    return getDownloadURL(imageRef)
+    const sizeKb = (imageFile.size / 1024).toFixed(1)
+    console.info(`[catalog-upload] → start ${storagePath} (${sizeKb} KB, ${imageFile.type || "?"})`)
+    const t0 = performance.now()
+    try {
+      await uploadBytes(imageRef, imageFile)
+      const url = await getDownloadURL(imageRef)
+      console.info(`[catalog-upload] ✓ done ${storagePath} in ${(performance.now() - t0).toFixed(0)}ms`)
+      return url
+    } catch (err) {
+      console.error(`[catalog-upload] ✗ failed ${storagePath} after ${(performance.now() - t0).toFixed(0)}ms`, err)
+      throw err
+    }
   }
 
-  async function handleSave(payload: FormState, imageFile: File | null, galleryFiles: File[]) {
+  async function handleSave(
+    payload: FormState,
+    imageFile: File | null,
+    galleryFiles: File[],
+    keptGalleryUrls: string[],
+    removeMainImage: boolean,
+  ) {
     if (!db) return
     setSaving(true)
     setSaveError("")
+    const tStart = performance.now()
     try {
-      const normalizedSlug = payload.slug.trim() || payload.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")
-      const imageUrl = imageFile ? await uploadCatalogImage(imageFile, normalizedSlug) : payload.image.trim()
-      const existingGallery = normalizeLines(payload.galleryText)
+      const normalizedSlug =
+        payload.slug.trim() ||
+        payload.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") ||
+        `app-${Date.now()}`
+
+      console.group(`[catalog-save] ${editing ? "UPDATE" : "CREATE"} "${payload.name}" (slug=${normalizedSlug})`)
+      console.info("payload preview", {
+        hasNewImage: Boolean(imageFile),
+        removeMainImage,
+        keepGalleryUrls: keptGalleryUrls.length,
+        newGalleryFiles: galleryFiles.length,
+        descriptionLines: normalizeLines(payload.descriptionText).length,
+        featureLines: normalizeLines(payload.featuresText).length,
+        hardwareLines: normalizeLines(payload.hardwareText).length,
+      })
+
+      let imageUrl = payload.image.trim()
+      if (imageFile) {
+        imageUrl = await uploadCatalogImage(imageFile, normalizedSlug)
+      } else if (removeMainImage) {
+        console.info("[catalog-save] main image marked for removal")
+        imageUrl = ""
+      } else {
+        console.info("[catalog-save] keeping existing main image")
+      }
+
+      console.info(`[catalog-save] uploading ${galleryFiles.length} gallery file(s)`)
       const uploadedGallery = await Promise.all(
         galleryFiles.map((file) => uploadCatalogImage(file, `${normalizedSlug}/gallery`))
       )
+      const finalGallery = [...keptGalleryUrls, ...uploadedGallery]
+
+      const featureLines = normalizeLines(payload.featuresText)
+      const hardwareLines = normalizeLines(payload.hardwareText)
+      const descriptionLines = normalizeLines(payload.descriptionText)
+
       const data: Record<string, unknown> = {
         name: payload.name.trim(),
-        slug: normalizedSlug || undefined,
+        slug: normalizedSlug,
         category: payload.category.trim() || "Software",
         version: payload.version.trim() || "v1.0",
         icon: payload.icon.trim() || "deployed_code",
@@ -718,24 +852,31 @@ export default function AdminCatalogApps() {
         supportOS: normalizeLines(payload.supportOSText),
         badgeLabel: payload.badgeLabel.trim(),
         badgeClassName: payload.badgeClassName.trim() || "bg-white/90 text-slate-800",
-        description: normalizeLines(payload.descriptionText),
-        gallery: uploadedGallery.length > 0 ? uploadedGallery : existingGallery,
-        features: normalizeLines(payload.featuresText),
-        hardware: normalizeLines(payload.hardwareText),
+        description: descriptionLines,
+        gallery: finalGallery,
+        features: mergeFeatures(featureLines, editing?.features ?? []),
+        hardware: mergeHardware(hardwareLines, editing?.hardware ?? []),
         updatedAt: serverTimestamp(),
       }
 
       if (editing) {
+        console.info(`[catalog-save] updateDoc catalog_products/${editing.id}`)
         await updateDoc(doc(db, COLLECTIONS.catalogProducts, editing.id), data)
       } else {
-        await addDoc(collection(db, COLLECTIONS.catalogProducts), {
+        console.info("[catalog-save] addDoc catalog_products")
+        const ref = await addDoc(collection(db, COLLECTIONS.catalogProducts), {
           ...data,
           createdAt: serverTimestamp(),
         })
+        console.info(`[catalog-save] created doc id=${ref.id}`)
       }
+      console.info(`[catalog-save] ✓ total ${(performance.now() - tStart).toFixed(0)}ms`)
+      console.groupEnd()
       setShowModal(false)
       setEditing(null)
     } catch (err) {
+      console.error(`[catalog-save] ✗ failed after ${(performance.now() - tStart).toFixed(0)}ms`, err)
+      console.groupEnd()
       setSaveError(err instanceof Error ? err.message : "Impossible d'enregistrer l'application.")
     } finally {
       setSaving(false)
@@ -794,22 +935,29 @@ export default function AdminCatalogApps() {
               <button
                 key={app.id}
                 onClick={() => openEdit(app)}
-                className="text-left bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 hover:border-[#db143c]/40 transition-colors"
+                className="text-left bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-[#db143c]/40 transition-colors"
               >
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className={`size-10 rounded-lg ${app.iconBg} ${app.iconColor} flex items-center justify-center`}>
-                    <span className="material-symbols-outlined">{app.icon}</span>
+                {app.image ? (
+                  <div className="h-36 w-full bg-slate-100 dark:bg-slate-800">
+                    <img src={app.image} alt={app.name} className="h-full w-full object-cover" />
                   </div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    {app.category}
-                  </span>
-                </div>
-                <h3 className="font-bold text-slate-900 dark:text-white">{app.name}</h3>
-                <p className="text-xs text-slate-400 mt-1">/{app.slug}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 line-clamp-2">{app.tagline}</p>
-                <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                  <span>{app.version}</span>
-                  <span>{app.price}</span>
+                ) : null}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className={`size-10 rounded-lg ${app.iconBg} ${app.iconColor} flex items-center justify-center`}>
+                      <span className="material-symbols-outlined">{app.icon}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      {app.category}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 dark:text-white">{app.name}</h3>
+                  <p className="text-xs text-slate-400 mt-1">/{app.slug}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 line-clamp-2">{app.tagline}</p>
+                  <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+                    <span>{app.version}</span>
+                    <span>{app.price}</span>
+                  </div>
                 </div>
               </button>
             ))

@@ -8,6 +8,7 @@ import { doc, getDoc } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreOrder } from "@/data/schema"
 import { canClientAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate, formatFirestoreDateTime } from "@/lib/utils"
+import OrderAttachmentsList from "@/components/OrderAttachmentsList"
 
 const statusColor: Record<string, string> = {
   "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
@@ -230,6 +231,8 @@ export default function ClientRequestDetail() {
 
             {/* Timeline */}
             <Timeline status={order.status} />
+
+            <OrderAttachmentsList orderId={order.id} />
 
             {/* Details */}
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">

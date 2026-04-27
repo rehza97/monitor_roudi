@@ -5,8 +5,11 @@ import { adminNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
 import { useAuth } from "@/contexts/AuthContext"
 import { COLLECTIONS, ORDER_KIND, type FirestoreInvoice, type FirestoreOrder } from "@/data/schema"
-import { addDoc, collection, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "@/lib/firebase-firestore"
+import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, updateDoc, where } from "@/lib/firebase-firestore"
 import { formatFirestoreDate } from "@/lib/utils"
+import OrderAttachmentsList from "@/components/OrderAttachmentsList"
+
+type EngineerOption = { id: string; name: string; email: string }
 
 type Decision = "idle" | "validating" | "rejecting" | "validated" | "rejected"
 
@@ -26,6 +29,26 @@ export default function AdminRequestValidate() {
   const [linkedInvoiceId, setLinkedInvoiceId] = useState("")
   const [resolvedClientLabel, setResolvedClientLabel] = useState("")
   const [resolvedClientEmail, setResolvedClientEmail] = useState("")
+  const [engineers, setEngineers] = useState<EngineerOption[]>([])
+  const [assignedToId, setAssignedToId] = useState("")
+  const [assignBusy, setAssignBusy] = useState(false)
+  const [assignError, setAssignError] = useState("")
+
+  useEffect(() => {
+    if (!db) return
+    const unsub = onSnapshot(
+      query(collection(db, COLLECTIONS.users), where("role", "==", "engineer")),
+      (snap) => {
+        setEngineers(
+          snap.docs.map((d) => {
+            const data = d.data() as { name?: string; email?: string }
+            return { id: d.id, name: data.name ?? "—", email: data.email ?? "" }
+          }),
+        )
+      },
+    )
+    return unsub
+  }, [])
 
   function toNonEmptyText(value: unknown): string {
     return typeof value === "string" && value.trim() ? value.trim() : ""
@@ -81,6 +104,7 @@ export default function AdminRequestValidate() {
             setOrder(null)
           } else {
             setOrder(data)
+            setAssignedToId(typeof data.assignedToId === "string" ? data.assignedToId : "")
             setInvoiceTitle(`Facture - ${data.requestType ?? "Demande client"}`)
             setInvoiceAmount("")
             setLinkedInvoiceId(typeof data.invoiceId === "string" ? data.invoiceId : "")
@@ -117,11 +141,33 @@ export default function AdminRequestValidate() {
 
   async function persistDecision(status: string) {
     if (!db || !id || !user) throw new Error("Impossible d'enregistrer.")
+    const eng = engineers.find((e) => e.id === assignedToId)
     await updateDoc(doc(db, COLLECTIONS.orders, id), {
       status,
       adminComment: comment.trim(),
+      assignedToId: assignedToId || null,
+      assignedEngineerName: eng?.name ?? null,
       updatedAt: serverTimestamp(),
     })
+  }
+
+  async function handleAssign() {
+    if (!db || !id || !assignedToId) return
+    setAssignBusy(true)
+    setAssignError("")
+    try {
+      const eng = engineers.find((e) => e.id === assignedToId)
+      await updateDoc(doc(db, COLLECTIONS.orders, id), {
+        assignedToId,
+        assignedEngineerName: eng?.name ?? null,
+        updatedAt: serverTimestamp(),
+      })
+      setOrder((prev) => prev ? { ...prev, assignedToId, assignedEngineerName: eng?.name } : prev)
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message : "Impossible d'assigner.")
+    } finally {
+      setAssignBusy(false)
+    }
   }
 
   async function handleValidate() {
@@ -329,6 +375,8 @@ export default function AdminRequestValidate() {
               </div>
             ) : null}
 
+            {id ? <OrderAttachmentsList orderId={id} title="Fichiers fournis par le client" /> : null}
+
             {order.status === "En attente" || order.status === "En cours" ? (
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
                 <h3 className="font-semibold text-slate-900 dark:text-white">Décision</h3>
@@ -405,6 +453,42 @@ export default function AdminRequestValidate() {
                   <p className="text-xs text-slate-400">{clientEmail}</p>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Ingénieur assigné</h3>
+              {order.assignedToId && order.assignedToId !== assignedToId ? null : null}
+              <div className="relative">
+                <select
+                  value={assignedToId}
+                  onChange={(e) => setAssignedToId(e.target.value)}
+                  className="w-full h-10 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] appearance-none"
+                >
+                  <option value="">— Aucun ingénieur —</option>
+                  {engineers.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[16px]">expand_more</span>
+              </div>
+              {assignError ? <p className="text-xs text-rose-600">{assignError}</p> : null}
+              <button
+                type="button"
+                onClick={() => void handleAssign()}
+                disabled={assignBusy || !assignedToId}
+                className="w-full h-9 rounded-lg bg-[#db143c] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
+              >
+                {assignBusy ? "Enregistrement…" : "Assigner"}
+              </button>
+              {order.assignedToId && (
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-emerald-500">check_circle</span>
+                  {(() => {
+                    const eng = engineers.find((e) => e.id === order.assignedToId)
+                    return eng ? `Assigné à ${eng.name}` : `Assigné (ID: ${order.assignedToId.slice(0, 8)}…)`
+                  })()}
+                </p>
+              )}
             </div>
 
             {order.status === "Validée" && (

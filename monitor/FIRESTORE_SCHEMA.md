@@ -64,7 +64,6 @@ create one collection per page or per widget.
 These are not part of the MVP Firestore contract and should only be added if
 the app needs server-side editing:
 
-- `permission_role_templates`
 - `field_service_clients`
 
 ## Modeling rules

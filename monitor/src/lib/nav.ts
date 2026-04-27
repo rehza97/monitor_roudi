@@ -31,7 +31,6 @@ export const adminNav: NavItem[] = [
   { icon: "monitoring",           label: "Monitoring",          to: "/admin/monitoring" },
   { icon: "receipt_long",         label: "Facturation",         to: "/admin/invoices" },
   { icon: "analytics",            label: "Rapports",            to: "/admin/reports" },
-  { icon: "admin_panel_settings", label: "Rôles & Permissions", to: "/admin/roles" },
   { icon: "history",              label: "Historique",          to: "/admin/history" },
   { icon: "settings",             label: "Paramètres",          to: "/admin/settings" },
 ]

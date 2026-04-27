@@ -3,9 +3,10 @@ import { Link } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
-import { db } from "@/config/firebase"
+import { db, firebaseApp } from "@/config/firebase"
 import { collection, addDoc, serverTimestamp } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreOrder } from "@/data/schema"
+import { uploadAllOrderAttachments } from "@/lib/order-attachments"
 
 const INPUT_CLS =
   "w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
@@ -94,6 +95,38 @@ export default function ClientRequestNew() {
   const [success, setSuccess] = useState(false)
   const [newId, setNewId]     = useState("")
   const [error, setError]     = useState("")
+  const [uploadWarning, setUploadWarning] = useState("")
+
+  const [pendingFiles, setPendingFiles] = useState<{ id: string; file: File }[]>([])
+
+  const MAX_FILES = 10
+  const MAX_BYTES = 20 * 1024 * 1024
+
+  function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    setError("")
+    const picked = Array.from(e.target.files ?? [])
+    e.target.value = ""
+    if (picked.length === 0) return
+    setPendingFiles((prev) => {
+      const next: { id: string; file: File }[] = [...prev]
+      for (const file of picked) {
+        if (file.size > MAX_BYTES) {
+          setError(`Fichier trop volumineux (max. 20 Mo) : ${file.name}`)
+          continue
+        }
+        if (next.length >= MAX_FILES) {
+          setError(`Maximum ${MAX_FILES} fichiers.`)
+          break
+        }
+        next.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, file })
+      }
+      return next
+    })
+  }
+
+  function removeFile(id: string) {
+    setPendingFiles((prev) => prev.filter((p) => p.id !== id))
+  }
 
   function addFeature() {
     setFeatures((prev) => [...prev, ""])
@@ -110,12 +143,14 @@ export default function ClientRequestNew() {
   const sections = [
     { label: "Informations", icon: "info" },
     { label: "Fonctionnalités", icon: "list_alt" },
+    { label: "Fichiers", icon: "attach_file" },
     { label: "Budget & Délai", icon: "schedule" },
   ]
 
   const sectionFilled = [
     requestType.trim().length > 0,
     features.some((f) => f.trim().length > 0),
+    true,
     budgetLabel.trim().length > 0 || timelineLabel.trim().length > 0,
   ]
 
@@ -125,6 +160,10 @@ export default function ClientRequestNew() {
       setError("Configuration manquante. Impossible de soumettre.")
       return
     }
+    if (pendingFiles.length > 0 && !firebaseApp) {
+      setError("Configuration Firebase incomplète — impossible d'envoyer les fichiers.")
+      return
+    }
     if (!requestType.trim()) {
       setError("Le type de demande est obligatoire.")
       setActiveSection(0)
@@ -132,12 +171,15 @@ export default function ClientRequestNew() {
     }
     setSaving(true)
     setError("")
+    setUploadWarning("")
     try {
-      const ref = await addDoc(collection(db, COLLECTIONS.orders), {
+      const orderRef = await addDoc(collection(db, COLLECTIONS.orders), {
         organizationId: user.organizationId,
         kind: "client_request",
         status: "En attente",
         createdByUserId: user.id,
+        clientLabel: user.name ?? "",
+        clientEmail: user.email ?? "",
         requestType: requestType.trim(),
         description: description.trim(),
         features: features.map((f) => f.trim()).filter(Boolean),
@@ -146,7 +188,19 @@ export default function ClientRequestNew() {
         priority,
         createdAt: serverTimestamp(),
       } as FirestoreOrder)
-      setNewId(ref.id)
+      const orderId = orderRef.id
+      setNewId(orderId)
+      if (pendingFiles.length > 0) {
+        try {
+          await uploadAllOrderAttachments(user.organizationId, orderId, pendingFiles.map((p) => p.file))
+        } catch (uploadErr) {
+          setUploadWarning(
+            uploadErr instanceof Error
+              ? uploadErr.message
+              : "La demande est enregistrée, mais l'envoi de certains fichiers a échoué. Vous pourrez contacter le support.",
+          )
+        }
+      }
       setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue.")
@@ -172,6 +226,11 @@ export default function ClientRequestNew() {
             <p className="text-xs font-mono text-slate-400 mt-1">
               Ref. {newId.slice(0, 8).toUpperCase()}
             </p>
+            {uploadWarning && (
+              <p className="text-sm text-amber-700 dark:text-amber-400 max-w-md border border-amber-200 dark:border-amber-800 rounded-lg p-3 bg-amber-50 dark:bg-amber-900/20">
+                {uploadWarning}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -336,8 +395,86 @@ export default function ClientRequestNew() {
             </SectionCard>
           )}
 
-          {/* Section 3 — Timeline / Budget */}
+          {/* Section 3 — Fichiers & images */}
           {activeSection === 2 && (
+            <SectionCard title="Fichiers & images" icon="attach_file">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Ajoutez des visuels, maquettes, PDF, archives ou documents bureautiques (max. {MAX_FILES} fichiers, 20 Mo
+                chacun). Formats : images, PDF, Word, zip, texte.
+              </p>
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-700 dark:text-rose-400 text-sm">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  {error}
+                </div>
+              )}
+
+              <label className="flex flex-col items-center justify-center gap-2 min-h-[140px] rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/20 cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group">
+                <span className="material-symbols-outlined text-slate-300 group-hover:text-[#db143c]/70 text-[40px]">
+                  cloud_upload
+                </span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 text-center px-2">
+                  Cliquez pour choisir des fichiers ou des images
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={onPickFiles}
+                  accept="image/*,application/pdf,application/zip,application/x-zip-compressed,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                />
+              </label>
+
+              {pendingFiles.length > 0 && (
+                <ul className="space-y-2">
+                  {pendingFiles.map(({ id, file }) => (
+                    <li
+                      key={id}
+                      className="flex items-center justify-between gap-2 text-sm p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/30"
+                    >
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-slate-400 shrink-0 text-[20px]">
+                          {file.type.startsWith("image/") ? "image" : "description"}
+                        </span>
+                        <span className="text-slate-800 dark:text-slate-200 truncate">{file.name}</span>
+                        <span className="text-xs text-slate-400 shrink-0">
+                          {(file.size / 1024 / 1024).toFixed(1)} Mo
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(id)}
+                        className="text-slate-400 hover:text-rose-500 shrink-0 p-0.5"
+                        aria-label="Retirer le fichier"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(1)}
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                >
+                  ← Retour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection(3)}
+                  className="px-5 py-2.5 bg-[#db143c] text-white font-semibold rounded-lg hover:opacity-90 text-sm"
+                >
+                  Suivant →
+                </button>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* Section 4 — Budget & délai */}
+          {activeSection === 3 && (
             <SectionCard title="Budget & Délai" icon="schedule">
               <div className="space-y-1.5">
                 <label className={LABEL_CLS}>Budget estimé</label>
@@ -345,7 +482,7 @@ export default function ClientRequestNew() {
                   value={budgetLabel}
                   onChange={(e) => setBudgetLabel(e.target.value)}
                   className={INPUT_CLS}
-                  placeholder="Ex. 500 000 DA, 50 000 €…"
+                  placeholder="Ex. 500 000 DZD, 1 200 000 DZD…"
                 />
                 <p className="text-xs text-slate-400">
                   Indiquez une fourchette ou un budget maximum.
@@ -372,7 +509,7 @@ export default function ClientRequestNew() {
               <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
-                  onClick={() => setActiveSection(1)}
+                  onClick={() => setActiveSection(2)}
                   className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 >
                   ← Retour
@@ -387,7 +524,7 @@ export default function ClientRequestNew() {
                       <span className="material-symbols-outlined text-[18px]">
                         hourglass_empty
                       </span>
-                      Envoi…
+                      {pendingFiles.length > 0 ? "Envoi & fichiers…" : "Envoi…"}
                     </>
                   ) : (
                     <>
@@ -428,6 +565,12 @@ export default function ClientRequestNew() {
                 {timelineLabel && <span>Délai : {timelineLabel}</span>}
                 {priority && <span>Priorité : {priority}</span>}
               </div>
+            )}
+            {pendingFiles.length > 0 && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {pendingFiles.length} fichier{pendingFiles.length > 1 ? "s" : ""} joint
+                {pendingFiles.length > 1 ? "s" : ""}
+              </p>
             )}
           </div>
         )}

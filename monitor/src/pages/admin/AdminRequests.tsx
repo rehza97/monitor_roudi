@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
@@ -15,6 +15,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -232,6 +233,7 @@ export default function AdminRequests() {
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "")
   const [status, setStatus] = useState("Tous les statuts")
   const [modal, setModal] = useState<ModalMode>(null)
+  const userNameCache = useRef<Record<string, string>>({})
 
   useEffect(() => {
     setSearch(searchParams.get("q") ?? "")
@@ -262,6 +264,38 @@ export default function AdminRequests() {
         setRawById(map)
         setRows(list)
         setLoading(false)
+
+        // Resolve names for orders missing clientLabel
+        if (!db) return
+        const needsResolution = snap.docs.filter((d) => {
+          const data = d.data() as FirestoreOrder
+          return !data.clientLabel?.trim() && data.createdByUserId
+        })
+        if (needsResolution.length === 0) return
+
+        const uidsToFetch = [...new Set(
+          needsResolution
+            .map((d) => (d.data() as FirestoreOrder).createdByUserId)
+            .filter((uid): uid is string => Boolean(uid) && !userNameCache.current[uid])
+        )]
+
+        Promise.all(
+          uidsToFetch.map(async (uid) => {
+            const snap = await getDoc(doc(db!, COLLECTIONS.users, uid))
+            const name = snap.exists() ? ((snap.data() as { name?: string }).name ?? "") : ""
+            userNameCache.current[uid] = name
+          })
+        ).then(() => {
+          setRows((prev) =>
+            prev.map((row) => {
+              if (row.client !== "—") return row
+              const order = map[row.id]
+              if (!order?.createdByUserId) return row
+              const resolved = userNameCache.current[order.createdByUserId]
+              return resolved ? { ...row, client: resolved } : row
+            })
+          )
+        }).catch(() => {/* silent — names just stay as "—" */})
       },
       (err) => {
         setListError(err.message)

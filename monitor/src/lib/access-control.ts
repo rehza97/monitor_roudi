@@ -14,7 +14,6 @@ export function canClientAccessOrder(order: FirestoreOrder, user: UserProfile | 
 export function canEngineerAccessOrder(order: FirestoreOrder, userId: string | null | undefined): boolean {
   if (!userId) return false
   if (order.kind !== "client_request") return false
-  if (isUnassigned(order.assignedToId)) return true
   return order.assignedToId === userId
 }
 

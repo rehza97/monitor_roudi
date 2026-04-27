@@ -150,6 +150,7 @@ export default function AdminMessages() {
 
         snap.forEach(d => {
           const data = d.data() as Record<string, unknown>
+          if (data.support === true) return
           const participantIds = Array.isArray(data.participantIds)
             ? (data.participantIds as unknown[]).filter((x): x is string => typeof x === "string")
             : []

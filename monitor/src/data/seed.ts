@@ -24,7 +24,6 @@ import type {
   InvoiceRow,
   NotificationRow,
   Organization,
-  PermissionRoleTemplate,
   StackServiceRow,
   SupportTicketRow,
   TaskRow,
@@ -43,7 +42,6 @@ export const clientAppsSummary: ClientAppSummaryRow[] = []
 export const clientMonitoringServices: ClientServiceRow[] = []
 
 export const seedUsers: UserProfile[] = []
-export const permissionRoleTemplates: PermissionRoleTemplate[] = []
 export const engineerRoster: EngineerRosterRow[] = []
 export const invoices: InvoiceRow[] = []
 export const supportTickets: SupportTicketRow[] = []
@@ -83,7 +81,6 @@ export const seed = {
   },
   stackServices,
   optional: {
-    permissionRoleTemplates,
     engineerRoster,
     fieldServiceClients,
   },

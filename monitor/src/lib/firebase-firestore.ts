@@ -69,7 +69,6 @@ function shouldAutoLogActivity(path: string): boolean {
     COLLECTIONS.meetings,
     COLLECTIONS.supportTickets,
     COLLECTIONS.fieldServiceClients,
-    COLLECTIONS.permissionRoleTemplates,
     COLLECTIONS.platformConfig,
   ]
   return trackedRoots.includes(root)

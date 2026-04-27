@@ -71,15 +71,6 @@ export interface StackServiceRow {
   mem: number
 }
 
-/** RBAC template row (admin Roles page) */
-export interface PermissionRoleTemplate {
-  id: string
-  name: string
-  users: number
-  perms: string[]
-  color: string
-}
-
 export interface EngineerRosterRow {
   id: string
   name: string
@@ -106,6 +97,7 @@ export interface FirestoreOrder {
   createdByUserId: string
   /** Staff owner for triage/processing flows (engineer/technician) */
   assignedToId?: string | null
+  assignedEngineerName?: string | null
   status: string
   /** Demande client */
   clientLabel?: string
@@ -159,6 +151,7 @@ export interface FirestoreInventoryItem {
   location: string
   /** Display string e.g. "1 200 DA" */
   priceDisplay: string
+  imageUrl?: string
   createdAt?: unknown
   updatedAt?: unknown
 }
@@ -385,23 +378,12 @@ export const SUBCOLLECTIONS = {
  * contract by default.
  */
 export const OPTIONAL_ROOT_COLLECTIONS = {
-  permissionRoleTemplates: "permission_role_templates",
   fieldServiceClients: "field_service_clients",
   platformConfig: "platform_config",
   contactLeads: "contact_leads",
   contentBlogPosts: "content_blog_posts",
   contentCareersJobs: "content_careers_jobs",
 } as const
-
-/** Firestore `permission_role_templates/{id}` */
-export interface FirestoreRoleTemplate {
-  name: string
-  users: number
-  perms: string[]
-  color: string
-  createdAt?: unknown
-  updatedAt?: unknown
-}
 
 /** Firestore `platform_config/main` — single-document platform settings */
 export interface InvoiceCompanyConfig {
@@ -620,7 +602,8 @@ export interface FirestoreOrganizationInvite {
 
 /** Firestore `attachments/{id}` metadata; binary files live in Firebase Storage. */
 export interface FirestoreAttachment {
-  ownerType: "support_ticket" | "invoice" | "project" | "intervention_report" | string
+  /** `order` = `orders/{ownerId}` (demande client) */
+  ownerType: "order" | "support_ticket" | "invoice" | "project" | "intervention_report" | string
   ownerId: string
   fileName: string
   contentType?: string

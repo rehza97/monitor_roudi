@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
-import { db } from "@/config/firebase"
+import { db, firebaseApp } from "@/config/firebase"
 import {
   addDoc,
   collection,
@@ -15,8 +15,9 @@ import {
   updateDoc,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreInventoryItem } from "@/data/schema"
+import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage"
 
-type Item = FirestoreInventoryItem & { id: string; status: string }
+type Item = FirestoreInventoryItem & { id: string; status: string; imageUrl?: string }
 
 const statusStyle: Record<string, string> = {
   "En stock": "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -42,6 +43,7 @@ function docToItem(id: string, data: FirestoreInventoryItem): Item {
     threshold,
     location: data.location ?? "",
     priceDisplay: data.priceDisplay ?? "—",
+    imageUrl: data.imageUrl ?? "",
     status: deriveStatus(stock, threshold),
   }
 }
@@ -56,7 +58,7 @@ function MaterialModal({
 }: {
   mode: ModalMode
   onClose: () => void
-  onSave: (payload: Omit<Item, "id" | "status">, id: string | null) => Promise<void>
+  onSave: (payload: Omit<Item, "id" | "status">, imageFile: File | null, id: string | null) => Promise<void>
   onDelete?: (id: string) => Promise<void>
 }) {
   const isEdit = mode?.type === "edit"
@@ -69,10 +71,20 @@ function MaterialModal({
   const [threshold, setThreshold] = useState(init?.threshold ?? 5)
   const [location, setLocation] = useState(init?.location ?? "")
   const [priceDisplay, setPriceDisplay] = useState(init?.priceDisplay ?? "")
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState("")
   const isDev = import.meta.env.DEV
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setImageFile(file)
+    setImagePreview(file ? URL.createObjectURL(file) : null)
+  }
+
+  const displayImage = imagePreview || init?.imageUrl || null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -89,7 +101,9 @@ function MaterialModal({
           threshold: Math.max(0, Math.floor(threshold)),
           location: location.trim() || "—",
           priceDisplay: priceDisplay.trim() || "—",
+          imageUrl: init?.imageUrl ?? "",
         },
+        imageFile,
         isEdit && mode ? mode.item.id : null,
       )
       onClose()
@@ -172,6 +186,26 @@ function MaterialModal({
             />
           </div>
         ))}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Photo</label>
+          <label className="flex flex-col items-center justify-center gap-2 h-28 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/40 cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group">
+            {displayImage ? (
+              <img src={displayImage} alt="preview" className="h-full w-full object-contain rounded-xl p-1" />
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-slate-300 group-hover:text-[#db143c]/60 text-[28px] transition">cloud_upload</span>
+                <span className="text-xs text-slate-400 group-hover:text-slate-600 transition">PNG, JPEG, WEBP</span>
+              </>
+            )}
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleImageChange} className="hidden" />
+          </label>
+          {imageFile && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+              {imageFile.name}
+            </p>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Stock</label>
@@ -253,10 +287,24 @@ export default function AdminMaterials() {
     return () => unsub()
   }, [])
 
-  async function persistItem(payload: Omit<Item, "id" | "status">, id: string | null) {
+  async function uploadMaterialImage(file: File, sku: string) {
+    if (!firebaseApp) throw new Error("Firebase non configuré pour l'upload.")
+    const storage = getStorage(firebaseApp)
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
+    const storagePath = `inventory_items/${sku || "item"}/${Date.now()}-${safeName}`
+    const imageRef = ref(storage, storagePath)
+    await uploadBytes(imageRef, file)
+    return getDownloadURL(imageRef)
+  }
+
+  async function persistItem(payload: Omit<Item, "id" | "status">, imageFile: File | null, id: string | null) {
     if (!db) throw new Error("Firestore indisponible.")
+    const imageUrl = imageFile
+      ? await uploadMaterialImage(imageFile, payload.sku)
+      : (payload.imageUrl ?? "")
     const data: Record<string, unknown> = {
       ...payload,
+      imageUrl,
       updatedAt: serverTimestamp(),
     }
     if (id) {
@@ -328,24 +376,31 @@ export default function AdminMaterials() {
               key={item.id}
               type="button"
               onClick={() => setModal({ type: "edit", item })}
-              className="text-left bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-[#db143c]/40 transition-colors"
+              className="text-left bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-[#db143c]/40 transition-colors"
             >
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {item.category}
-                </span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusStyle[item.status]}`}>
-                  {item.status}
-                </span>
-              </div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm mb-1">{item.name}</h3>
-              <p className="text-xs text-slate-400 mb-3 font-mono">{item.sku}</p>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-500 dark:text-slate-400">
-                  Stock :{" "}
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{item.stock} unités</span>
-                </span>
-                <span className="font-bold text-slate-900 dark:text-white">{item.priceDisplay}</span>
+              {item.imageUrl ? (
+                <div className="h-36 w-full bg-slate-100 dark:bg-slate-800">
+                  <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                </div>
+              ) : null}
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {item.category}
+                  </span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusStyle[item.status]}`}>
+                    {item.status}
+                  </span>
+                </div>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-sm mb-1">{item.name}</h3>
+                <p className="text-xs text-slate-400 mb-3 font-mono">{item.sku}</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Stock :{" "}
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{item.stock} unités</span>
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white">{item.priceDisplay}</span>
+                </div>
               </div>
             </button>
           ))}
@@ -363,7 +418,7 @@ export default function AdminMaterials() {
           key={modal.type === "edit" ? modal.item.id : "add"}
           mode={modal}
           onClose={() => setModal(null)}
-          onSave={persistItem}
+          onSave={(payload, imageFile, id) => persistItem(payload, imageFile, id)}
           onDelete={removeItem}
         />
       ) : null}
