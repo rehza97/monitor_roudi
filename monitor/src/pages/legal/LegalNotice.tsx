@@ -4,21 +4,21 @@ const infos = [
   {
     title: "Éditeur du site",
     items: [
-      { label: "Raison sociale",       value: "Rodaina SAS" },
+      { label: "Raison sociale",       value: "TECHNOVA SAS" },
       { label: "Forme juridique",      value: "Société par actions simplifiée" },
       { label: "Capital social",       value: "50 000 DA" },
       { label: "SIREN",                value: "123 456 789" },
       { label: "RCS",                  value: "RC Alger 23B1234" },
       { label: "N° Identification Fiscale (NIF)", value: "099812345678901" },
       { label: "Siège social",         value: "12 Rue Didouche Mourad, 16000 Alger, Algérie" },
-      { label: "Directeur de publication", value: "Amina Rodaina (CEO)" },
+      { label: "Directeur de publication", value: "Amina Benali (CEO)" },
     ],
   },
   {
     title: "Contact",
     items: [
-      { label: "Email général",        value: "hello@rodaina.fr" },
-      { label: "Support technique",    value: "support@rodaina.fr" },
+      { label: "Email général",        value: "hello@technova.fr" },
+      { label: "Support technique",    value: "support@technova.fr" },
       { label: "Téléphone",            value: "+213 21 23 45 67" },
     ],
   },
@@ -61,17 +61,17 @@ export default function LegalNotice() {
           <div className="bg-white rounded-2xl border border-slate-200 p-8">
             <h2 className="text-xl font-bold text-slate-900 mb-4">Propriété intellectuelle</h2>
             <p className="text-slate-600 leading-relaxed mb-4">
-              L'ensemble des contenus présents sur ce site (textes, images, graphiques, logos, icônes, sons, logiciels) est la propriété exclusive de Rodaina SAS ou de ses partenaires. Toute reproduction, représentation, modification, publication, transmission ou dénaturation, totale ou partielle, est interdite sans accord préalable écrit de Rodaina SAS.
+              L'ensemble des contenus présents sur ce site (textes, images, graphiques, logos, icônes, sons, logiciels) est la propriété exclusive de TECHNOVA SAS ou de ses partenaires. Toute reproduction, représentation, modification, publication, transmission ou dénaturation, totale ou partielle, est interdite sans accord préalable écrit de TECHNOVA SAS.
             </p>
             <p className="text-slate-600 leading-relaxed">
-              Les marques et logos de Rodaina sont des marques déposées. Toute utilisation sans autorisation écrite préalable est prohibée.
+              Les marques et logos de Technova sont des marques déposées. Toute utilisation sans autorisation écrite préalable est prohibée.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-8">
             <h2 className="text-xl font-bold text-slate-900 mb-4">Limitation de responsabilité</h2>
             <p className="text-slate-600 leading-relaxed">
-              Rodaina s'efforce d'assurer au mieux l'exactitude et la mise à jour des informations diffusées sur ce site. Cependant, Rodaina ne peut garantir l'exactitude, la précision ou l'exhaustivité des informations mises à disposition sur ce site et décline toute responsabilité pour toute imprécision, inexactitude ou omission portant sur des informations disponibles sur ce site.
+              Technova s'efforce d'assurer au mieux l'exactitude et la mise à jour des informations diffusées sur ce site. Cependant, Technova ne peut garantir l'exactitude, la précision ou l'exhaustivité des informations mises à disposition sur ce site et décline toute responsabilité pour toute imprécision, inexactitude ou omission portant sur des informations disponibles sur ce site.
             </p>
           </div>
         </div>

@@ -287,7 +287,7 @@ export default function AdminHistory() {
           </div>
 
           <div className="mt-8 border-t border-slate-200 pt-6">
-            <div className="flex flex-col items-center justify-between text-sm text-slate-500 md:flex-row"><p>© 2026 Rodaina. Tous droits réservés.</p><div className="mt-4 flex gap-4 md:mt-0"><span>Support</span><span>Confidentialité</span><span>Conditions</span></div></div>
+            <div className="flex flex-col items-center justify-between text-sm text-slate-500 md:flex-row"><p>© 2026 Technova. Tous droits réservés.</p><div className="mt-4 flex gap-4 md:mt-0"><span>Support</span><span>Confidentialité</span><span>Conditions</span></div></div>
           </div>
         </div>
       </div>

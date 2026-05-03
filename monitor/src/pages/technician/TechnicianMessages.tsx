@@ -40,7 +40,7 @@ type MessageBubble = {
 }
 
 const DEFAULT_AVATAR = "bg-slate-500"
-const SUPPORT_CONVERSATION_NAME = "Support Rodaina"
+const SUPPORT_CONVERSATION_NAME = "Support Technova"
 
 function roleLabel(role: string): string {
   switch (role) {

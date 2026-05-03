@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 /design_screens/*
+
+# Admin CLI dumps (passwords / UIDs — never commit)
+monitor/admin/.seed-admin123-credentials.json
+monitor/admin/.default-admin-credentials.json
+monitor/admin/.seed-algeria-credentials.json

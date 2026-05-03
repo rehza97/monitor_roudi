@@ -84,7 +84,7 @@ export default function Careers() {
             Construisez <span className="text-blue-600">l'avenir du DevOps</span> avec nous
           </h1>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-            Chez Rodaina, chaque ingénieur peut contribuer directement au produit. Pas de bureaucratie, pas de silos — juste du code de qualité et de l'impact réel.
+            Chez Technova, chaque ingénieur peut contribuer directement au produit. Pas de bureaucratie, pas de silos — juste du code de qualité et de l'impact réel.
           </p>
         </div>
       </section>
@@ -126,7 +126,7 @@ export default function Careers() {
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">Pourquoi Rodaina ?</h2>
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">Pourquoi Technova ?</h2>
             <p className="text-slate-500">Ce qui nous distingue en tant qu'employeur.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

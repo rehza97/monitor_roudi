@@ -5,7 +5,6 @@
  */
 import { randomBytes } from "node:crypto"
 
-process.env.FIREBASE_ADMIN_QUIET = "1"
 const { default: admin } = await import("./init.mjs")
 
 function deriveInitials(name, email) {

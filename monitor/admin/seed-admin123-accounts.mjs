@@ -2,7 +2,6 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-process.env.FIREBASE_ADMIN_QUIET = "1"
 const { default: admin } = await import("./init.mjs")
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -10,15 +9,15 @@ const CREDENTIALS_FILE = path.join(__dirname, ".seed-admin123-credentials.json")
 const PASSWORD = "admin123"
 
 const seedUsers = [
-  { name: "Amine Bensalem", email: "admin@roudi.dz", role: "admin", organizationId: null, phone: "+213550100101" },
-  { name: "Sonia Benali", email: "ops.admin@roudi.dz", role: "admin", organizationId: null, phone: "+213550100102" },
+  { name: "Amine Bensalem", email: "admin@technova.dz", role: "admin", organizationId: null, phone: "+213550100101" },
+  { name: "Sonia Benali", email: "ops.admin@technova.dz", role: "admin", organizationId: null, phone: "+213550100102" },
   { name: "Nadia Khelifa", email: "nadia.khelifa@sonatrach.dz", role: "client", organizationId: "org-sonatrach", phone: "+213550200101" },
   { name: "Yacine Merabet", email: "yacine.merabet@cevital.dz", role: "client", organizationId: "org-cevital", phone: "+213550200102" },
   { name: "Lila Bouzid", email: "lila.bouzid@condor.dz", role: "client", organizationId: "org-condor", phone: "+213550200103" },
-  { name: "Karim Touati", email: "karim.touati@roudi.dz", role: "engineer", organizationId: null, phone: "+213550300101" },
-  { name: "Meriem Ait Ouali", email: "meriem.aitouali@roudi.dz", role: "engineer", organizationId: null, phone: "+213550300102" },
-  { name: "Samir Charef", email: "samir.charef@roudi.dz", role: "technician", organizationId: null, phone: "+213550400101" },
-  { name: "Ines Boulahbel", email: "ines.boulahbel@roudi.dz", role: "technician", organizationId: null, phone: "+213550400102" },
+  { name: "Karim Touati", email: "karim.touati@technova.dz", role: "engineer", organizationId: null, phone: "+213550300101" },
+  { name: "Meriem Ait Ouali", email: "meriem.aitouali@technova.dz", role: "engineer", organizationId: null, phone: "+213550300102" },
+  { name: "Samir Charef", email: "samir.charef@technova.dz", role: "technician", organizationId: null, phone: "+213550400101" },
+  { name: "Ines Boulahbel", email: "ines.boulahbel@technova.dz", role: "technician", organizationId: null, phone: "+213550400102" },
 ]
 
 function deriveInitials(name, email) {

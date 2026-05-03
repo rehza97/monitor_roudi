@@ -11,10 +11,10 @@ type DemoAccount = {
 }
 
 const DEFAULT_ACCOUNTS: DemoAccount[] = [
-  { id: "admin-main", label: "Admin principal", role: "Admin", email: "admin@roudi.dz", password: "admin123" },
+  { id: "admin-main", label: "Admin principal", role: "Admin", email: "admin@technova.dz", password: "admin123" },
   { id: "client-sonatrach", label: "Client Sonatrach", role: "Client", email: "nadia.khelifa@sonatrach.dz", password: "admin123" },
-  { id: "engineer-karim", label: "Ingenieur Karim", role: "Ingenieur", email: "karim.touati@roudi.dz", password: "admin123" },
-  { id: "technician-samir", label: "Technicien Samir", role: "Technicien", email: "samir.charef@roudi.dz", password: "admin123" },
+  { id: "engineer-karim", label: "Ingenieur Karim", role: "Ingenieur", email: "karim.touati@technova.dz", password: "admin123" },
+  { id: "technician-samir", label: "Technicien Samir", role: "Technicien", email: "samir.charef@technova.dz", password: "admin123" },
 ]
 
 export default function LoginPage() {
@@ -78,7 +78,7 @@ export default function LoginPage() {
             <div className="flex size-10 items-center justify-center rounded-lg bg-slate-900 text-white">
               <span className="material-symbols-outlined text-[20px]">deployed_code</span>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Projet Rodaina</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Projet Technova</h1>
           </div>
           <h2 className="mb-2 text-2xl font-bold text-slate-900">Connexion à votre espace</h2>
           <p className="text-sm text-slate-500">Entrez vos identifiants pour accéder au tableau de bord de monitoring.</p>

@@ -22,7 +22,7 @@ const fallbackPosts: PostRow[] = [
     category: "Produit",    categoryColor: "text-blue-600 bg-blue-50",
     title:    "Lancement d'EcoTrack Pro v2.0 — Ce qui change",
     excerpt:  "Nouvelle interface, support CSRD automatisé et connecteurs IoT renforcés. Découvrez toutes les nouveautés de cette mise à jour majeure.",
-    author:   "Amina Rodaina", authorInitials: "AR", authorColor: "bg-blue-600",
+    author:   "Amina Benali", authorInitials: "AR", authorColor: "bg-blue-600",
     date:     "15 Mar 2025",  readTime: "5 min",
     featured: true,
   },
@@ -36,7 +36,7 @@ const fallbackPosts: PostRow[] = [
   },
   {
     category: "DevOps",     categoryColor: "text-emerald-600 bg-emerald-50",
-    title:    "Guide : Monitorer Kubernetes avec Rodaina en 15 minutes",
+    title:    "Guide : Monitorer Kubernetes avec Technova en 15 minutes",
     excerpt:  "Installation de l'agent, configuration des alertes et création de votre premier tableau de bord K8s — tutoriel pas-à-pas.",
     author:   "Alice Bernard", authorInitials: "AB", authorColor: "bg-emerald-600",
     date:     "01 Mar 2025",  readTime: "12 min",
@@ -52,7 +52,7 @@ const fallbackPosts: PostRow[] = [
   },
   {
     category: "Culture",    categoryColor: "text-amber-600 bg-amber-50",
-    title:    "Remote-first : comment nous travaillons chez Rodaina",
+    title:    "Remote-first : comment nous travaillons chez Technova",
     excerpt:  "Outils, rituels et pratiques qui nous permettent de collaborer efficacement avec une équipe répartie entre Alger, Oran et le reste du monde.",
     author:   "Léa Rousseau", authorInitials: "LR", authorColor: "bg-amber-600",
     date:     "14 Fév 2025", readTime: "4 min",
@@ -82,7 +82,7 @@ export default function Blog() {
                   : category.toLowerCase() === "culture"
                     ? { categoryColor: "text-amber-600 bg-amber-50", authorColor: "bg-amber-600" }
                     : { categoryColor: "text-blue-600 bg-blue-50", authorColor: "bg-blue-600" }
-          const author = data.author || "Rodaina Team"
+          const author = data.author || "Technova Team"
           const initials =
             data.authorInitials ||
             author
@@ -127,7 +127,7 @@ export default function Blog() {
       {/* Header */}
       <section className="bg-white py-16 border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-4">Blog Rodaina</h1>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-4">Blog Technova</h1>
           <p className="text-lg text-slate-500">Actualités produit, engineering et culture de l'équipe.</p>
         </div>
       </section>

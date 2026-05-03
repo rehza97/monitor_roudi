@@ -1,7 +1,7 @@
-# roudi
+# TECHNOVA
 
 
-eng+dev@rodaina.local
+eng+dev@technova.local
 
-RoudiDev#2026!# monitor_roudi
-# monitor_roudi
+TechnovaDev#2026!# monitor_technova
+# monitor_technova

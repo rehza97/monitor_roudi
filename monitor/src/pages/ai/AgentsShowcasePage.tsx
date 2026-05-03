@@ -229,7 +229,7 @@ export default function AgentsShowcasePage({ role, navItems }: AgentsShowcasePag
       const result = await runTogetherChat(selectedModel, [
         {
           role: "system",
-          content: "You are Rodaina AI Agent. Answer clearly and practically for a software agency dashboard.",
+          content: "You are Technova AI Agent. Answer clearly and practically for a software agency dashboard.",
         },
         ...nextRows.filter((row) => row.role !== "system"),
       ])

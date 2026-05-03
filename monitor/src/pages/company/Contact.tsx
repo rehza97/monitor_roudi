@@ -5,9 +5,9 @@ import { COLLECTIONS, type FirestoreContactLead } from "@/data/schema"
 import { addDoc, collection, serverTimestamp } from "@/lib/firebase-firestore"
 
 const contacts = [
-  { icon: "mail",       title: "Email général",    value: "hello@rodaina.fr",      link: "mailto:hello@rodaina.fr" },
-  { icon: "support_agent",title:"Support technique",value: "support@rodaina.fr",  link: "mailto:support@rodaina.fr" },
-  { icon: "work",       title: "Partenariats",      value: "partners@rodaina.fr",  link: "mailto:partners@rodaina.fr" },
+  { icon: "mail",       title: "Email général",    value: "hello@technova.fr",      link: "mailto:hello@technova.fr" },
+  { icon: "support_agent",title:"Support technique",value: "support@technova.fr",  link: "mailto:support@technova.fr" },
+  { icon: "work",       title: "Partenariats",      value: "partners@technova.fr",  link: "mailto:partners@technova.fr" },
   { icon: "location_on",title: "Siège social",      value: "12 Rue Didouche Mourad, 16000 Alger", link: "#" },
 ]
 

@@ -208,7 +208,7 @@ export default function DashboardLayout({
   navItems,
   pageTitle,
   userName = "Utilisateur",
-  userEmail = "user@rodaina.fr",
+  userEmail = "user@technova.fr",
   userInitials = "U",
 }: DashboardLayoutProps) {
   const cfg = roleConfig[role]
@@ -319,7 +319,7 @@ export default function DashboardLayout({
             <span className="material-symbols-outlined text-[#0891b2] text-2xl">grid_view</span>
           </div>
           <div>
-            <h1 className="text-slate-900 text-base font-bold leading-tight">Projet Rodaina</h1>
+            <h1 className="text-slate-900 text-base font-bold leading-tight">Projet Technova</h1>
             <p className="text-slate-500 text-xs font-medium">Espace Client</p>
           </div>
         </div>
@@ -486,7 +486,7 @@ export default function DashboardLayout({
             <span className="material-symbols-outlined text-[20px]">{cfg.logoIcon}</span>
           </div>
           <div className="min-w-0">
-            <p className={`text-sm font-bold truncate leading-tight ${isAdmin ? "text-[#181112]" : "text-white"}`}>Projet Rodaina</p>
+            <p className={`text-sm font-bold truncate leading-tight ${isAdmin ? "text-[#181112]" : "text-white"}`}>Projet Technova</p>
             <p className={`text-xs truncate leading-tight ${isAdmin ? "text-[#896169]" : "text-slate-400"}`}>{cfg.logoText}</p>
           </div>
         </div>

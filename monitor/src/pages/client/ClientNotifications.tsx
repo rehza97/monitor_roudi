@@ -247,7 +247,7 @@ export default function ClientNotifications() {
           )}
 
           <div className="mt-4 flex items-center justify-between border-t border-slate-200 py-6 text-xs text-slate-400">
-            <p>© 2026 Rodaina Project. Tous droits réservés.</p>
+            <p>© 2026 Technova Project. Tous droits réservés.</p>
             <div className="flex gap-4">
               <span>Support</span>
               <span>Confidentialité</span>

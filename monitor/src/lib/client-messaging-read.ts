@@ -1,5 +1,5 @@
 /** Dispatched when localStorage read cursor updates so sidebar badges can refresh. */
-export const CLIENT_CONV_READ_EVENT = "roudi:client-conv-read"
+export const CLIENT_CONV_READ_EVENT = "technova:client-conv-read"
 
 function readKey(userId: string, conversationId: string): string {
   return `clientMsgRead:${userId}:${conversationId}`

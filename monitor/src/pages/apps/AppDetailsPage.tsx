@@ -170,7 +170,7 @@ export default function AppDetailsPage() {
                         {[
                           { label: "Dernière MàJ", value: app.updated },
                           { label: "Taille", value: app.size },
-                          { label: "Développeur", value: "Rodaina Dev Team" },
+                          { label: "Développeur", value: "Technova Dev Team" },
                           { label: "Langues", value: "FR, EN" },
                         ].map(({ label, value }) => (
                           <div key={label} className="flex justify-between text-sm"><span className="text-slate-500">{label}</span><span className="font-medium text-slate-900">{value}</span></div>
@@ -183,7 +183,7 @@ export default function AppDetailsPage() {
 
               <footer className="mt-14 border-t border-slate-200 pt-8">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-slate-400">© 2026 Projet Rodaina. Tous droits réservés.</p>
+                  <p className="text-sm text-slate-400">© 2026 Projet Technova. Tous droits réservés.</p>
                   <div className="flex space-x-6"><span className="text-slate-400">Documentation</span><span className="text-slate-400">Confidentialité</span></div>
                 </div>
               </footer>

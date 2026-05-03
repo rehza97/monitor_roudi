@@ -117,7 +117,7 @@ export default function ClientProfile() {
                 Compte vérifié
               </h4>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Vos informations sont synchronisées avec Firestore et prêtes pour les services Rodaina.
+                Vos informations sont synchronisées avec Firestore et prêtes pour les services Technova.
               </p>
             </div>
           </div>

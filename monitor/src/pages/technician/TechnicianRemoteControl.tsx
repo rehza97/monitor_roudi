@@ -3,6 +3,17 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
 import { db, isFirebaseConfigured } from "@/config/firebase"
 import { COMPANY_DEFAULT_VPS_LABEL, ENGINEER_REMOTE_DEFAULTS } from "@/config/engineerRemoteHardcoded"
+import {
+  REMOTE_SSH_DEFAULT_HOST,
+  REMOTE_SSH_DEFAULT_PASSWORD,
+  REMOTE_SSH_DEFAULT_PORT,
+  REMOTE_SSH_DEFAULT_USER,
+} from "@/config/remoteSshDefaults"
+import {
+  getRemoteSshWebSocketUrl,
+  remoteSshRequiresLocalDevTunnel,
+  remoteSshUsesDedicatedBridge,
+} from "@/lib/remote-ssh-ws"
 import { COLLECTIONS, type RemoteVpsScope } from "@/data/schema"
 import { collection, onSnapshot, query } from "@/lib/firebase-firestore"
 import { fetchVpsAgentSnapshot, type VpsMetrics } from "@/lib/vps-agent-metrics"
@@ -23,19 +34,6 @@ type PerfSnapshot = {
   runningContainers: number | null
   updatedAtMs: number | null
   hostUptimeSeconds: number | null
-}
-
-function wsUrl(): string {
-  const explicit = import.meta.env.VITE_SSH_WS_URL?.trim()
-  if (explicit) return explicit
-  const proto = window.location.protocol === "https:" ? "wss" : "ws"
-  return `${proto}://${window.location.host}/__dev/ssh/ws`
-}
-
-function requiresDevTunnel(): boolean {
-  if (import.meta.env.VITE_SSH_WS_URL?.trim()) return false
-  const h = window.location.hostname
-  return !(h === "localhost" || h === "127.0.0.1")
 }
 
 interface RemoteTarget {
@@ -81,17 +79,14 @@ function parseRemoteTarget(id: string, data: Record<string, unknown>): RemoteTar
 }
 
 function fallbackTargets(): RemoteTarget[] {
-  const host =
-    import.meta.env.VITE_REMOTE_DEFAULT_HOST?.trim() || ENGINEER_REMOTE_DEFAULTS.host
-  const port = Number(import.meta.env.VITE_REMOTE_DEFAULT_PORT) || ENGINEER_REMOTE_DEFAULTS.port
-  const username =
-    import.meta.env.VITE_REMOTE_DEFAULT_USERNAME?.trim() || ENGINEER_REMOTE_DEFAULTS.username
-  const password =
-    import.meta.env.VITE_REMOTE_DEFAULT_PASSWORD?.trim() || ENGINEER_REMOTE_DEFAULTS.password
+  const host = REMOTE_SSH_DEFAULT_HOST
+  const port = REMOTE_SSH_DEFAULT_PORT
+  const username = REMOTE_SSH_DEFAULT_USER
+  const password = REMOTE_SSH_DEFAULT_PASSWORD
   return [
     {
       id: "__fallback_primary__",
-      label: "Serveur Principal - Rodaina Core (v2.4.1)",
+      label: "Serveur Principal - Technova Core (v2.4.1)",
       sshHost: host,
       sshPort: port,
       sshUser: username,
@@ -189,7 +184,7 @@ export default function TechnicianRemoteControl() {
 
   const socketRef = useRef<WebSocket | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
-  const devTunnelRequired = requiresDevTunnel()
+  const devTunnelRequired = remoteSshRequiresLocalDevTunnel()
 
   useEffect(() => {
     if (!db || !isFirebaseConfigured) return
@@ -288,7 +283,7 @@ export default function TechnicianRemoteControl() {
     setErrorText(null)
     setConnecting(true)
 
-    const ws = new WebSocket(wsUrl())
+    const ws = new WebSocket(getRemoteSshWebSocketUrl())
     socketRef.current = ws
 
     ws.onopen = () => {
@@ -351,9 +346,9 @@ export default function TechnicianRemoteControl() {
 
     ws.onerror = () => {
       setErrorText(
-        import.meta.env.VITE_SSH_WS_URL?.trim()
-          ? "Pont SSH inaccessible (vérifiez que « npm run ssh-bridge » tourne et que VITE_SSH_WS_URL est correct)."
-          : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » avec VITE_SSH_WS_URL).",
+        remoteSshUsesDedicatedBridge()
+          ? "Pont SSH inaccessible (vérifiez « npm run ssh-bridge » et REMOTE_SSH_WEBSOCKET_URL dans src/config/remoteSshDefaults.ts)."
+          : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » et renseignez REMOTE_SSH_WEBSOCKET_URL pour preview).",
       )
       setConnecting(false)
     }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
+import { IS_VITE_DEV } from "@/config/devMode"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
@@ -84,7 +85,7 @@ function RequestModal({
   const [status, setStatus] = useState(init?.status ?? "En attente")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const isDev = import.meta.env.DEV
+  const isDev = IS_VITE_DEV
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

@@ -26,7 +26,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 <div className="size-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
                   <span className="material-symbols-outlined text-[20px]">terminal</span>
                 </div>
-                <span className="text-xl font-bold tracking-tight text-slate-900">Projet Rodaina</span>
+                <span className="text-xl font-bold tracking-tight text-slate-900">Projet Technova</span>
               </Link>
               <nav className="hidden md:flex items-center gap-6">
                 {[
@@ -95,7 +95,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 <div className="size-6 rounded bg-blue-600 text-white flex items-center justify-center">
                   <span className="material-symbols-outlined text-[16px]">terminal</span>
                 </div>
-                <span className="text-lg font-bold text-slate-900">Projet Rodaina</span>
+                <span className="text-lg font-bold text-slate-900">Projet Technova</span>
               </div>
               <p className="text-sm text-slate-500 leading-relaxed">
                 Solutions de monitoring et d'analyse pour les développeurs modernes.
@@ -161,7 +161,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           </div>
 
           <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-slate-500">© 2025 Projet Rodaina. Tous droits réservés.</p>
+            <p className="text-sm text-slate-500">© 2025 Projet Technova. Tous droits réservés.</p>
             <div className="flex gap-4">
               <a className="text-slate-400 hover:text-slate-600 transition-colors" href="#">
                 <span className="material-symbols-outlined">public</span>

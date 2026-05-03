@@ -1,10 +1,11 @@
+import { IS_VITE_DEV } from "@/config/devMode"
 import { isFirebaseConfigured } from "@/config/firebase"
 import { getFirebaseConfigDeveloperHint, getFirebaseConfigUserMessage } from "@/lib/firebase-config-messages"
 
 export default function FirebaseConfigBanner() {
   if (isFirebaseConfigured) return null
 
-  const isDev = import.meta.env.DEV
+  const isDev = IS_VITE_DEV
 
   return (
     <div

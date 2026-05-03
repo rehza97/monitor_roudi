@@ -125,10 +125,10 @@ function buildStream(input: InvoicePdfInput): string {
   const CW = W - ML - MR  // content width = 495
 
   const co = input.company ?? {}
-  const companyName    = co.companyName    || "RODAINA"
+  const companyName    = co.companyName    || "TECHNOVA"
   const companyTagline = co.companyTagline || "Digital Systems & Monitoring"
   const companyAddress = co.companyAddress || "Alger, Algerie"
-  const companyEmail   = co.companyEmail   || "contact@rodaina.dz"
+  const companyEmail   = co.companyEmail   || "contact@technova.dz"
   const companyPhone   = co.companyPhone   || "+213 XX XX XX XX"
   const bankName       = co.bankName       || "CPA Algerie"
   const bankIBAN       = co.bankIBAN       || "DZ00 0000 0000 0000 0000 00"

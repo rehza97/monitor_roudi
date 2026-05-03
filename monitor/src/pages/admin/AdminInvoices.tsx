@@ -309,11 +309,11 @@ export default function AdminInvoices() {
             {/* Invoice header — mimics letterhead */}
             <div className="bg-[#1c2840] px-8 py-6 flex items-start justify-between gap-6">
               <div>
-                <p className="text-white font-bold text-xl tracking-tight">RODAINA</p>
+                <p className="text-white font-bold text-xl tracking-tight">TECHNOVA</p>
                 <p className="text-slate-300 text-xs mt-0.5">Digital Systems & Monitoring</p>
                 <p className="text-slate-400 text-xs mt-3 leading-relaxed">
                   Alger, Algérie<br />
-                  contact@rodaina.dz &nbsp;·&nbsp; +213 XX XX XX XX
+                  contact@technova.dz &nbsp;·&nbsp; +213 XX XX XX XX
                 </p>
               </div>
               <div className="text-right">

@@ -3,7 +3,6 @@
  * Input: JSON on stdin { uid }
  * Output: JSON on stdout.
  */
-process.env.FIREBASE_ADMIN_QUIET = "1"
 const { default: admin } = await import("./init.mjs")
 
 function readStdin() {

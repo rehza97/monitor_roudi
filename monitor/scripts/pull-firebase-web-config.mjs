@@ -14,8 +14,7 @@ const MONITOR_ROOT = path.resolve(__dirname, "..")
 
 const PROJECT_ID = "roudi-monitor-app"
 /** From: firebase apps:list WEB --project roudi-monitor-app */
-const WEB_APP_ID =
-  process.env.FIREBASE_WEB_APP_ID || "1:21109967331:web:a4847dff474ae548f8f8d6"
+const WEB_APP_ID = "1:21109967331:web:a4847dff474ae548f8f8d6"
 
 function main() {
   let token

@@ -91,7 +91,7 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-const SUPPORT_CONVERSATION_NAME = "Support Rodaina"
+const SUPPORT_CONVERSATION_NAME = "Support Technova"
 
 function messageText(msg: FirestoreMessage): string {
   return msg.text ?? msg.body ?? ""

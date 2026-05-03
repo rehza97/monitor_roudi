@@ -41,7 +41,7 @@ export default function AdminSidebar({
           <span className="material-symbols-outlined">admin_panel_settings</span>
         </div>
         <div className="flex flex-col">
-          <h1 className="text-[#181112] text-base font-bold leading-tight">Projet Rodaina</h1>
+          <h1 className="text-[#181112] text-base font-bold leading-tight">Projet Technova</h1>
           <p className="text-[#896169] text-xs font-medium">Administrateur</p>
         </div>
       </div>

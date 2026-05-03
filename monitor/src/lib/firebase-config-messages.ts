@@ -1,3 +1,4 @@
+import { IS_VITE_DEV } from "@/config/devMode"
 import { missingFirebaseEnvLabels } from "@/config/firebase"
 
 /** Short message for end users (e.g. login form, production). */
@@ -13,13 +14,13 @@ export function getFirebaseConfigDeveloperHint(): string {
       ? `Variables manquantes ou invalides : ${missing.join(", ")}.`
       : "Les identifiants Firebase ne sont pas valides."
 
-  return `${vars} Dans le dossier monitor/, créez un fichier .env (voir .env.example) ou copiez firebase.client.example.json vers firebase.client.json avec la configuration Web copiée depuis Firebase Console → Paramètres du projet → Vos applications. Puis redémarrez le serveur de développement (npm run dev).`
+  return `${vars} Dans monitor/, éditez src/config/firebase.ts (ou ajoutez firebase.client.json d’après firebase.client.example.json) avec la configuration Web depuis Firebase Console → Paramètres du projet → Vos applications. Puis redémarrez le serveur de développement (npm run dev).`
 }
 
 /** Message shown in forms when Firebase env is wrong (banner carries full dev instructions). */
 export function getFirebaseConfigFormError(): string {
-  if (import.meta.env.DEV) {
-    return "Connexion indisponible : la configuration Firebase locale est incomplète. Consultez le bandeau en haut de la page ou monitor/.env.example."
+  if (IS_VITE_DEV) {
+    return "Connexion indisponible : la configuration Firebase locale est incomplète. Consultez le bandeau en haut de la page ou src/config/firebase.ts."
   }
   return getFirebaseConfigUserMessage()
 }

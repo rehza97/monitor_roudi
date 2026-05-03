@@ -118,7 +118,7 @@ export default function Cookies() {
               Vous pouvez modifier vos préférences de cookies à tout moment via les interrupteurs ci-dessus. Vous pouvez également configurer votre navigateur pour refuser tous les cookies, mais cela pourrait affecter le bon fonctionnement du site.
             </p>
             <p className="text-slate-500 text-sm">
-              Pour toute question, contactez-nous à <span className="text-blue-600">privacy@rodaina.fr</span>
+              Pour toute question, contactez-nous à <span className="text-blue-600">privacy@technova.fr</span>
             </p>
           </div>
 

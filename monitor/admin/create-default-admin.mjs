@@ -1,9 +1,9 @@
 /**
  * Creates a Firebase Auth user + Firestore users/{uid} with role "admin".
- * ADMIN_EMAIL must be @gmail.com.
+ * Edit ADMIN_EMAIL / ADMIN_PASSWORD below (@gmail.com required for email).
  *
  * Usage (from monitor/):
- *   ADMIN_EMAIL=you@gmail.com ADMIN_PASSWORD='secure-pass' npm run admin:create-default
+ *   npm run admin:create-default
  *
  * Credentials: admin/init.mjs uses serviceAccountKey.json if present, else Application
  * Default Credentials (gcloud auth application-default login). If Auth returns 403,
@@ -21,8 +21,12 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-process.env.FIREBASE_ADMIN_QUIET = "1"
 const { default: admin } = await import("./init.mjs")
+
+/** Set your Gmail and optional password here (no .env). */
+const ADMIN_EMAIL = ""
+const ADMIN_PASSWORD = ""
+const ADMIN_NAME = "Administrateur"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const USERS_COLLECTION = "users"
@@ -46,12 +50,12 @@ function generatePassword() {
 }
 
 async function main() {
-  const emailRaw = process.env.ADMIN_EMAIL?.trim().toLowerCase()
-  const displayName = (process.env.ADMIN_NAME ?? "Administrateur").trim()
-  const passwordFromEnv = process.env.ADMIN_PASSWORD?.trim() ?? ""
+  const emailRaw = ADMIN_EMAIL.trim().toLowerCase()
+  const displayName = ADMIN_NAME.trim()
+  const passwordFromEnv = ADMIN_PASSWORD.trim()
 
   if (!emailRaw) {
-    console.error("Set ADMIN_EMAIL to your Gmail address, e.g. ADMIN_EMAIL=you@gmail.com")
+    console.error("Set ADMIN_EMAIL in admin/create-default-admin.mjs (your @gmail.com address).")
     process.exit(1)
   }
 
@@ -78,14 +82,14 @@ async function main() {
       passwordForFile = passwordFromEnv
       console.log("User already existed; password and display name updated.")
     } else {
-      console.log("User already existed; display name updated. Password unchanged (set ADMIN_PASSWORD to rotate).")
+      console.log("User already existed; display name updated. Password unchanged (set ADMIN_PASSWORD in this file to rotate).")
     }
     await auth.updateUser(uid, updates)
   } catch (e) {
     if (e.code === "auth/user-not-found") {
       const password = passwordFromEnv || generatePassword()
       if (!passwordFromEnv) {
-        console.log("No ADMIN_PASSWORD — generated a random password (saved locally).")
+        console.log("No password in ADMIN_PASSWORD — generated a random password (saved locally).")
       }
       const user = await auth.createUser({
         email,
@@ -130,7 +134,7 @@ async function main() {
     saved.password = passwordForFile
   } else {
     saved.passwordNote =
-      "Password not changed or not set in this run. Use Firebase Console or ADMIN_PASSWORD on next run to set one."
+      "Password not changed or not set in this run. Use Firebase Console or ADMIN_PASSWORD in this file on next run to set one."
   }
 
   fs.writeFileSync(CREDENTIALS_FILE, `${JSON.stringify(saved, null, 2)}\n`, "utf8")

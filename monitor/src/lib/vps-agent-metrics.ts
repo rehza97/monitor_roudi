@@ -1,3 +1,5 @@
+import { IS_VITE_DEV } from "@/config/devMode"
+
 export type VpsHealth = {
   ok: boolean
   uptime_seconds: number
@@ -106,7 +108,7 @@ export type VpsAgentSnapshot = {
   metrics: VpsMetrics
 }
 
-const API_BASE = import.meta.env.DEV ? "/__vps-agent" : "http://194.146.13.22:18002"
+const API_BASE = IS_VITE_DEV ? "/__vps-agent" : "http://194.146.13.22:18002"
 
 function numberField(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value)

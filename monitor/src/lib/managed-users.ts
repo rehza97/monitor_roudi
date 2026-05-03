@@ -1,4 +1,5 @@
 import { getFunctions, httpsCallable } from "firebase/functions"
+import { IS_VITE_DEV } from "@/config/devMode"
 import { firebaseApp } from "@/config/firebase"
 import type { UserRole } from "@/data/schema"
 
@@ -53,7 +54,7 @@ async function callDevDelete(uid: string): Promise<void> {
 }
 
 export async function createManagedUser(input: ManagedUserCreateInput): Promise<ManagedUserCreateResult> {
-  if (import.meta.env.DEV) return callDevCreate(input)
+  if (IS_VITE_DEV) return callDevCreate(input)
   if (!firebaseApp) throw new Error("Firebase app indisponible.")
   const fn = httpsCallable<ManagedUserCreateInput, ManagedUserCreateResult>(
     getFunctions(firebaseApp),
@@ -64,7 +65,7 @@ export async function createManagedUser(input: ManagedUserCreateInput): Promise<
 }
 
 export async function deleteManagedUser(uid: string): Promise<void> {
-  if (import.meta.env.DEV) {
+  if (IS_VITE_DEV) {
     await callDevDelete(uid)
     return
   }
@@ -79,7 +80,7 @@ export async function setManagedUserPassword(uid: string, password: string): Pro
   if (!cleanUid) throw new Error("UID utilisateur manquant.")
   if (!cleanPassword) throw new Error("Mot de passe requis.")
 
-  if (import.meta.env.DEV) {
+  if (IS_VITE_DEV) {
     const res = await fetch("/__dev/firebase/set-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

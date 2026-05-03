@@ -1,14 +1,15 @@
 import { toast } from "sonner"
+import { IS_VITE_DEV } from "@/config/devMode"
 
 /** Same value every time so login/tests stay predictable; other fields still randomize. */
-const DEV_AUTOFILL_PASSWORD = "RoudiDev#2026!"
+const DEV_AUTOFILL_PASSWORD = "TechnovaDev#2026!"
 
 const REAL_PROFILES = [
   {
     firstName: "Amine",
     lastName: "Benkhaled",
     fullName: "Amine Benkhaled",
-    email: "amine.benkhaled@roudi.dz",
+    email: "amine.benkhaled@technova.dz",
     phone: "+213 555 12 34 56",
     city: "Alger",
   },
@@ -16,7 +17,7 @@ const REAL_PROFILES = [
     firstName: "Nour",
     lastName: "Mebarki",
     fullName: "Nour Mebarki",
-    email: "nour.mebarki@roudi.dz",
+    email: "nour.mebarki@technova.dz",
     phone: "+213 661 44 22 10",
     city: "Oran",
   },
@@ -24,7 +25,7 @@ const REAL_PROFILES = [
     firstName: "Yacine",
     lastName: "Mansouri",
     fullName: "Yacine Mansouri",
-    email: "yacine.mansouri@roudi.dz",
+    email: "yacine.mansouri@technova.dz",
     phone: "+213 770 09 88 11",
     city: "Constantine",
   },
@@ -91,7 +92,7 @@ function guessInputValue(input: HTMLInputElement, mode: "real" | "random"): stri
   }
 
   if (type === "email" || key.includes("email")) return mode === "random" ? randomEmail : profile.email
-  if (type === "url" || key.includes("url")) return "https://dev.rodaina.local"
+  if (type === "url" || key.includes("url")) return "https://dev.technova.local"
   if (type === "number") return key.includes("qty") || key.includes("quant") ? "5" : "10"
   if (key.includes("phone") || key.includes("tel")) return mode === "random" ? randomPhone : profile.phone
   if (key.includes("first") || key.includes("prenom")) return profile.firstName
@@ -163,7 +164,7 @@ function fillVisibleForms(mode: "real" | "random"): { forms: number; fields: num
 }
 
 export default function DevAutofillButton() {
-  if (!import.meta.env.DEV) return null
+  if (!IS_VITE_DEV) return null
 
   return (
     <div className="fixed bottom-4 right-4 z-[1000] flex gap-2">

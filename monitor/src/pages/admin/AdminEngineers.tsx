@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { getFunctions, httpsCallable } from "firebase/functions"
 import { useNavigate } from "react-router-dom"
+import { IS_VITE_DEV } from "@/config/devMode"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { adminNav } from "@/lib/nav"
 import { db, firebaseApp } from "@/config/firebase"
@@ -65,7 +66,7 @@ function EngineerModal({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [localError, setLocalError] = useState("")
-  const isDev = import.meta.env.DEV
+  const isDev = IS_VITE_DEV
 
   function pickRandom<T>(items: readonly T[]): T {
     return items[Math.floor(Math.random() * items.length)]
@@ -119,7 +120,7 @@ function EngineerModal({
     const lastNames = ["Benkhaled", "Mebarki", "Mansouri", "Rahmani", "Khelifi", "Bouzid"] as const
     const firstName = pickRandom(firstNames)
     const lastName = pickRandom(lastNames)
-    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${randomDigits(3)}@roudi.dz`
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${randomDigits(3)}@technova.dz`
 
     setForm((p) => ({
       ...p,

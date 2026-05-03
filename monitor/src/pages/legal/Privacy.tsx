@@ -19,7 +19,7 @@ const sections = [
   },
   {
     title: "5. Vos droits",
-    content: "Conformément à la LPD, vous disposez d'un droit d'accès, de rectification, de suppression, de portabilité et d'opposition au traitement de vos données. Pour exercer ces droits, contactez notre DPO à privacy@rodaina.fr.",
+    content: "Conformément à la LPD, vous disposez d'un droit d'accès, de rectification, de suppression, de portabilité et d'opposition au traitement de vos données. Pour exercer ces droits, contactez notre DPO à privacy@technova.fr.",
   },
   {
     title: "6. Sécurité",
@@ -31,7 +31,7 @@ const sections = [
   },
   {
     title: "8. Contact",
-    content: "Pour toute question relative à la protection de vos données, contactez notre Délégué à la Protection des Données (DPO) : privacy@rodaina.fr — Rodaina SAS, 12 Rue Didouche Mourad, 16000 Alger.",
+    content: "Pour toute question relative à la protection de vos données, contactez notre Délégué à la Protection des Données (DPO) : privacy@technova.fr — TECHNOVA SAS, 12 Rue Didouche Mourad, 16000 Alger.",
   },
 ]
 
@@ -49,7 +49,7 @@ export default function Privacy() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-2xl border border-slate-200 p-8 md:p-12 space-y-8">
             <p className="text-slate-600 leading-relaxed">
-              Chez Rodaina, la protection de vos données personnelles est une priorité. Cette politique décrit comment nous collectons, utilisons et protégeons vos informations conformément à la Loi sur la Protection des Données Personnelles (LPD 18-07).
+              Chez Technova, la protection de vos données personnelles est une priorité. Cette politique décrit comment nous collectons, utilisons et protégeons vos informations conformément à la Loi sur la Protection des Données Personnelles (LPD 18-07).
             </p>
             {sections.map(s => (
               <div key={s.title}>

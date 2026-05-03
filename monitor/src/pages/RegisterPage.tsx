@@ -58,7 +58,7 @@ export default function RegisterPage() {
               <div className="size-8 rounded bg-blue-600/10 flex items-center justify-center text-blue-600">
                 <span className="material-symbols-outlined">monitoring</span>
               </div>
-              <h2 className="text-slate-900 text-lg font-bold tracking-tight">Rodaina Project</h2>
+              <h2 className="text-slate-900 text-lg font-bold tracking-tight">Technova Project</h2>
             </Link>
             <div className="flex items-center gap-4">
               <span className="hidden sm:inline-block text-slate-600 text-sm font-medium">

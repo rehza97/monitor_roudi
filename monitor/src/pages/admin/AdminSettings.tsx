@@ -17,10 +17,10 @@ const SECURITY_ROWS: { key: SecurityKey; label: string; desc: string }[] = [
 ]
 
 const DEFAULT_INVOICE_CONFIG: InvoiceCompanyConfig = {
-  companyName: "RODAINA",
+  companyName: "TECHNOVA",
   companyTagline: "Digital Systems & Monitoring",
   companyAddress: "Alger, Algerie",
-  companyEmail: "contact@rodaina.dz",
+  companyEmail: "contact@technova.dz",
   companyPhone: "+213 XX XX XX XX",
   bankName: "CPA Algerie",
   bankIBAN: "DZ00 0000 0000 0000 0000 00",
@@ -162,9 +162,9 @@ export default function AdminSettings() {
           </div>
           <div className="p-6 space-y-4">
             {([
-              { key: "name"  as const, label: "Nom de la plateforme", type: "text",  placeholder: "Rodaina" },
-              { key: "email" as const, label: "Email de contact",     type: "email", placeholder: "contact@rodaina.dz" },
-              { key: "url"   as const, label: "URL publique",         type: "url",   placeholder: "https://rodaina.dz" },
+              { key: "name"  as const, label: "Nom de la plateforme", type: "text",  placeholder: "Technova" },
+              { key: "email" as const, label: "Email de contact",     type: "email", placeholder: "contact@technova.dz" },
+              { key: "url"   as const, label: "URL publique",         type: "url",   placeholder: "https://technova.dz" },
             ]).map(f => (
               <div key={f.key} className="space-y-1.5">
                 <label className="block text-sm font-medium text-slate-700">{f.label}</label>
@@ -196,10 +196,10 @@ export default function AdminSettings() {
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Entreprise</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {([
-                  { key: "companyName"    as const, label: "Nom de l'entreprise",  placeholder: "RODAINA" },
+                  { key: "companyName"    as const, label: "Nom de l'entreprise",  placeholder: "TECHNOVA" },
                   { key: "companyTagline" as const, label: "Tagline / Activité",   placeholder: "Digital Systems & Monitoring" },
                   { key: "companyAddress" as const, label: "Adresse",              placeholder: "Alger, Algerie" },
-                  { key: "companyEmail"   as const, label: "Email de contact",     placeholder: "contact@rodaina.dz" },
+                  { key: "companyEmail"   as const, label: "Email de contact",     placeholder: "contact@technova.dz" },
                   { key: "companyPhone"   as const, label: "Téléphone",            placeholder: "+213 XX XX XX XX" },
                 ]).map(f => (
                   <div key={f.key} className="space-y-1.5">

@@ -1,14 +1,14 @@
 /**
  * Standalone WebSocket → SSH bridge (same protocol as Vite dev plugin `/__dev/ssh/ws`).
  * Run: npm run ssh-bridge
- * Then set VITE_SSH_WS_URL=ws://127.0.0.1:8765 when using `vite preview` or a static build.
+ * For `vite preview`, set REMOTE_SSH_WEBSOCKET_URL to ws://127.0.0.1:8765 in src/config/remoteSshDefaults.ts.
  */
 import http from "node:http"
 import { Client } from "ssh2"
 import { WebSocketServer } from "ws"
 
-const PORT = Number(process.env.SSH_BRIDGE_PORT || 8765)
-const BIND = process.env.SSH_BRIDGE_BIND || "127.0.0.1"
+const PORT = 8765
+const BIND = "127.0.0.1"
 
 /** @typedef {{ type: 'connect'; host: string; port?: number; username: string; password?: string; privateKey?: string } | { type: 'input'; data: string } | { type: 'resize'; cols: number; rows: number } | { type: 'disconnect' }} SshSocketIncoming */
 

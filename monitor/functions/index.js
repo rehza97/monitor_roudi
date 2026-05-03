@@ -8,6 +8,9 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore")
 
 initializeApp()
 
+/** MVP: must match monitor/agents/vps-monitor-collector.mjs CONFIG.ingestToken */
+const MVP_INGEST_TOKEN = "technova-mvp-ingest-token-v1"
+
 function deriveInitials(name, email) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length >= 2) return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
@@ -376,8 +379,12 @@ exports.ingestDeploymentMetrics = onRequest({ cors: true }, async (req, res) => 
     return
   }
 
-  const expected = process.env.ROUDI_INGEST_TOKEN || process.env.VPS_INGEST_TOKEN || ""
-  const provided = req.get("x-roudi-agent-token") || req.query.token || ""
+  const expected = MVP_INGEST_TOKEN
+  const provided =
+    req.get("x-technova-agent-token") ||
+    req.get("x-roudi-agent-token") ||
+    req.query.token ||
+    ""
   if (!expected || provided !== expected) {
     res.status(401).json({ ok: false, error: "invalid token" })
     return

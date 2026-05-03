@@ -138,7 +138,7 @@ export default function AdminDashboard() {
       <AdminSidebar
         demandesBadge={loading ? 0 : stats.pending}
         userName={user?.name ?? "Jean Dupont"}
-        userEmail={user?.email ?? "jean@rodaina.com"}
+        userEmail={user?.email ?? "jean@technova.com"}
         userInitials={(user?.name ?? "JD").slice(0, 2).toUpperCase()}
         onLogout={() => { void handleLogout() }}
       />

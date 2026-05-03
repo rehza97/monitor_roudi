@@ -254,7 +254,7 @@ export default function LandingPage() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">Pourquoi choisir Rodaina ?</h2>
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">Pourquoi choisir Technova ?</h2>
             <p className="text-slate-500 max-w-2xl mx-auto">
               Nous combinons performance, sécurité et simplicité pour vous offrir la meilleure expérience développeur possible.
             </p>
@@ -284,7 +284,7 @@ export default function LandingPage() {
             <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
             <h2 className="text-3xl md:text-4xl font-bold mb-6 relative z-10">Prêt à accélérer vos projets ?</h2>
             <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto relative z-10">
-              Rejoignez les équipes qui utilisent Rodaina pour construire leurs services métiers.
+              Rejoignez les équipes qui utilisent Technova pour construire leurs services métiers.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
               <Link to="/register" className="px-8 py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors">

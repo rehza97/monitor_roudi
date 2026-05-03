@@ -3,6 +3,17 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { engineerNav } from "@/lib/nav"
 import { db } from "@/config/firebase"
 import { COMPANY_DEFAULT_VPS_LABEL, ENGINEER_REMOTE_DEFAULTS } from "@/config/engineerRemoteHardcoded"
+import {
+  REMOTE_SSH_DEFAULT_HOST,
+  REMOTE_SSH_DEFAULT_PASSWORD,
+  REMOTE_SSH_DEFAULT_PORT,
+  REMOTE_SSH_DEFAULT_USER,
+} from "@/config/remoteSshDefaults"
+import {
+  getRemoteSshWebSocketUrl,
+  remoteSshRequiresLocalDevTunnel,
+  remoteSshUsesDedicatedBridge,
+} from "@/lib/remote-ssh-ws"
 import { useAuth } from "@/contexts/AuthContext"
 import {
   COLLECTIONS,
@@ -33,19 +44,6 @@ const SCOPE_LABELS: Record<RemoteVpsScope, string> = {
 }
 
 const SCOPE_ORDER: RemoteVpsScope[] = ["client", "engineer", "ai", "company"]
-
-function wsUrl(): string {
-  const explicit = import.meta.env.VITE_SSH_WS_URL?.trim()
-  if (explicit) return explicit
-  const proto = window.location.protocol === "https:" ? "wss" : "ws"
-  return `${proto}://${window.location.host}/__dev/ssh/ws`
-}
-
-function requiresDevTunnel(): boolean {
-  if (import.meta.env.VITE_SSH_WS_URL?.trim()) return false
-  const h = window.location.hostname
-  return !(h === "localhost" || h === "127.0.0.1")
-}
 
 function parseScope(v: unknown): RemoteVpsScope {
   if (v === "client" || v === "engineer" || v === "ai" || v === "company") return v
@@ -129,16 +127,10 @@ export default function EngineerRemoteControl() {
   const [serverIdx, setServerIdx] = useState(0)
   const firstDataRef = useRef(false)
 
-  const [host, setHost] = useState(
-    () => import.meta.env.VITE_SSH_DEFAULT_HOST?.trim() || ENGINEER_REMOTE_DEFAULTS.host,
-  )
-  const [port, setPort] = useState(() => String(ENGINEER_REMOTE_DEFAULTS.port))
-  const [username, setUsername] = useState(
-    () => import.meta.env.VITE_SSH_DEFAULT_USER?.trim() || ENGINEER_REMOTE_DEFAULTS.username,
-  )
-  const [password, setPassword] = useState(
-    () => import.meta.env.VITE_SSH_DEFAULT_PASSWORD?.trim() || ENGINEER_REMOTE_DEFAULTS.password,
-  )
+  const [host, setHost] = useState<string>(() => REMOTE_SSH_DEFAULT_HOST)
+  const [port, setPort] = useState<string>(() => String(REMOTE_SSH_DEFAULT_PORT))
+  const [username, setUsername] = useState<string>(() => REMOTE_SSH_DEFAULT_USER)
+  const [password, setPassword] = useState<string>(() => REMOTE_SSH_DEFAULT_PASSWORD)
   const [pemPrivateKey, setPemPrivateKey] = useState("")
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -164,7 +156,7 @@ export default function EngineerRemoteControl() {
 
   const socketRef = useRef<WebSocket | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
-  const devTunnelRequired = requiresDevTunnel()
+  const devTunnelRequired = remoteSshRequiresLocalDevTunnel()
 
   const mergedRows = useMemo(() => {
     const d = ENGINEER_REMOTE_DEFAULTS
@@ -300,7 +292,7 @@ export default function EngineerRemoteControl() {
     setConnecting(true)
     setOutput("")
 
-    const ws = new WebSocket(wsUrl())
+    const ws = new WebSocket(getRemoteSshWebSocketUrl())
     socketRef.current = ws
 
     ws.onopen = () => {
@@ -357,9 +349,9 @@ export default function EngineerRemoteControl() {
 
     ws.onerror = () => {
       setErrorText(
-        import.meta.env.VITE_SSH_WS_URL?.trim()
-          ? "Pont SSH inaccessible (vérifiez que « npm run ssh-bridge » tourne et que VITE_SSH_WS_URL est correct)."
-          : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » avec VITE_SSH_WS_URL).",
+        remoteSshUsesDedicatedBridge()
+          ? "Pont SSH inaccessible (vérifiez « npm run ssh-bridge » et REMOTE_SSH_WEBSOCKET_URL dans src/config/remoteSshDefaults.ts)."
+          : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » et renseignez REMOTE_SSH_WEBSOCKET_URL pour preview).",
       )
       setConnecting(false)
     }
@@ -595,7 +587,9 @@ export default function EngineerRemoteControl() {
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
               Connexion SSH : ouvrez l&apos;app en <code className="rounded bg-amber-100/80 px-1">localhost</code> /{" "}
               <code className="rounded bg-amber-100/80 px-1">127.0.0.1</code> avec <code className="rounded bg-amber-100/80 px-1">npm run dev</code>, ou définissez{" "}
-              <code className="rounded bg-amber-100/80 px-1">VITE_SSH_WS_URL</code> et lancez <code className="rounded bg-amber-100/80 px-1">npm run ssh-bridge</code>.
+              <code className="rounded bg-amber-100/80 px-1">REMOTE_SSH_WEBSOCKET_URL</code> dans{" "}
+              <code className="rounded bg-amber-100/80 px-1">src/config/remoteSshDefaults.ts</code> et lancez{" "}
+              <code className="rounded bg-amber-100/80 px-1">npm run ssh-bridge</code>.
             </div>
           ) : null}
 

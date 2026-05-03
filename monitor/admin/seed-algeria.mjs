@@ -10,16 +10,13 @@
  *   cd monitor
  *   npm run admin:seed:dz
  *
- * Optional:
- *   SEED_RESET=true npm run admin:seed:dz
- *     -> deletes known seeded docs first, then reseeds.
+ * Optional: set RESET below to true to delete known seeded docs first, then reseed.
  */
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { randomBytes } from "node:crypto"
 
-process.env.FIREBASE_ADMIN_QUIET = "1"
 const { default: admin } = await import("./init.mjs")
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -27,7 +24,7 @@ const db = admin.firestore()
 const auth = admin.auth()
 const { FieldValue, Timestamp } = admin.firestore
 
-const RESET = String(process.env.SEED_RESET || "").toLowerCase() === "true"
+const RESET = false
 const CREDENTIALS_FILE = path.join(__dirname, ".seed-algeria-credentials.json")
 
 function daysAgo(days) {
@@ -159,7 +156,7 @@ async function main() {
     {
       key: "admin-main",
       name: "Amine Bensalem",
-      email: "admin@roudi.dz",
+      email: "admin@technova.dz",
       role: "admin",
       organizationId: null,
       accountType: "other",
@@ -170,7 +167,7 @@ async function main() {
     {
       key: "admin-ops",
       name: "Sonia Benali",
-      email: "ops.admin@roudi.dz",
+      email: "ops.admin@technova.dz",
       role: "admin",
       organizationId: null,
       accountType: "other",
@@ -214,7 +211,7 @@ async function main() {
     {
       key: "engineer-1",
       name: "Karim Touati",
-      email: "karim.touati@roudi.dz",
+      email: "karim.touati@technova.dz",
       role: "engineer",
       organizationId: null,
       accountType: "other",
@@ -225,7 +222,7 @@ async function main() {
     {
       key: "engineer-2",
       name: "Meriem Ait Ouali",
-      email: "meriem.aitouali@roudi.dz",
+      email: "meriem.aitouali@technova.dz",
       role: "engineer",
       organizationId: null,
       accountType: "other",
@@ -236,7 +233,7 @@ async function main() {
     {
       key: "technician-1",
       name: "Samir Charef",
-      email: "samir.charef@roudi.dz",
+      email: "samir.charef@technova.dz",
       role: "technician",
       organizationId: null,
       accountType: "other",
@@ -247,7 +244,7 @@ async function main() {
     {
       key: "technician-2",
       name: "Ines Boulahbel",
-      email: "ines.boulahbel@roudi.dz",
+      email: "ines.boulahbel@technova.dz",
       role: "technician",
       organizationId: null,
       accountType: "other",
@@ -957,7 +954,7 @@ async function main() {
 
   await setDoc("engineers", "eng-roster-1", {
     name: "Karim Touati",
-    email: "karim.touati@roudi.dz",
+    email: "karim.touati@technova.dz",
     specialty: "Backend",
     status: "Disponible",
     projects: 3,
@@ -970,7 +967,7 @@ async function main() {
   })
   await setDoc("engineers", "eng-roster-2", {
     name: "Meriem Ait Ouali",
-    email: "meriem.aitouali@roudi.dz",
+    email: "meriem.aitouali@technova.dz",
     specialty: "Fullstack",
     status: "Occupé",
     projects: 4,
@@ -1057,9 +1054,9 @@ async function main() {
   })
 
   await setDoc("platform_config", "main", {
-    name: "Roudi Monitor DZ",
-    email: "contact@roudi.dz",
-    url: "https://roudi.dz",
+    name: "Technova Monitor DZ",
+    email: "contact@technova.dz",
+    url: "https://technova.dz",
     security: {
       twofa: true,
       multiSession: true,
@@ -1079,7 +1076,7 @@ async function main() {
   }
 
   fs.writeFileSync(CREDENTIALS_FILE, `${JSON.stringify(output, null, 2)}\n`, "utf8")
-  console.log(`Seed completed for roudi-monitor-app.`)
+  console.log(`Seed completed for TECHNOVA (GCP project ${output.project}).`)
   console.log(`Credentials report: ${CREDENTIALS_FILE}`)
 }
 

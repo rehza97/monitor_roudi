@@ -6,13 +6,26 @@ import { promisify } from "node:util"
 
 const execFileAsync = promisify(execFile)
 
-const endpoint = process.env.ROUDI_INGEST_URL
-const token = process.env.ROUDI_INGEST_TOKEN
-const deploymentId = process.env.ROUDI_DEPLOYMENT_ID
-const intervalSeconds = Number(process.env.ROUDI_AGENT_INTERVAL_SECONDS || "30")
+/** Same token as monitor/functions/index.js MVP_INGEST_TOKEN */
+const MVP_INGEST_TOKEN = "technova-mvp-ingest-token-v1"
+
+/** Edit region in URL if your function is not in us-central1. */
+const CONFIG = {
+  ingestUrl:
+    "https://us-central1-roudi-monitor-app.cloudfunctions.net/ingestDeploymentMetrics",
+  ingestToken: MVP_INGEST_TOKEN,
+  deploymentId: "mvp-deployment-1",
+  intervalSeconds: 30,
+  requestsPerMinute: 0,
+}
+
+const endpoint = CONFIG.ingestUrl
+const token = CONFIG.ingestToken
+const deploymentId = CONFIG.deploymentId
+const intervalSeconds = CONFIG.intervalSeconds
 
 if (!endpoint || !token || !deploymentId) {
-  console.error("Missing required env: ROUDI_INGEST_URL, ROUDI_INGEST_TOKEN, ROUDI_DEPLOYMENT_ID")
+  console.error("Edit CONFIG at top of vps-monitor-collector.mjs (ingestUrl, ingestToken, deploymentId).")
   process.exit(1)
 }
 
@@ -110,7 +123,7 @@ async function collectPayload() {
       disk,
       uptimeSeconds: os.uptime(),
       loadAverage: os.loadavg(),
-      requestsPerMinute: Number(process.env.ROUDI_REQUESTS_PER_MINUTE || "0"),
+      requestsPerMinute: CONFIG.requestsPerMinute,
     },
     runningProjects: [...dockerProjects, ...pm2Projects],
   }
@@ -122,6 +135,7 @@ async function pushOnce() {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      "x-technova-agent-token": token,
       "x-roudi-agent-token": token,
     },
     body: JSON.stringify(payload),
@@ -130,7 +144,7 @@ async function pushOnce() {
   if (!res.ok) {
     throw new Error(`ingest failed ${res.status}: ${text}`)
   }
-  console.log(`[roudi-agent] pushed ${payload.deploymentId} cpu=${payload.metrics.cpu}% ram=${payload.metrics.ram}%`)
+  console.log(`[technova-agent] pushed ${payload.deploymentId} cpu=${payload.metrics.cpu}% ram=${payload.metrics.ram}%`)
 }
 
 if (process.argv.includes("--once")) {
@@ -140,7 +154,7 @@ if (process.argv.includes("--once")) {
     try {
       await pushOnce()
     } catch (error) {
-      console.error("[roudi-agent]", error instanceof Error ? error.message : String(error))
+      console.error("[technova-agent]", error instanceof Error ? error.message : String(error))
     }
     await sleep(Math.max(5, intervalSeconds) * 1000)
   }

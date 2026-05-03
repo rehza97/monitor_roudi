@@ -2,7 +2,7 @@ import PublicLayout from "@/components/layouts/PublicLayout"
 import { Link } from "react-router-dom"
 
 const team = [
-  { name: "Amina Rodaina",    role: "CEO & Fondatrice",      initials: "AR", color: "bg-blue-600"    },
+  { name: "Amina Benali",    role: "CEO & Fondatrice",      initials: "AR", color: "bg-blue-600"    },
   { name: "Marc Lefebvre",    role: "CTO",                   initials: "ML", color: "bg-indigo-600"  },
   { name: "Sara Nguyen",      role: "Lead Designer",         initials: "SN", color: "bg-emerald-600" },
   { name: "Karim Osman",      role: "Head of Engineering",   initials: "KO", color: "bg-amber-600"   },
@@ -30,7 +30,7 @@ export default function About() {
             Construire la plateforme que <span className="text-blue-600">nous voulions utiliser</span>
           </h1>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            Rodaina est née en 2021 d'un constat simple : les développeurs méritent des outils de monitoring beaux, rapides et qui respectent leur vie privée.
+            Technova est née en 2021 d'un constat simple : les développeurs méritent des outils de monitoring beaux, rapides et qui respectent leur vie privée.
           </p>
         </div>
       </section>
@@ -42,10 +42,10 @@ export default function About() {
             <div className="space-y-5">
               <h2 className="text-3xl font-bold text-slate-900">Notre parcours</h2>
               <p className="text-slate-600 leading-relaxed">
-                Fondée à Alger en 2021 par Amina Rodaina, une ingénieure passionnée par les problèmes d'observabilité, la startup a levé 2,5M DA en seed round en 2023 pour accélérer son développement.
+                Fondée à Alger en 2021 par Amina Benali, une ingénieure passionnée par les problèmes d'observabilité, la startup a levé 2,5M DA en seed round en 2023 pour accélérer son développement.
               </p>
               <p className="text-slate-600 leading-relaxed">
-                Aujourd'hui, Rodaina compte 35 collaborateurs répartis entre Alger et Oran, et accompagne plus de 5 000 développeurs au quotidien dans 12 pays.
+                Aujourd'hui, Technova compte 35 collaborateurs répartis entre Alger et Oran, et accompagne plus de 5 000 développeurs au quotidien dans 12 pays.
               </p>
               <div className="grid grid-cols-3 gap-4 pt-4">
                 {[{ value: "5 000+", label: "Développeurs" }, { value: "12", label: "Pays" }, { value: "2021", label: "Fondée" }].map(s => (
@@ -64,7 +64,7 @@ export default function About() {
               <div className="mt-6 flex items-center gap-3">
                 <div className="size-10 rounded-full bg-white/20 flex items-center justify-center font-bold">AR</div>
                 <div>
-                  <p className="font-semibold">Amina Rodaina</p>
+                  <p className="font-semibold">Amina Benali</p>
                   <p className="text-blue-200 text-sm">CEO & Fondatrice</p>
                 </div>
               </div>
