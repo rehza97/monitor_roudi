@@ -11,6 +11,8 @@ import { getAuthDebugSnapshot } from "@/lib/auth-debug-state"
 const Firestore = FirestoreRuntime as typeof FirestoreTypes
 
 export const getFirestore = Firestore.getFirestore
+/** Must be used with `db` from the same module tree as `doc` / `collection` (avoid mixing `@firebase/firestore` entrypoints). */
+export const initializeFirestore = Firestore.initializeFirestore
 export const doc = Firestore.doc
 export const collection = Firestore.collection
 export const query = Firestore.query

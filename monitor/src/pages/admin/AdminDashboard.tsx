@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import DashboardLayout from "@/components/layouts/DashboardLayout"
-import OnboardingHint from "@/components/shared/OnboardingHint"
-import { adminNav } from "@/lib/nav"
+import { useNavigate } from "react-router-dom"
 import { db, isFirebaseConfigured } from "@/config/firebase"
-import { COLLECTIONS, ORDER_KIND, type FirestoreOrder } from "@/data/schema"
+import { COLLECTIONS, ORDER_KIND, type FirestoreInvoice, type FirestoreOrder, type FirestoreSupportTicket } from "@/data/schema"
 import { collection, onSnapshot, orderBy, query, limit } from "@/lib/firebase-firestore"
-import { formatFirestoreDate } from "@/lib/utils"
-
-const statusColor: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  Validée:      "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
-  Rejetée:      "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
-}
+import { formatFirestoreDate, firestoreToMillis } from "@/lib/utils"
+import { useAuth } from "@/contexts/AuthContext"
+import AdminSidebar, { ADMIN_SIDEBAR_OFFSET_CLASS } from "@/components/layouts/AdminSidebar"
 
 type OrderRow = {
   id: string
@@ -23,18 +16,28 @@ type OrderRow = {
   date: string
 }
 
-type DeploymentHealth = "healthy" | "warning" | "down"
-function mapHealth(raw: unknown): DeploymentHealth {
-  const h = typeof raw === "string" ? raw.toLowerCase() : ""
-  if (h === "ok" || h === "healthy") return "healthy"
-  if (h === "degraded" || h === "warning") return "warning"
-  return "down"
+const statusColor: Record<string, string> = {
+  "En attente": "bg-amber-50 text-amber-700 border border-amber-100",
+  Validée: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+  "En cours": "bg-blue-50 text-blue-700 border border-blue-100",
+  Rejetée: "bg-red-50 text-red-700 border border-red-100",
+}
+
+function initials(name: string) {
+  const chunks = name.trim().split(/\s+/).filter(Boolean)
+  if (chunks.length === 0) return "CL"
+  if (chunks.length === 1) return chunks[0].slice(0, 2).toUpperCase()
+  return `${chunks[0][0] ?? ""}${chunks[1][0] ?? ""}`.toUpperCase()
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const [orders, setOrders] = useState<{ id: string; data: FirestoreOrder }[]>([])
   const [engineers, setEngineers] = useState<number>(0)
-  const [deployments, setDeployments] = useState<{ health: DeploymentHealth }[]>([])
+  const [usersCount, setUsersCount] = useState<number>(0)
+  const [invoices, setInvoices] = useState<FirestoreInvoice[]>([])
+  const [openTickets, setOpenTickets] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -45,235 +48,225 @@ export default function AdminDashboard() {
 
     const unsubs: Array<() => void> = []
 
-    // Orders
     unsubs.push(
       onSnapshot(
         query(collection(db, COLLECTIONS.orders), orderBy("createdAt", "desc"), limit(100)),
-        snap => {
-          setOrders(snap.docs.map(d => ({ id: d.id, data: d.data() as FirestoreOrder })))
+        (snap) => {
+          setOrders(snap.docs.map((d) => ({ id: d.id, data: d.data() as FirestoreOrder })))
           setLoading(false)
         },
-        () => setLoading(false)
-      )
+        () => setLoading(false),
+      ),
     )
 
-    // Engineers count
+    unsubs.push(onSnapshot(collection(db, COLLECTIONS.engineers), (snap) => setEngineers(snap.size), () => {}))
+
     unsubs.push(
-      onSnapshot(
-        collection(db, COLLECTIONS.engineers),
-        snap => setEngineers(snap.size),
-        () => {}
-      )
+      onSnapshot(collection(db, COLLECTIONS.users), (snap) => setUsersCount(snap.size), () => {}),
     )
 
-    // Deployments health
     unsubs.push(
-      onSnapshot(
-        collection(db, COLLECTIONS.deployments),
-        snap => {
-          setDeployments(snap.docs.map(d => ({
-            health: mapHealth((d.data() as Record<string, unknown>).health),
-          })))
-        },
-        () => {}
-      )
+      onSnapshot(collection(db, COLLECTIONS.invoices), (snap) => {
+        setInvoices(snap.docs.map((d) => d.data() as FirestoreInvoice))
+      }, () => {}),
     )
 
-    return () => unsubs.forEach(u => u())
+    unsubs.push(
+      onSnapshot(collection(db, COLLECTIONS.supportTickets), (snap) => {
+        const rows = snap.docs.map((d) => d.data() as FirestoreSupportTicket)
+        setOpenTickets(rows.filter((t) => t.status === "Ouvert" || t.status === "En cours").length)
+      }, () => {}),
+    )
+
+    return () => unsubs.forEach((u) => u())
   }, [])
 
+  const revenuePaid = useMemo(() => {
+    return invoices.filter((i) => i.status === "Payée").reduce((s, i) => s + (Number.isFinite(i.amount) ? i.amount : 0), 0)
+  }, [invoices])
+
+  const monthlyRevenuePoints = useMemo(() => {
+    const labels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
+    const year = new Date().getFullYear()
+    const buckets = Array.from({ length: 12 }, (_, m) => ({ m, total: 0 }))
+    for (const inv of invoices) {
+      if (inv.status !== "Payée") continue
+      const ms =
+        firestoreToMillis(inv.paidAt) ??
+        firestoreToMillis(inv.issuedAt) ??
+        firestoreToMillis(inv.createdAt)
+      if (ms == null) continue
+      const d = new Date(ms)
+      if (d.getFullYear() !== year) continue
+      buckets[d.getMonth()].total += Number.isFinite(inv.amount) ? inv.amount : 0
+    }
+    const max = Math.max(...buckets.map((b) => b.total), 1)
+    return buckets.map((b, i) => ({
+      label: labels[i] ?? String(i),
+      total: b.total,
+      h: Math.round((b.total / max) * 100),
+    }))
+  }, [invoices])
+
   const stats = useMemo(() => {
-    const clientRequests = orders.filter(o => o.data.kind === ORDER_KIND.clientRequest)
-    const pending = clientRequests.filter(o => o.data.status === "En attente").length
-    const validated = clientRequests.filter(o => o.data.status === "Validée").length
-    const healthyDeploys = deployments.filter(d => d.health === "healthy").length
-    const alertDeploys = deployments.filter(d => d.health !== "healthy").length
-    return { pending, validated, healthyDeploys, alertDeploys, total: clientRequests.length }
-  }, [orders, deployments])
+    const clientRequests = orders.filter((o) => o.data.kind === ORDER_KIND.clientRequest)
+    const pending = clientRequests.filter((o) => o.data.status === "En attente").length
+    const totalUsers = usersCount > 0 ? usersCount : engineers + clientRequests.length
+    return { pending, tickets: openTickets, totalUsers }
+  }, [orders, engineers, usersCount, openTickets])
 
   const recentOrders = useMemo((): OrderRow[] => {
     return orders
-      .filter(o => o.data.kind === ORDER_KIND.clientRequest)
-      .slice(0, 8)
-      .map(o => ({
+      .filter((o) => o.data.kind === ORDER_KIND.clientRequest)
+      .slice(0, 4)
+      .map((o) => ({
         id: o.id,
-        client: o.data.clientLabel ?? "—",
-        type: o.data.requestType ?? "—",
+        client: o.data.clientLabel ?? "Client",
+        type: o.data.requestType ?? "Demande",
         status: o.data.status ?? "En attente",
         date: formatFirestoreDate(o.data.createdAt),
       }))
   }, [orders])
-  const showOnboarding = !loading && recentOrders.length === 0 && deployments.length === 0 && engineers === 0
 
-  const kpis = [
-    {
-      label: "Demandes en attente",
-      value: loading ? "…" : String(stats.pending),
-      icon: "hourglass_empty",
-      color: "text-amber-600",
-      bg: "bg-amber-50 dark:bg-amber-900/20",
-      trend: stats.total > 0 ? `${Math.round((stats.pending / stats.total) * 100)}% du total` : null,
-      link: "/admin/requests",
-    },
-    {
-      label: "Demandes validées",
-      value: loading ? "…" : String(stats.validated),
-      icon: "check_circle",
-      color: "text-emerald-600",
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      trend: stats.total > 0 ? `${Math.round((stats.validated / stats.total) * 100)}% du total` : null,
-      link: "/admin/requests",
-    },
-    {
-      label: "Ingénieurs actifs",
-      value: loading ? "…" : String(engineers),
-      icon: "engineering",
-      color: "text-violet-600",
-      bg: "bg-violet-50 dark:bg-violet-900/20",
-      trend: null,
-      link: "/admin/engineers",
-    },
-    {
-      label: "Apps en alerte",
-      value: loading ? "…" : String(stats.alertDeploys),
-      icon: "warning",
-      color: "text-rose-600",
-      bg: "bg-rose-50 dark:bg-rose-900/20",
-      trend: deployments.length > 0 ? `${stats.healthyDeploys} saines sur ${deployments.length}` : null,
-      link: "/admin/monitoring",
-    },
-  ]
+  async function handleLogout() {
+    await logout()
+    navigate("/login", { replace: true })
+  }
 
   return (
-    <DashboardLayout role="admin" navItems={adminNav} pageTitle="Tableau de bord">
-      <div className="p-6 space-y-6">
-        {showOnboarding && (
-          <OnboardingHint
-            title="Configuration initiale de la plateforme"
-            description="Commencez par créer des utilisateurs staff, ajouter des déploiements et préparer le catalogue matériel."
-            actions={[
-              { to: "/admin/users/engineers", label: "Créer un utilisateur staff" },
-              { to: "/admin/monitoring", label: "Ajouter un déploiement" },
-              { to: "/admin/materials", label: "Ajouter du matériel" },
-            ]}
-          />
-        )}
+    <div className="bg-[#f8f6f6] text-[#181112] font-[Inter,sans-serif] antialiased min-h-screen flex overflow-hidden">
+      <AdminSidebar
+        demandesBadge={loading ? 0 : stats.pending}
+        userName={user?.name ?? "Jean Dupont"}
+        userEmail={user?.email ?? "jean@rodaina.com"}
+        userInitials={(user?.name ?? "JD").slice(0, 2).toUpperCase()}
+        onLogout={() => { void handleLogout() }}
+      />
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpis.map((k) => (
-            <Link
-              key={k.label}
-              to={k.link}
-              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-[#db143c]/30 transition-colors block"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className={`size-10 rounded-lg ${k.bg} ${k.color} flex items-center justify-center`}>
-                  <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{k.value}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{k.label}</p>
-              {k.trend && (
-                <p className="text-xs text-slate-400 mt-1">{k.trend}</p>
-              )}
-            </Link>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent requests */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-semibold text-slate-900 dark:text-white">Demandes récentes</h3>
-              <Link to="/admin/requests" className="text-sm text-[#db143c] hover:opacity-80 font-medium">
-                Voir tout →
+      <main className={`flex-1 ${ADMIN_SIDEBAR_OFFSET_CLASS} p-8 overflow-y-auto h-screen bg-[#f8f6f6]`}>
+        <div className="max-w-7xl mx-auto flex flex-col gap-8">
+          <header className="flex justify-between items-end">
+            <div>
+              <h2 className="text-3xl font-black text-[#181112] tracking-tight">Tableau de bord</h2>
+              <p className="text-[#896169] mt-1">Bienvenue, voici un aperçu des performances du jour.</p>
+            </div>
+            <div className="flex gap-3">
+              <button className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium text-[#181112] hover:bg-gray-50 transition-shadow shadow-sm">
+                <span className="material-symbols-outlined text-[20px]">calendar_today</span>
+                <span>Derniers 30 jours</span>
+              </button>
+              <Link to="/admin/reports" className="flex items-center gap-2 bg-[#db143c] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#c11236] transition-shadow shadow-sm shadow-[#db143c]/20">
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                <span>Nouveau Rapport</span>
               </Link>
             </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
-                <div className="px-6 py-8 text-center text-slate-400 text-sm">Chargement…</div>
-              ) : recentOrders.length === 0 ? (
-                <div className="px-6 py-8 text-center text-slate-400 text-sm">
-                  Aucune demande.{" "}
-                  <Link to="/admin/requests" className="text-[#db143c] underline">
-                    Créer une demande
-                  </Link>
+          </header>
+
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: "Total Utilisateurs", value: loading ? "…" : String(stats.totalUsers), icon: "group", trend: "—", positive: true },
+              {
+                label: "Revenu (factures payées)",
+                value: loading ? "…" : new Intl.NumberFormat("fr-DZ", { style: "currency", currency: "DZD", maximumFractionDigits: 0 }).format(revenuePaid),
+                icon: "payments",
+                trend: "Firestore",
+                positive: true,
+              },
+              { label: "Demandes en attente", value: loading ? "…" : String(stats.pending), icon: "pending_actions", trend: "—", positive: stats.pending === 0 },
+              { label: "Tickets actifs", value: loading ? "…" : String(stats.tickets), icon: "confirmation_number", trend: "Ouvert + En cours", positive: stats.tickets === 0 },
+            ].map((k) => (
+              <div key={k.label} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group">
+                <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <span className="material-symbols-outlined text-6xl text-[#db143c]">{k.icon}</span>
                 </div>
-              ) : (
-                recentOrders.map((r) => (
-                  <div key={r.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{r.client}</p>
-                      <p className="text-xs text-slate-400 truncate">{r.type} · {r.date}</p>
-                    </div>
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${statusColor[r.status] ?? "bg-slate-100 text-slate-600"}`}
-                    >
-                      {r.status}
-                    </span>
-                    <Link
-                      to={`/admin/requests/${r.id}`}
-                      className="text-xs text-[#db143c] font-medium hover:opacity-80 shrink-0"
-                    >
-                      Traiter →
-                    </Link>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[#896169] text-sm font-medium">{k.label}</p>
+                    <h3 className="text-2xl font-bold text-[#181112] mt-1">{k.value}</h3>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Server status */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900 dark:text-white">État des déploiements</h3>
-              <Link to="/admin/monitoring" className="text-xs text-[#db143c] font-medium hover:opacity-80">
-                Monitoring →
-              </Link>
-            </div>
-            {loading ? (
-              <p className="text-sm text-slate-400">Chargement…</p>
-            ) : deployments.length === 0 ? (
-              <p className="text-sm text-slate-400">Aucun déploiement.</p>
-            ) : (
-              <div className="space-y-3">
-                {[
-                  { label: "Sains", value: stats.healthyDeploys, dot: "bg-emerald-500", color: "text-emerald-700" },
-                  { label: "En alerte", value: deployments.filter(d => d.health === "warning").length, dot: "bg-amber-500 animate-pulse", color: "text-amber-700" },
-                  { label: "Hors ligne", value: deployments.filter(d => d.health === "down").length, dot: "bg-rose-500", color: "text-rose-700" },
-                ].map(s => (
-                  <div key={s.label} className="flex items-center gap-3">
-                    <span className={`size-2 rounded-full shrink-0 ${s.dot}`} />
-                    <span className="flex-1 text-sm text-slate-700 dark:text-slate-300">{s.label}</span>
-                    <span className={`text-sm font-bold ${s.color}`}>{s.value}</span>
+                  <div className="p-2 bg-[#db143c]/5 rounded-lg text-[#db143c]">
+                    <span className="material-symbols-outlined">{k.icon}</span>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center gap-1 mt-auto">
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded flex items-center gap-1 ${k.positive ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"}`}>
+                    {k.trend === "—" ? null : <span className="material-symbols-outlined text-[14px]">database</span>}
+                    {k.trend}
+                  </span>
+                </div>
               </div>
-            )}
+            ))}
+          </section>
 
-            <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4 space-y-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Accès rapides</p>
-              {[
-                { label: "Ingénieurs", icon: "engineering", to: "/admin/engineers" },
-                { label: "Matériels", icon: "inventory_2", to: "/admin/materials" },
-                { label: "Rapports", icon: "analytics", to: "/admin/reports" },
-                { label: "Historique", icon: "history", to: "/admin/history" },
-              ].map(item => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm text-slate-700 dark:text-slate-300"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-slate-400">{item.icon}</span>
-                  {item.label}
-                  <span className="material-symbols-outlined text-[14px] text-slate-300 ml-auto">chevron_right</span>
-                </Link>
+          <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-[#181112]">Revenus facturés (payées)</h3>
+                <p className="text-sm text-[#896169]">Agrégation mensuelle — année en cours (`invoices`)</p>
+              </div>
+            </div>
+            <div className="h-56 w-full flex items-end gap-1 md:gap-2 px-1">
+              {monthlyRevenuePoints.map((pt) => (
+                <div key={pt.label} className="flex-1 flex flex-col items-center gap-2 min-w-0">
+                  <div className="w-full bg-gray-100 rounded-t-md relative h-44 flex items-end overflow-hidden">
+                    <div
+                      className="w-full bg-[#db143c]/90 rounded-t-md transition-all min-h-[4px]"
+                      style={{ height: `${pt.h}%` }}
+                      title={`${pt.label}: ${new Intl.NumberFormat("fr-DZ", { style: "currency", currency: "DZD", maximumFractionDigits: 0 }).format(pt.total)}`}
+                    />
+                  </div>
+                  <span className="text-[10px] text-[#896169] font-medium truncate w-full text-center">{pt.label}</span>
+                </div>
               ))}
             </div>
-          </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-[#181112]">Demandes Récentes</h3>
+              <Link to="/admin/requests" className="text-sm text-[#db143c] font-medium hover:underline">Voir tout</Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 text-xs uppercase text-[#896169] font-semibold tracking-wider">
+                    <th className="px-6 py-4">ID</th>
+                    <th className="px-6 py-4">Utilisateur</th>
+                    <th className="px-6 py-4">Type</th>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Statut</th>
+                    <th className="px-6 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loading ? (
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-[#896169]">Chargement…</td></tr>
+                  ) : recentOrders.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-8 text-center text-sm text-[#896169]">Aucune demande récente.</td></tr>
+                  ) : recentOrders.map((row, idx) => (
+                    <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm text-[#896169] font-mono">#REQ-{row.id.slice(0, 4).toUpperCase()}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-8 w-8 rounded-full ${idx % 3 === 0 ? "bg-blue-100 text-blue-600" : idx % 3 === 1 ? "bg-purple-100 text-purple-600" : "bg-pink-100 text-pink-600"} flex items-center justify-center text-xs font-bold`}>{initials(row.client)}</div>
+                          <span className="text-sm font-medium text-[#181112]">{row.client}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-[#181112]">{row.type}</td>
+                      <td className="px-6 py-4 text-sm text-[#896169]">{row.date}</td>
+                      <td className="px-6 py-4"><span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[row.status] ?? "bg-gray-100 text-gray-700 border border-gray-200"}`}>{row.status}</span></td>
+                      <td className="px-6 py-4 text-right">
+                        <Link to={`/admin/requests/${row.id}`} className="text-gray-400 hover:text-[#181112] transition-colors"><span className="material-symbols-outlined text-[20px]">more_vert</span></Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
-      </div>
-    </DashboardLayout>
+        <div className="h-12" />
+      </main>
+    </div>
   )
 }

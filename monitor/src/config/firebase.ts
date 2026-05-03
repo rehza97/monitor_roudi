@@ -1,7 +1,7 @@
 import { getApp, getApps, initializeApp } from "firebase/app"
 import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth"
+import { initializeFirestore } from "@/lib/firebase-firestore"
 import { FIREBASE_PROJECT_ID } from "./firebaseProject"
-import { getFirestore } from "@/lib/firebase-firestore"
 
 const projectId = FIREBASE_PROJECT_ID
 
@@ -27,7 +27,12 @@ export const firebaseApp = isFirebaseConfigured
   : null
 
 export const auth = firebaseApp ? getAuth(firebaseApp) : null
-export const db = firebaseApp ? getFirestore(firebaseApp) : null
+/** Long-polling fallback when WebChannel streams fail (proxies / flaky networks — reduces Listen transport errors). */
+export const db = firebaseApp
+  ? initializeFirestore(firebaseApp, {
+      experimentalAutoDetectLongPolling: true,
+    })
+  : null
 
 let persistencePromise: Promise<void> | null = null
 

@@ -44,7 +44,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       type="button"
       onClick={onToggle}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#db143c] ${
-        on ? "bg-[#db143c]" : "bg-slate-200 dark:bg-slate-700"
+        on ? "bg-[#db143c]" : "bg-slate-200"
       }`}
       role="switch"
       aria-checked={on}
@@ -136,10 +136,10 @@ export default function AdminSettings() {
   }
 
   const maintenanceActions = [
-    { key: "cache",       label: "Vider le cache",   icon: "cached",       color: "text-blue-600   border-blue-200  dark:border-blue-800  hover:bg-blue-50 dark:hover:bg-blue-900/20"       },
-    { key: "logs",        label: "Purger les logs",  icon: "delete_sweep", color: "text-amber-600  border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"   },
-    { key: "export",      label: "Export données",   icon: "download",     color: "text-emerald-600 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20" },
-    { key: "maintenance", label: "Mode maintenance", icon: "construction", color: "text-rose-600   border-rose-200  dark:border-rose-800  hover:bg-rose-50 dark:hover:bg-rose-900/20"     },
+    { key: "cache",       label: "Vider le cache",   icon: "cached",       color: "text-blue-600   border-blue-200  hover:bg-blue-50"       },
+    { key: "logs",        label: "Purger les logs",  icon: "delete_sweep", color: "text-amber-600  border-amber-200 hover:bg-amber-50"   },
+    { key: "export",      label: "Export données",   icon: "download",     color: "text-emerald-600 border-emerald-200 hover:bg-emerald-50" },
+    { key: "maintenance", label: "Mode maintenance", icon: "construction", color: "text-rose-600   border-rose-200  hover:bg-rose-50"     },
   ]
 
   return (
@@ -148,17 +148,17 @@ export default function AdminSettings() {
 
         {/* Page header */}
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Paramètres plateforme</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+          <h2 className="text-2xl font-bold text-slate-900">Paramètres plateforme</h2>
+          <p className="text-slate-500 text-sm mt-1">
             Configuration globale enregistrée dans Firestore ({loading ? "chargement…" : "synchronisé"}).
           </p>
         </div>
 
         {/* General */}
-        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
             <span className="material-symbols-outlined text-[#db143c] text-[20px]">settings</span>
-            <h3 className="font-semibold text-slate-900 dark:text-white">Général</h3>
+            <h3 className="font-semibold text-slate-900">Général</h3>
           </div>
           <div className="p-6 space-y-4">
             {([
@@ -167,14 +167,14 @@ export default function AdminSettings() {
               { key: "url"   as const, label: "URL publique",         type: "url",   placeholder: "https://rodaina.dz" },
             ]).map(f => (
               <div key={f.key} className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+                <label className="block text-sm font-medium text-slate-700">{f.label}</label>
                 <input
                   value={config[f.key]}
                   onChange={e => setField(f.key, e.target.value)}
                   type={f.type}
                   placeholder={f.placeholder}
                   disabled={loading}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c] disabled:opacity-50"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c] disabled:opacity-50"
                 />
               </div>
             ))}
@@ -182,11 +182,11 @@ export default function AdminSettings() {
         </section>
 
         {/* Invoice / Company Info */}
-        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
             <span className="material-symbols-outlined text-[#db143c] text-[20px]">receipt_long</span>
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white">Facturation — Identité entreprise</h3>
+              <h3 className="font-semibold text-slate-900">Facturation — Identité entreprise</h3>
               <p className="text-xs text-slate-400 mt-0.5">Ces informations apparaissent sur tous les PDFs de factures générés.</p>
             </div>
           </div>
@@ -203,13 +203,13 @@ export default function AdminSettings() {
                   { key: "companyPhone"   as const, label: "Téléphone",            placeholder: "+213 XX XX XX XX" },
                 ]).map(f => (
                   <div key={f.key} className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{f.label}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">{f.label}</label>
                     <input
                       value={invoiceCfg[f.key]}
                       onChange={e => setInvoiceField(f.key, e.target.value)}
                       placeholder={f.placeholder}
                       disabled={loading}
-                      className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50"
+                      className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50"
                     />
                   </div>
                 ))}
@@ -217,7 +217,7 @@ export default function AdminSettings() {
             </div>
 
             {/* Bank */}
-            <div className="md:col-span-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="md:col-span-2 pt-2 border-t border-slate-100">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3 mt-2">Coordonnées bancaires</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {([
@@ -226,25 +226,25 @@ export default function AdminSettings() {
                   { key: "bankSWIFT" as const, label: "SWIFT",   placeholder: "CPAADZIAXXX" },
                 ]).map(f => (
                   <div key={f.key} className="space-y-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{f.label}</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">{f.label}</label>
                     <input
                       value={invoiceCfg[f.key]}
                       onChange={e => setInvoiceField(f.key, e.target.value)}
                       placeholder={f.placeholder}
                       disabled={loading}
-                      className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50 font-mono"
+                      className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50 font-mono"
                     />
                   </div>
                 ))}
               </div>
               <div className="mt-3 space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Note de paiement</label>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Note de paiement</label>
                 <input
                   value={invoiceCfg.bankNote}
                   onChange={e => setInvoiceField("bankNote", e.target.value)}
                   placeholder="Virement bancaire uniquement. Merci d'indiquer le numero de facture en reference."
                   disabled={loading}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition disabled:opacity-50"
                 />
               </div>
             </div>
@@ -252,7 +252,7 @@ export default function AdminSettings() {
             {/* Live preview */}
             <div className="md:col-span-2 mt-1">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Aperçu en-tête PDF</p>
-              <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+              <div className="rounded-xl overflow-hidden border border-slate-200">
                 <div className="bg-[#1c2840] px-5 py-4 flex items-start justify-between">
                   <div>
                     <p className="text-white font-bold text-lg">{invoiceCfg.companyName || "—"}</p>
@@ -269,10 +269,10 @@ export default function AdminSettings() {
                   </div>
                 </div>
                 <div className="bg-[#db143c] h-1" />
-                <div className="bg-slate-50 dark:bg-slate-900 px-5 py-3 text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Banque :</span> {invoiceCfg.bankName} &nbsp;|&nbsp;
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">IBAN :</span> {invoiceCfg.bankIBAN} &nbsp;|&nbsp;
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">SWIFT :</span> {invoiceCfg.bankSWIFT}
+                <div className="bg-slate-50 px-5 py-3 text-xs text-slate-500">
+                  <span className="font-semibold text-slate-700">Banque :</span> {invoiceCfg.bankName} &nbsp;|&nbsp;
+                  <span className="font-semibold text-slate-700">IBAN :</span> {invoiceCfg.bankIBAN} &nbsp;|&nbsp;
+                  <span className="font-semibold text-slate-700">SWIFT :</span> {invoiceCfg.bankSWIFT}
                 </div>
               </div>
             </div>
@@ -280,17 +280,17 @@ export default function AdminSettings() {
         </section>
 
         {/* Security */}
-        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
             <span className="material-symbols-outlined text-[#db143c] text-[20px]">security</span>
-            <h3 className="font-semibold text-slate-900 dark:text-white">Sécurité &amp; Accès</h3>
+            <h3 className="font-semibold text-slate-900">Sécurité &amp; Accès</h3>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-slate-100">
             {SECURITY_ROWS.map(r => (
               <div key={r.key} className="flex items-center justify-between px-6 py-4">
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{r.label}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{r.desc}</p>
+                  <p className="text-sm font-medium text-slate-900">{r.label}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{r.desc}</p>
                 </div>
                 <Toggle on={config.security[r.key]} onToggle={() => toggleSecurity(r.key)} />
               </div>
@@ -299,10 +299,10 @@ export default function AdminSettings() {
         </section>
 
         {/* Maintenance */}
-        <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
             <span className="material-symbols-outlined text-[#db143c] text-[20px]">build</span>
-            <h3 className="font-semibold text-slate-900 dark:text-white">Maintenance</h3>
+            <h3 className="font-semibold text-slate-900">Maintenance</h3>
           </div>
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {maintenanceActions.map(a => {
@@ -333,7 +333,7 @@ export default function AdminSettings() {
         </section>
 
         {/* Save bar */}
-        <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-white/80 dark:bg-slate-950/80 backdrop-blur border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+        <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-white/80 backdrop-blur border-t border-slate-200 flex items-center justify-between gap-4">
           <div className="text-sm">
             {saveState === "saved" && (
               <span className="flex items-center gap-2 text-emerald-600 font-medium">

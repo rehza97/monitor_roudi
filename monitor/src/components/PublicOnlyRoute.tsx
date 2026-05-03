@@ -12,7 +12,7 @@ export default function PublicOnlyRoute({ children }: Props) {
   const location = useLocation()
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-50 dark:bg-slate-950" />
+    return <div className="min-h-screen bg-slate-50" />
   }
 
   if (user) {

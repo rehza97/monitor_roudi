@@ -13,6 +13,8 @@ import {
   updateDoc,
   doc,
 } from "@/lib/firebase-firestore"
+import { notifyAdminsOfTicketCreated } from "@/lib/notifications"
+import { fetchVpsAgentSnapshot, type VpsAgentSnapshot, type VpsContainer } from "@/lib/vps-agent-metrics"
 
 type UiStatus = "healthy" | "warning" | "down"
 
@@ -39,17 +41,17 @@ const statusConfig: Record<UiStatus, { dot: string; label: string; badge: string
   healthy: {
     dot: "bg-emerald-500",
     label: "OK",
-    badge: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
+    badge: "text-emerald-700 bg-emerald-50",
   },
   warning: {
     dot: "bg-amber-500 animate-pulse",
     label: "Alerte",
-    badge: "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
+    badge: "text-amber-700 bg-amber-50",
   },
   down: {
     dot: "bg-rose-500",
     label: "Hors ligne",
-    badge: "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
+    badge: "text-rose-700 bg-rose-50",
   },
 }
 
@@ -122,6 +124,64 @@ function projectLabel(project: Record<string, unknown>): string {
   return `${name} · ${type} · ${status}`
 }
 
+function metricTone(percent: number): { bar: string; text: string; bg: string } {
+  if (percent >= 90) return { bar: "bg-rose-500", text: "text-rose-600", bg: "bg-rose-50" }
+  if (percent >= 75) return { bar: "bg-amber-500", text: "text-amber-600", bg: "bg-amber-50" }
+  return { bar: "bg-emerald-500", text: "text-emerald-600", bg: "bg-emerald-50" }
+}
+
+function pct(value: number): string {
+  return `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`
+}
+
+function gb(used: number, total: number): string {
+  return `${used.toFixed(2)} / ${total.toFixed(2)} GB`
+}
+
+function mb(value: number): string {
+  if (value >= 1024) return `${(value / 1024).toFixed(2)} GB`
+  return `${value.toFixed(1)} MB`
+}
+
+function bytesToMb(value: number): string {
+  return `${(value / 1024 / 1024).toFixed(2)} MB`
+}
+
+function VpsMetricCard({
+  label,
+  value,
+  detail,
+  icon,
+  percent,
+}: {
+  label: string
+  value: string
+  detail: string
+  icon: string
+  percent?: number
+}) {
+  const tone = metricTone(percent ?? 0)
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        </div>
+        <div className={`flex size-10 items-center justify-center rounded-lg ${tone.bg} ${tone.text}`}>
+          <span className="material-symbols-outlined text-[22px]">{icon}</span>
+        </div>
+      </div>
+      <p className="mb-3 text-sm text-slate-500">{detail}</p>
+      {typeof percent === "number" ? (
+        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function AppDetailModal({
   app,
   onClose,
@@ -153,14 +213,14 @@ function AppDetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6"
+        className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
             <span className={`size-3 rounded-full shrink-0 ${cfg.dot}`} />
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white">{app.name}</h3>
+              <h3 className="font-bold text-slate-900">{app.name}</h3>
               <p className="text-xs text-slate-400">
                 {app.client} · {app.env}
               </p>
@@ -181,7 +241,7 @@ function AppDetailModal({
           ].map(r => (
             <div key={r.label} className="flex justify-between text-sm">
               <span className="text-slate-500">{r.label}</span>
-              <span className="font-medium text-slate-900 dark:text-white">{r.value}</span>
+              <span className="font-medium text-slate-900">{r.value}</span>
             </div>
           ))}
         </div>
@@ -196,7 +256,7 @@ function AppDetailModal({
               <span>{b.label}</span>
               <span>{b.val}%</span>
             </div>
-            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full ${b.val === 0 ? "bg-slate-300" : b.val > 80 ? "bg-rose-500" : b.val > 60 ? "bg-amber-500" : "bg-blue-500"}`}
                 style={{ width: `${b.val}%` }}
@@ -205,20 +265,20 @@ function AppDetailModal({
           </div>
         ))}
 
-        <div className="mt-5 rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950/40">
+        <div className="mt-5 rounded-xl border border-slate-200 p-4 bg-slate-50">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">VPS agent</p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-xs text-slate-500">Host</p>
-              <p className="font-medium text-slate-900 dark:text-white truncate">{app.host || "—"}</p>
+              <p className="font-medium text-slate-900 truncate">{app.host || "—"}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Uptime</p>
-              <p className="font-medium text-slate-900 dark:text-white">{formatUptime(app.uptimeSeconds)}</p>
+              <p className="font-medium text-slate-900">{formatUptime(app.uptimeSeconds)}</p>
             </div>
             <div className="col-span-2">
               <p className="text-xs text-slate-500">Load average</p>
-              <p className="font-medium text-slate-900 dark:text-white">
+              <p className="font-medium text-slate-900">
                 {app.loadAverage?.length ? app.loadAverage.map(n => n.toFixed(2)).join(" / ") : "—"}
               </p>
             </div>
@@ -230,7 +290,7 @@ function AppDetailModal({
                 {app.runningProjects.slice(0, 8).map((project, index) => (
                   <div
                     key={`${String(project.name ?? "project")}-${index}`}
-                    className="text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-2 text-slate-700 dark:text-slate-300"
+                    className="text-xs rounded-lg bg-white border border-slate-200 px-2.5 py-2 text-slate-700"
                   >
                     {projectLabel(project)}
                   </div>
@@ -246,7 +306,7 @@ function AppDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Fermer
           </button>
@@ -265,7 +325,7 @@ function AppDetailModal({
           </button>
         </div>
         {error ? (
-          <p className="mt-3 text-xs text-rose-600 dark:text-rose-400">{error}</p>
+          <p className="mt-3 text-xs text-rose-600">{error}</p>
         ) : null}
       </div>
     </div>
@@ -324,19 +384,19 @@ function AddDeploymentModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <form
-        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4"
+        className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4"
         onClick={e => e.stopPropagation()}
         onSubmit={e => void handleSubmit(e)}
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 dark:text-white">Nouveau déploiement</h3>
+          <h3 className="font-bold text-slate-900">Nouveau déploiement</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {error && (
-          <p className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 rounded-lg">
+          <p className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">
             {error}
           </p>
         )}
@@ -347,34 +407,34 @@ function AddDeploymentModal({ onClose }: { onClose: () => void }) {
           { key: "organizationId" as const, label: "ID Organisation", placeholder: "platform" },
         ].map(f => (
           <div key={f.key} className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+            <label className="text-sm font-medium text-slate-700">{f.label}</label>
             <input
               value={form[f.key]}
               onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
               required={f.key === "name"}
               placeholder={f.placeholder}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             />
           </div>
         ))}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Environnement</label>
+            <label className="text-sm font-medium text-slate-700">Environnement</label>
             <select
               value={form.environment}
               onChange={e => setForm(p => ({ ...p, environment: e.target.value as typeof ENVIRONMENTS[number] }))}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             >
               {ENVIRONMENTS.map(env => <option key={env}>{env}</option>)}
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Santé initiale</label>
+            <label className="text-sm font-medium text-slate-700">Santé initiale</label>
             <select
               value={form.health}
               onChange={e => setForm(p => ({ ...p, health: e.target.value }))}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             >
               {HEALTH_OPTIONS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
             </select>
@@ -387,14 +447,14 @@ function AddDeploymentModal({ onClose }: { onClose: () => void }) {
             { key: "ram" as const, label: "RAM initiale (%)" },
           ]).map(f => (
             <div key={f.key} className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+              <label className="text-sm font-medium text-slate-700">{f.label}</label>
               <input
                 type="number"
                 min={0}
                 max={100}
                 value={form[f.key]}
                 onChange={e => setForm(p => ({ ...p, [f.key]: Number(e.target.value) || 0 }))}
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
               />
             </div>
           ))}
@@ -404,7 +464,7 @@ function AddDeploymentModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Annuler
           </button>
@@ -429,6 +489,10 @@ export default function AdminMonitoring() {
   const [refreshing, setRefresh] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [vpsSnapshot, setVpsSnapshot] = useState<VpsAgentSnapshot | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(true)
+  const [metricsError, setMetricsError] = useState<string | null>(null)
+  const [metricsUpdatedAt, setMetricsUpdatedAt] = useState<Date | null>(null)
 
   useEffect(() => {
     if (!db || !isFirebaseConfigured) return
@@ -481,6 +545,28 @@ export default function AdminMonitoring() {
     return () => unsub()
   }, [db])
 
+  async function loadVpsMetrics() {
+    setMetricsLoading(true)
+    setMetricsError(null)
+    try {
+      const snapshot = await fetchVpsAgentSnapshot()
+      setVpsSnapshot(snapshot)
+      setMetricsUpdatedAt(new Date())
+    } catch (err) {
+      setMetricsError(err instanceof Error ? err.message : "Impossible de charger les métriques VPS.")
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadVpsMetrics()
+    const interval = window.setInterval(() => {
+      void loadVpsMetrics()
+    }, 30_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
   const apps = useMemo(() => {
     const rows: AppRow[] = []
     for (const d of rawDeployments) {
@@ -489,6 +575,10 @@ export default function AdminMonitoring() {
     }
     return rows
   }, [rawDeployments, orgNames])
+
+  const vpsMetrics = vpsSnapshot?.metrics ?? null
+  const vpsHealth = vpsSnapshot?.health ?? null
+  const containers = vpsMetrics?.containers ?? []
 
   const selected = useMemo(
     () => (selectedId ? apps.find(a => a.id === selectedId) ?? null : null),
@@ -508,6 +598,7 @@ export default function AdminMonitoring() {
 
   function handleRefresh() {
     setRefresh(true)
+    void loadVpsMetrics()
     setTimeout(() => setRefresh(false), 1200)
   }
 
@@ -516,7 +607,7 @@ export default function AdminMonitoring() {
       throw new Error("Utilisateur ou configuration Firebase indisponible.")
     }
 
-    await addDoc(collection(db, COLLECTIONS.supportTickets), {
+    const ticketPayload = {
       subject: `Redémarrage demandé — ${app.name}`,
       description: `Demande créée depuis le monitoring admin pour ${app.name} (${app.env}).`,
       priority: "Haute",
@@ -526,7 +617,9 @@ export default function AdminMonitoring() {
       deploymentId: app.id,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    } as FirestoreSupportTicket & { deploymentId: string })
+    } as FirestoreSupportTicket & { deploymentId: string }
+    const ticketRef = await addDoc(collection(db, COLLECTIONS.supportTickets), ticketPayload)
+    await notifyAdminsOfTicketCreated(ticketRef.id, ticketPayload)
 
     await updateDoc(doc(db, COLLECTIONS.deployments, app.id), {
       restartRequestedAt: serverTimestamp(),
@@ -550,21 +643,21 @@ export default function AdminMonitoring() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Monitoring des Applications">
-      <div className="p-6 space-y-6">
+      <div className="min-h-[calc(100vh-64px)] space-y-6 bg-[#f7f5f5] p-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Monitoring</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-              État en direct des déploiements synchronisé avec Firestore.
+            <h2 className="text-3xl font-black tracking-tight text-slate-900">Monitoring en temps réel</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              État en direct des déploiements Firestore et métriques VPS agent.
             </p>
-            {error && <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">{error}</p>}
+            {error && <p className="text-xs text-amber-700 mt-2">{error}</p>}
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 transition-colors"
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60"
             >
               <span className={`material-symbols-outlined text-[18px] ${refreshing ? "animate-spin" : ""}`}>
                 refresh
@@ -575,7 +668,7 @@ export default function AdminMonitoring() {
               type="button"
               onClick={() => setShowAddModal(true)}
               disabled={!db || !isFirebaseConfigured}
-              className="flex items-center gap-2 px-4 py-2 bg-[#db143c] text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-[#d23b4c] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#bd2f42] disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               Nouveau déploiement
@@ -590,91 +683,216 @@ export default function AdminMonitoring() {
               value: String(apps.filter(a => a.status === "healthy").length),
               icon: "check_circle",
               color: "text-emerald-600",
-              bg: "bg-emerald-50 dark:bg-emerald-900/20",
+              bg: "bg-emerald-50",
             },
             {
               label: "Alertes",
               value: String(apps.filter(a => a.status === "warning").length),
               icon: "warning",
               color: "text-amber-600",
-              bg: "bg-amber-50 dark:bg-amber-900/20",
+              bg: "bg-amber-50",
             },
             {
               label: "Hors ligne",
               value: String(apps.filter(a => a.status === "down").length),
               icon: "cancel",
               color: "text-rose-600",
-              bg: "bg-rose-50 dark:bg-rose-900/20",
+              bg: "bg-rose-50",
             },
             {
               label: "Req/min (total)",
               value: apps.length ? totalReqDisplay : "0",
               icon: "speed",
               color: "text-blue-600",
-              bg: "bg-blue-50 dark:bg-blue-900/20",
+              bg: "bg-blue-50",
             },
           ].map(k => (
             <div
               key={k.label}
-              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5"
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div className={`size-10 rounded-lg ${k.bg} ${k.color} flex items-center justify-center mb-3`}>
                 <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{k.value}</p>
-              <p className="text-sm text-slate-500 mt-0.5">{k.label}</p>
+              <p className="text-2xl font-bold text-slate-900">{k.value}</p>
+              <p className="mt-0.5 text-sm text-slate-500">{k.label}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900 dark:text-white">État des applications</h3>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[22px] text-[#db143c]">dns</span>
+                <h3 className="text-xl font-black text-slate-900">Métriques VPS</h3>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Source: 194.146.13.22:18002 /health + /metrics + /containers
+                {metricsUpdatedAt ? ` · MAJ ${metricsUpdatedAt.toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span className={`size-2 rounded-full ${metricsError || vpsHealth?.ok === false ? "bg-rose-500" : "bg-emerald-500 animate-pulse"}`} />
+              {metricsLoading ? "Chargement..." : metricsError ? "Erreur API" : vpsHealth?.ok ? "Agent OK" : "Live VPS"}
+            </div>
+          </div>
+
+          {metricsError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {metricsError}
+            </div>
+          ) : null}
+
+          {metricsLoading && !vpsMetrics ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-36 animate-pulse rounded-xl border border-slate-200 bg-slate-100" />
+              ))}
+            </div>
+          ) : vpsMetrics ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <VpsMetricCard
+                label="CPU"
+                value={pct(vpsMetrics.host.cpu.percent)}
+                detail={`${vpsMetrics.host.cpu.cores_logical} cœurs · load ${vpsMetrics.host.cpu.load_1m.toFixed(2)} / ${vpsMetrics.host.cpu.load_5m.toFixed(2)} / ${vpsMetrics.host.cpu.load_15m.toFixed(2)}`}
+                icon="memory"
+                percent={vpsMetrics.host.cpu.percent}
+              />
+              <VpsMetricCard
+                label="RAM"
+                value={pct(vpsMetrics.host.memory.percent)}
+                detail={gb(vpsMetrics.host.memory.used_gb, vpsMetrics.host.memory.total_gb)}
+                icon="developer_board"
+                percent={vpsMetrics.host.memory.percent}
+              />
+              <VpsMetricCard
+                label="Disque"
+                value={pct(vpsMetrics.host.disk.percent)}
+                detail={`${gb(vpsMetrics.host.disk.used_gb, vpsMetrics.host.disk.total_gb)} · libre ${vpsMetrics.host.disk.free_gb.toFixed(2)} GB`}
+                icon="hard_drive"
+                percent={vpsMetrics.host.disk.percent}
+              />
+              <VpsMetricCard
+                label="Réseau"
+                value={`${vpsMetrics.host.network.mb_recv.toFixed(2)} MB`}
+                detail={`↓ ${vpsMetrics.host.network.mb_recv.toFixed(2)} MB · ↑ ${vpsMetrics.host.network.mb_sent.toFixed(2)} MB`}
+                icon="network_check"
+              />
+              <VpsMetricCard
+                label="Containers"
+                value={`${vpsMetrics.container_summary.running}/${vpsMetrics.container_summary.total}`}
+                detail={`${vpsMetrics.container_summary.healthy} healthy · agent ${formatUptime(vpsMetrics.api_uptime_seconds)}`}
+                icon="deployed_code"
+              />
+            </div>
+          ) : null}
+        </section>
+
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <h3 className="font-semibold text-slate-900">Containers VPS</h3>
+            <div className="text-xs text-slate-500">
+              {containers.length} container{containers.length > 1 ? "s" : ""}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  {["Container", "Image", "CPU", "RAM", "Réseau", "Statut"].map((h) => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {containers.slice(0, 16).map((container: VpsContainer) => {
+                  const running = Boolean(container.state?.running)
+                  const healthy = container.state?.healthy
+                  const tone = running
+                    ? healthy === "unhealthy"
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-emerald-50 text-emerald-700"
+                    : "bg-rose-50 text-rose-700"
+                  return (
+                    <tr key={container.id} className="hover:bg-slate-50">
+                      <td className="px-5 py-3.5">
+                        <div className="font-semibold text-slate-900">{container.name}</div>
+                        <div className="text-xs text-slate-400">{container.id}</div>
+                      </td>
+                      <td className="max-w-[260px] truncate px-5 py-3.5 text-slate-500">{container.image}</td>
+                      <td className="px-5 py-3.5 text-slate-700">{container.cpu_percent.toFixed(2)}%</td>
+                      <td className="px-5 py-3.5 text-slate-700">
+                        {pct(container.memory?.percent ?? 0)}
+                        <span className="ml-1 text-xs text-slate-400">({mb(container.memory?.usage_mb ?? 0)})</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-500">
+                        ↓ {bytesToMb(container.network?.bytes_recv ?? 0)} · ↑ {bytesToMb(container.network?.bytes_sent ?? 0)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>
+                          {container.status}{healthy ? ` · ${healthy}` : ""}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {!containers.length ? (
+              <p className="px-6 py-8 text-center text-sm text-slate-500">Aucun container reçu depuis l'agent VPS.</p>
+            ) : null}
+          </div>
+        </section>
+
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <h3 className="font-semibold text-slate-900">Instances & Logs</h3>
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
               En direct
             </div>
           </div>
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
+            <thead className="bg-slate-50">
               <tr>
                 {["Application", "Client", "Env.", "CPU", "RAM", "Req/min", "Statut", ""].map(h => (
                   <th
                     key={h}
-                    className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100">
               {apps.map(a => {
                 const cfg = statusConfig[a.status]
                 return (
                   <tr
                     key={a.id}
                     onClick={() => setSelectedId(a.id)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+                    className="cursor-pointer transition-colors hover:bg-slate-50"
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <span className={`size-2 rounded-full shrink-0 ${cfg.dot}`} />
-                        <span className="font-medium text-slate-900 dark:text-white">{a.name}</span>
+                        <span className="font-medium text-slate-900">{a.name}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-slate-500">{a.client}</td>
                     <td className="px-5 py-3.5 text-slate-500">{a.env}</td>
-                    <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300">{a.cpu}%</td>
-                    <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300">{a.ram}%</td>
-                    <td className="px-5 py-3.5 text-slate-700 dark:text-slate-300">{a.requests}</td>
+                    <td className="px-5 py-3.5 text-slate-700">{a.cpu}%</td>
+                    <td className="px-5 py-3.5 text-slate-700">{a.ram}%</td>
+                    <td className="px-5 py-3.5 text-slate-700">{a.requests}</td>
                     <td className="px-5 py-3.5">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.badge}`}>
                         {cfg.label}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span>
+                      <span className="material-symbols-outlined text-[18px] text-slate-500">chevron_right</span>
                     </td>
                   </tr>
                 )
@@ -682,7 +900,7 @@ export default function AdminMonitoring() {
             </tbody>
           </table>
           {apps.length === 0 && (
-            <p className="px-6 py-10 text-center text-sm text-slate-400">
+            <p className="px-6 py-10 text-center text-sm text-slate-500">
               Aucun déploiement en base. Créez des documents dans la collection des déploiements ou via un script
               d’amorçage.
             </p>

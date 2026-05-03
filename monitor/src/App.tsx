@@ -30,8 +30,6 @@ import ClientRequests      from "./pages/client/ClientRequests"
 import ClientRequestNew    from "./pages/client/ClientRequestNew"
 import ClientRequestDetail from "./pages/client/ClientRequestDetail"
 import ClientApps          from "./pages/client/ClientApps"
-import ClientSoftwareStore from "./pages/client/ClientSoftwareStore"
-import ClientMaterialStore from "./pages/client/ClientMaterialStore"
 import ClientMonitoring    from "./pages/client/ClientMonitoring"
 import ClientMessages      from "./pages/client/ClientMessages"
 import ClientNotifications from "./pages/client/ClientNotifications"
@@ -52,6 +50,7 @@ import AdminMaterialsOrder   from "./pages/admin/AdminMaterialsOrder"
 import AdminClientsLocation  from "./pages/admin/AdminClientsLocation"
 import AdminClientDetail     from "./pages/admin/AdminClientDetail"
 import AdminMessages         from "./pages/admin/AdminMessages"
+import AdminNotifications    from "./pages/admin/AdminNotifications"
 import AdminMonitoring       from "./pages/admin/AdminMonitoring"
 import AdminInvoices         from "./pages/admin/AdminInvoices"
 import AdminReports          from "./pages/admin/AdminReports"
@@ -94,6 +93,8 @@ export default function App() {
     <Routes>
       {/* ── Public ──────────────────────────────────────── */}
       <Route path="/"         element={<LandingPage />} />
+      <Route path="/apps"     element={<AdminMaterialsOrder />} />
+      <Route path="/catalogue" element={<AdminMaterialsOrder />} />
       <Route path="/login"    element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 
@@ -116,8 +117,8 @@ export default function App() {
       <Route path="/client" element={<Navigate to="/client/dashboard" replace />} />
       <Route path="/client/dashboard"        element={<ProtectedRoute role="client"><ClientDashboard /></ProtectedRoute>} />
       <Route path="/client/apps"             element={<ProtectedRoute role="client"><ClientApps /></ProtectedRoute>} />
-      <Route path="/client/software-store"   element={<ProtectedRoute role="client"><ClientSoftwareStore /></ProtectedRoute>} />
-      <Route path="/client/material-store"   element={<ProtectedRoute role="client"><ClientMaterialStore /></ProtectedRoute>} />
+      <Route path="/client/software-store"   element={<Navigate to="/client/materials/order" replace />} />
+      <Route path="/client/material-store"   element={<Navigate to="/client/materials/order" replace />} />
       <Route path="/client/requests"         element={<ProtectedRoute role="client"><ClientRequests /></ProtectedRoute>} />
       <Route path="/client/requests/new"     element={<ProtectedRoute role="client"><ClientRequestNew /></ProtectedRoute>} />
       <Route path="/client/requests/:id"     element={<ProtectedRoute role="client"><ClientRequestDetail /></ProtectedRoute>} />
@@ -138,12 +139,14 @@ export default function App() {
       <Route path="/admin/requests"          element={<ProtectedRoute role="admin"><AdminRequests /></ProtectedRoute>} />
       <Route path="/admin/requests/:id"      element={<ProtectedRoute role="admin"><AdminRequestValidate /></ProtectedRoute>} />
       <Route path="/admin/materials"         element={<ProtectedRoute role="admin"><AdminMaterials /></ProtectedRoute>} />
-      <Route path="/admin/materials/order"   element={<ProtectedRoute role="admin"><AdminMaterialsOrder /></ProtectedRoute>} />
+      <Route path="/admin/materials/order"   element={<AdminMaterialsOrder />} />
+      <Route path="/client/materials/order"  element={<AdminMaterialsOrder />} />
       <Route path="/admin/location"          element={<ProtectedRoute role="admin"><AdminClientsLocation /></ProtectedRoute>} />
       <Route path="/admin/ai-agents"         element={<ProtectedRoute role="admin"><AgentsShowcasePage role="admin" navItems={adminNav} /></ProtectedRoute>} />
       <Route path="/admin/meetings"          element={<ProtectedRoute role="admin"><MeetingsPlannerPage role="admin" navItems={adminNav} canManage /></ProtectedRoute>} />
       <Route path="/admin/clients/:id"       element={<ProtectedRoute role="admin"><AdminClientDetail /></ProtectedRoute>} />
       <Route path="/admin/messages"          element={<ProtectedRoute role="admin"><AdminMessages /></ProtectedRoute>} />
+      <Route path="/admin/notifications"     element={<ProtectedRoute role="admin"><AdminNotifications /></ProtectedRoute>} />
       <Route path="/admin/monitoring"        element={<ProtectedRoute role="admin"><AdminMonitoring /></ProtectedRoute>} />
       <Route path="/admin/invoices"          element={<ProtectedRoute role="admin"><AdminInvoices /></ProtectedRoute>} />
       <Route path="/admin/reports"           element={<ProtectedRoute role="admin"><AdminReports /></ProtectedRoute>} />

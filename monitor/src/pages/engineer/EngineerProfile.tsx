@@ -12,9 +12,9 @@ import { COLLECTIONS, type FirestoreEngineer } from "@/data/schema"
 type SaveState = "idle" | "saving" | "saved" | "error"
 
 const AVAILABILITY_OPTIONS = [
-  { value: "available", label: "Disponible", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20" },
-  { value: "busy",      label: "Occupé",     color: "text-amber-600 bg-amber-50 dark:bg-amber-900/20" },
-  { value: "on_leave",  label: "En congé",   color: "text-slate-600 bg-slate-100 dark:bg-slate-800" },
+  { value: "available", label: "Disponible", color: "text-emerald-600 bg-emerald-50" },
+  { value: "busy",      label: "Occupé",     color: "text-amber-600 bg-amber-50" },
+  { value: "on_leave",  label: "En congé",   color: "text-slate-600 bg-slate-100" },
 ]
 
 export default function EngineerProfile() {
@@ -117,13 +117,13 @@ export default function EngineerProfile() {
       <div className="p-6 w-full space-y-6">
 
         {/* Avatar card */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
           {loading ? (
             <div className="flex items-center gap-5 animate-pulse">
-              <div className="size-20 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+              <div className="size-20 rounded-full bg-slate-200 shrink-0" />
               <div className="space-y-2">
-                <div className="h-5 w-40 bg-slate-200 dark:bg-slate-700 rounded" />
-                <div className="h-3.5 w-48 bg-slate-100 dark:bg-slate-800 rounded" />
+                <div className="h-5 w-40 bg-slate-200 rounded" />
+                <div className="h-3.5 w-48 bg-slate-100 rounded" />
               </div>
             </div>
           ) : (
@@ -135,17 +135,17 @@ export default function EngineerProfile() {
                 {user?.initials ?? "?"}
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{name || "—"}</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">{user?.email}</p>
+                <h3 className="text-lg font-bold text-slate-900">{name || "—"}</h3>
+                <p className="text-slate-500 text-sm">{user?.email}</p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-blue-700 bg-blue-50">
                     Ingénieur
                   </span>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${currentAvail.color}`}>
                     {currentAvail.label}
                   </span>
                   {specialty && (
-                    <span className="text-xs text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                    <span className="text-xs text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded">
                       {specialty}
                     </span>
                   )}
@@ -158,47 +158,47 @@ export default function EngineerProfile() {
         <form onSubmit={(e) => void handleSave(e)} className="space-y-6">
 
           {/* Personal info */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900 dark:text-white">Informations personnelles</h3>
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <h3 className="font-semibold text-slate-900">Informations personnelles</h3>
             {loading ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="space-y-1.5">
-                    <div className="h-3.5 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
-                    <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                    <div className="h-3.5 w-24 bg-slate-200 rounded" />
+                    <div className="h-10 bg-slate-100 rounded-lg" />
                   </div>
                 ))}
               </div>
             ) : (
               <>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Nom complet</label>
+                  <label className="text-sm font-medium text-slate-700">Nom complet</label>
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <label className="text-sm font-medium text-slate-700">
                     Email <span className="text-xs text-slate-400 font-normal">(non modifiable)</span>
                   </label>
                   <input
                     value={user?.email ?? ""}
                     readOnly
                     tabIndex={-1}
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed"
+                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Téléphone</label>
+                  <label className="text-sm font-medium text-slate-700">Téléphone</label>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     type="tel"
                     placeholder="+213 6 00 00 00 00"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </>
@@ -208,39 +208,39 @@ export default function EngineerProfile() {
           {/* Engineer-specific */}
           {!loading && (
             <>
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-                <h3 className="font-semibold text-slate-900 dark:text-white">Profil technique</h3>
+              <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+                <h3 className="font-semibold text-slate-900">Profil technique</h3>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Spécialité</label>
+                  <label className="text-sm font-medium text-slate-700">Spécialité</label>
                   <input
                     value={specialty}
                     onChange={(e) => setSpecialty(e.target.value)}
                     placeholder="Ex: DevOps, Backend, Infrastructure…"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bio / Notes</label>
+                  <label className="text-sm font-medium text-slate-700">Bio / Notes</label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}
                     placeholder="Présentation courte, domaines d'expertise…"
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Compétences</label>
+                  <label className="text-sm font-medium text-slate-700">Compétences</label>
                   <div className="flex gap-2">
                     <input
                       value={skillInput}
                       onChange={(e) => setSkillInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill() } }}
                       placeholder="Ex: Docker, Kubernetes, PostgreSQL…"
-                      className="flex-1 h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <button
                       type="button"
@@ -253,9 +253,9 @@ export default function EngineerProfile() {
                   {skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {skills.map((s) => (
-                        <span key={s} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+                        <span key={s} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                           {s}
-                          <button type="button" onClick={() => removeSkill(s)} className="hover:text-blue-900 dark:hover:text-blue-100">
+                          <button type="button" onClick={() => removeSkill(s)} className="hover:text-blue-900">
                             <span className="material-symbols-outlined text-[14px]">close</span>
                           </button>
                         </span>
@@ -265,8 +265,8 @@ export default function EngineerProfile() {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
-                <h3 className="font-semibold text-slate-900 dark:text-white">Disponibilité</h3>
+              <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
+                <h3 className="font-semibold text-slate-900">Disponibilité</h3>
                 <div className="flex gap-3 flex-wrap">
                   {AVAILABILITY_OPTIONS.map((o) => (
                     <button
@@ -276,7 +276,7 @@ export default function EngineerProfile() {
                       className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all ${
                         availability === o.value
                           ? `border-current ${o.color}`
-                          : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300"
+                          : "border-slate-200 text-slate-500 hover:border-slate-300"
                       }`}
                     >
                       {o.label}
@@ -288,10 +288,10 @@ export default function EngineerProfile() {
           )}
 
           {saveState === "error" && errorMsg && (
-            <p className="text-sm text-rose-600 bg-rose-50 dark:bg-rose-900/20 px-4 py-2.5 rounded-lg">{errorMsg}</p>
+            <p className="text-sm text-rose-600 bg-rose-50 px-4 py-2.5 rounded-lg">{errorMsg}</p>
           )}
           {saveState === "saved" && (
-            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2.5 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2.5 rounded-lg">
               <span className="material-symbols-outlined text-[18px]">check_circle</span>
               Profil mis à jour avec succès.
             </div>

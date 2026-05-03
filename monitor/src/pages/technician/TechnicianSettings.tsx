@@ -111,31 +111,31 @@ export default function TechnicianSettings() {
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Réglages">
       <form onSubmit={(e) => void handleSave(e)} className="p-6 w-full space-y-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Réglages</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Vos préférences personnelles et de travail.</p>
+          <h2 className="text-2xl font-bold text-slate-900">Réglages</h2>
+          <p className="text-slate-500 text-sm mt-1">Vos préférences personnelles et de travail.</p>
         </div>
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-          <h3 className="font-bold text-slate-900 dark:text-white">Profil</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+          <h3 className="font-bold text-slate-900">Profil</h3>
           <div className="grid grid-cols-2 gap-4">
             {(["prenom", "nom"] as const).map((f) => (
               <div key={f} className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{f === "prenom" ? "Prénom" : "Nom"}</label>
+                <label className="block text-sm font-medium text-slate-700 capitalize">{f === "prenom" ? "Prénom" : "Nom"}</label>
                 <input
                   value={form[f]}
                   onChange={(e) => setForm((p) => ({ ...p, [f]: e.target.value }))}
                   type="text"
                   disabled={loading}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-70"
+                  className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-70"
                 />
               </div>
             ))}
           </div>
           {(["email", "phone", "zone"] as const).map((f) => (
             <div key={f} className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-medium text-slate-700">
                 {f === "email" ? "Email" : f === "phone" ? "Téléphone" : "Zone d'intervention"}
               </label>
               <input
@@ -143,25 +143,25 @@ export default function TechnicianSettings() {
                 onChange={(e) => setForm((p) => ({ ...p, [f]: e.target.value }))}
                 type={f === "email" ? "email" : f === "phone" ? "tel" : "text"}
                 disabled={loading}
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-70"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-70"
               />
             </div>
           ))}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-          <h3 className="font-bold text-slate-900 dark:text-white">Notifications</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+          <h3 className="font-bold text-slate-900">Notifications</h3>
           {notifRows.map((r) => (
-            <div key={r.key} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+            <div key={r.key} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
               <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">{r.label}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{r.desc}</p>
+                <p className="text-sm font-medium text-slate-900">{r.label}</p>
+                <p className="text-xs text-slate-500">{r.desc}</p>
               </div>
               <button
                 type="button"
                 onClick={() => togglePref(r.key)}
                 disabled={loading}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-70 ${prefs[r.key] ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700"}`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-70 ${prefs[r.key] ? "bg-amber-500" : "bg-slate-200"}`}
               >
                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${prefs[r.key] ? "translate-x-6" : "translate-x-1"}`} />
               </button>

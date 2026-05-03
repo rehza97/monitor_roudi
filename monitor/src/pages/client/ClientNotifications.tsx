@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import {
   collection,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  limit,
-  updateDoc,
   doc,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where,
   writeBatch,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreNotification } from "@/data/schema"
@@ -21,34 +21,44 @@ interface NotifDoc extends FirestoreNotification {
   id: string
 }
 
-type Group = "Aujourd'hui" | "Cette semaine" | "Plus ancien"
+type Group = "Aujourd'hui" | "Hier" | "Semaine dernière"
+
+const GROUP_ORDER: Group[] = ["Aujourd'hui", "Hier", "Semaine dernière"]
 
 function getGroup(value: unknown): Group {
   const ms = firestoreToMillis(value)
-  if (ms == null) return "Plus ancien"
-
+  if (ms == null) return "Semaine dernière"
   const now = Date.now()
   const diff = now - ms
-  const ONE_DAY = 24 * 60 * 60 * 1000
-  const ONE_WEEK = 7 * ONE_DAY
-
-  if (diff < ONE_DAY) return "Aujourd'hui"
-  if (diff < ONE_WEEK) return "Cette semaine"
-  return "Plus ancien"
+  const oneDay = 24 * 60 * 60 * 1000
+  if (diff < oneDay) return "Aujourd'hui"
+  if (diff < 2 * oneDay) return "Hier"
+  return "Semaine dernière"
 }
 
-const GROUP_ORDER: Group[] = ["Aujourd'hui", "Cette semaine", "Plus ancien"]
-
-const DEFAULT_ICON = "notifications"
-const DEFAULT_COLOR = "text-blue-500"
-const DEFAULT_BG    = "bg-blue-50 dark:bg-blue-900/20"
+function toneFromNotification(n: NotifDoc) {
+  const t = `${n.title ?? ""} ${n.message ?? ""}`.toLowerCase()
+  if (t.includes("accept") || t.includes("valid")) {
+    return { icon: "check_circle", wrap: "bg-green-50 text-green-600", badge: "bg-green-100 text-green-700", label: "VALIDÉE" }
+  }
+  if (t.includes("comment") || t.includes("message") || t.includes("chat")) {
+    return { icon: "chat_bubble", wrap: "bg-blue-50 text-blue-600", badge: "bg-blue-100 text-blue-700", label: "MESSAGE" }
+  }
+  if (t.includes("maintenance") || t.includes("alert") || t.includes("alerte")) {
+    return { icon: "info", wrap: "bg-orange-50 text-orange-600", badge: "bg-orange-100 text-orange-700", label: "ALERTE" }
+  }
+  if (t.includes("facture") || t.includes("invoice")) {
+    return { icon: "description", wrap: "bg-slate-100 text-slate-600", badge: "bg-slate-200 text-slate-700", label: "FACTURE" }
+  }
+  return { icon: n.icon ?? "notifications", wrap: "bg-purple-50 text-purple-600", badge: "bg-purple-100 text-purple-700", label: "INFO" }
+}
 
 export default function ClientNotifications() {
   const { user } = useAuth()
-
-  const [notifs, setNotifs]   = useState<NotifDoc[]>([])
+  const [notifs, setNotifs] = useState<NotifDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState(false)
+  const [search, setSearch] = useState("")
 
   useEffect(() => {
     if (!db || !user?.id) {
@@ -56,26 +66,18 @@ export default function ClientNotifications() {
       return
     }
 
-    // Query by userId
     const qUser = query(
       collection(db, COLLECTIONS.notifications),
       where("userId", "==", user.id),
       orderBy("createdAt", "desc"),
-      limit(50),
+      limit(80),
     )
 
-    const unseenUser = onSnapshot(qUser, (snap) => {
-      const byUser = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as FirestoreNotification),
-      }))
+    const unsubUser = onSnapshot(qUser, (snap) => {
+      const byUser = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreNotification) }))
       setNotifs((prev) => {
         const orgIds = new Set(prev.filter((n) => n.organizationId).map((n) => n.id))
-        const merged = [
-          ...byUser,
-          ...prev.filter((n) => orgIds.has(n.id)),
-        ]
-        // Deduplicate
+        const merged = [...byUser, ...prev.filter((n) => orgIds.has(n.id))]
         const seen = new Set<string>()
         return merged.filter((n) => {
           if (seen.has(n.id)) return false
@@ -86,20 +88,16 @@ export default function ClientNotifications() {
       setLoading(false)
     })
 
-    // Query by organizationId (if exists)
-    let unseenOrg: (() => void) | undefined
+    let unsubOrg: (() => void) | undefined
     if (user.organizationId) {
       const qOrg = query(
         collection(db, COLLECTIONS.notifications),
         where("organizationId", "==", user.organizationId),
         orderBy("createdAt", "desc"),
-        limit(50),
+        limit(80),
       )
-      unseenOrg = onSnapshot(qOrg, (snap) => {
-        const byOrg = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as FirestoreNotification),
-        }))
+      unsubOrg = onSnapshot(qOrg, (snap) => {
+        const byOrg = snap.docs.map((d) => ({ id: d.id, ...(d.data() as FirestoreNotification) }))
         setNotifs((prev) => {
           const merged = [...prev, ...byOrg]
           const seen = new Set<string>()
@@ -109,172 +107,153 @@ export default function ClientNotifications() {
               seen.add(n.id)
               return true
             })
-            .sort((a, b) => {
-              const ma = firestoreToMillis(a.createdAt) ?? 0
-              const mb = firestoreToMillis(b.createdAt) ?? 0
-              return mb - ma
-            })
+            .sort((a, b) => (firestoreToMillis(b.createdAt) ?? 0) - (firestoreToMillis(a.createdAt) ?? 0))
         })
       })
     }
 
     return () => {
-      unseenUser()
-      unseenOrg?.()
+      unsubUser()
+      unsubOrg?.()
     }
   }, [user?.id, user?.organizationId])
 
-  const unreadCount = notifs.filter((n) => !n.read).length
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return notifs
+    return notifs.filter((n) => `${n.title ?? ""} ${n.message ?? ""}`.toLowerCase().includes(q))
+  }, [notifs, search])
+
+  const unreadCount = filtered.filter((n) => !n.read).length
+
+  const grouped = useMemo(() => {
+    const groups: Record<Group, NotifDoc[]> = {
+      "Aujourd'hui": [],
+      Hier: [],
+      "Semaine dernière": [],
+    }
+    filtered.forEach((n) => groups[getGroup(n.createdAt)].push(n))
+    return groups
+  }, [filtered])
 
   async function markRead(n: NotifDoc) {
     if (!db || n.read) return
-    try {
-      await updateDoc(doc(db, COLLECTIONS.notifications, n.id), { read: true })
-    } catch {
-      // silent
-    }
+    await updateDoc(doc(db, COLLECTIONS.notifications, n.id), { read: true })
   }
 
   async function markAllRead() {
-    if (!db) return
-    const unread = notifs.filter((n) => !n.read)
+    const firestore = db
+    if (!firestore) return
+    const unread = filtered.filter((n) => !n.read)
     if (unread.length === 0) return
     setMarking(true)
     try {
-      const batch = writeBatch(db)
-      unread.forEach((n) => {
-        batch.update(doc(db!, COLLECTIONS.notifications, n.id), { read: true })
-      })
+      const batch = writeBatch(firestore)
+      unread.forEach((n) => batch.update(doc(firestore, COLLECTIONS.notifications, n.id), { read: true }))
       await batch.commit()
     } finally {
       setMarking(false)
     }
   }
 
-  // Group notifications
-  const grouped: Record<Group, NotifDoc[]> = {
-    "Aujourd'hui": [],
-    "Cette semaine": [],
-    "Plus ancien": [],
-  }
-
-  notifs.forEach((n) => {
-    grouped[getGroup(n.createdAt)].push(n)
-  })
-
   return (
-    <DashboardLayout role="client" navItems={clientNav} pageTitle="Notifications">
-      <div className="p-6 w-full space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Notifications</h2>
-            {unreadCount > 0 && (
-              <span className="px-2 py-0.5 text-xs font-bold bg-[#db143c] text-white rounded-full">
-                {unreadCount}
-              </span>
-            )}
-          </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              disabled={marking}
-              className="text-sm text-[#db143c] hover:opacity-80 font-medium disabled:opacity-50"
-            >
-              {marking ? "En cours…" : "Tout marquer comme lu"}
-            </button>
-          )}
-        </div>
-
-        {loading && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 animate-pulse">
-                <div className="size-9 rounded-lg bg-slate-100 dark:bg-slate-800 shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-48 bg-slate-200 dark:bg-slate-700 rounded" />
-                  <div className="h-3.5 w-64 bg-slate-100 dark:bg-slate-800 rounded" />
-                  <div className="h-3 w-20 bg-slate-100 dark:bg-slate-800 rounded" />
-                </div>
+    <DashboardLayout role="client" navItems={clientNav} pageTitle="Centre de Notifications">
+      <div className="w-full bg-[#f6f8fa] px-6 py-6 lg:px-10 lg:py-8">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <h2 className="text-3xl font-black tracking-tight text-slate-900">Alertes et Activités</h2>
+            <div className="flex w-full items-center gap-3 md:w-auto">
+              <div className="relative flex-1 md:w-72">
+                <span className="material-symbols-outlined pointer-events-none absolute left-3 top-2.5 text-[20px] text-slate-400">search</span>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher..."
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none focus:border-cyan-400"
+                />
               </div>
-            ))}
+              <button
+                type="button"
+                onClick={() => void markAllRead()}
+                disabled={marking || unreadCount === 0}
+                className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[20px]">done_all</span>
+                {marking ? "En cours..." : "Tout marquer comme lu"}
+              </button>
+            </div>
           </div>
-        )}
 
-        {!loading && notifs.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-20 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-            <span className="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">
-              notifications_off
-            </span>
-            <p className="font-semibold text-slate-900 dark:text-white">Aucune notification</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Vous êtes à jour ! Les nouvelles notifications apparaîtront ici.
-            </p>
-          </div>
-        )}
+          <p className="text-slate-500">Gérez vos mises à jour importantes et suivez l'avancement de vos projets.</p>
 
-        {!loading &&
-          notifs.length > 0 &&
-          GROUP_ORDER.map((group) => {
-            const items = grouped[group]
-            if (items.length === 0) return null
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-24 animate-pulse rounded-xl border border-slate-200 bg-white" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
+              <span className="material-symbols-outlined text-[48px] text-slate-300">notifications_off</span>
+              <p className="mt-3 text-lg font-semibold text-slate-900">Aucune notification</p>
+              <p className="mt-1 text-sm text-slate-500">Vous êtes à jour ! Revenez plus tard.</p>
+            </div>
+          ) : (
+            GROUP_ORDER.map((group) => {
+              const items = grouped[group]
+              if (!items.length) return null
+              return (
+                <section key={group} className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{group}</h3>
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
 
-            return (
-              <div key={group}>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 px-1">
-                  {group}
-                </p>
-                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
-                  {items.map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => markRead(n)}
-                      className={`w-full flex items-start gap-4 p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                        !n.read ? "bg-rose-50/30 dark:bg-rose-900/5" : ""
-                      }`}
-                    >
-                      {/* Icon */}
-                      <div
-                        className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${n.color ? "" : DEFAULT_BG}`}
-                        style={n.color ? { background: `${n.color}20` } : undefined}
-                      >
-                        <span
-                          className={`material-symbols-outlined text-[18px] ${n.color ? "" : DEFAULT_COLOR}`}
-                          style={n.color ? { color: n.color } : undefined}
+                  <div className="space-y-3">
+                    {items.map((n) => {
+                      const tone = toneFromNotification(n)
+                      return (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onClick={() => void markRead(n)}
+                          className={`group relative flex w-full gap-4 rounded-xl border p-5 text-left transition-all ${
+                            n.read
+                              ? "border-slate-200/70 bg-white/70 hover:border-slate-300 hover:bg-white"
+                              : "border-slate-200 bg-white shadow-sm hover:shadow-md"
+                          }`}
                         >
-                          {n.icon ?? DEFAULT_ICON}
-                        </span>
-                      </div>
+                          {!n.read && <span className="absolute right-4 top-4 size-2.5 animate-pulse rounded-full bg-cyan-500" />}
+                          <div className={`flex size-12 shrink-0 items-center justify-center rounded-full ${tone.wrap}`}>
+                            <span className="material-symbols-outlined text-[20px]">{tone.icon}</span>
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-col gap-1 pr-6">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-base font-semibold text-slate-900">{n.title}</span>
+                              {!n.read && (
+                                <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${tone.badge}`}>{tone.label}</span>
+                              )}
+                            </div>
+                            {n.message && <p className="line-clamp-2 text-sm leading-relaxed text-slate-500">{n.message}</p>}
+                            <span className="mt-1 text-xs font-medium text-slate-400">{formatFirestoreDateTime(n.createdAt)}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+              )
+            })
+          )}
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p
-                            className={`text-sm font-medium text-slate-900 dark:text-white truncate ${
-                              !n.read ? "font-semibold" : ""
-                            }`}
-                          >
-                            {n.title}
-                          </p>
-                          {!n.read && (
-                            <span className="size-2 rounded-full bg-[#db143c] shrink-0" />
-                          )}
-                        </div>
-                        {n.message && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                            {n.message}
-                          </p>
-                        )}
-                        <p className="text-xs text-slate-400 mt-1">
-                          {formatFirestoreDateTime(n.createdAt)}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+          <div className="mt-4 flex items-center justify-between border-t border-slate-200 py-6 text-xs text-slate-400">
+            <p>© 2026 Rodaina Project. Tous droits réservés.</p>
+            <div className="flex gap-4">
+              <span>Support</span>
+              <span>Confidentialité</span>
+            </div>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )

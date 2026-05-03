@@ -30,9 +30,9 @@ interface OrderDoc extends FirestoreOrder {
 }
 
 const STATUS_BADGE: Record<InvoiceStatus, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  Payée: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "En retard": "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
+  "En attente": "text-amber-700 bg-amber-50",
+  Payée: "text-emerald-700 bg-emerald-50",
+  "En retard": "text-rose-700 bg-rose-50",
 }
 
 const STATUS_FLOW: InvoiceStatus[] = ["En attente", "Payée", "En retard"]
@@ -281,12 +281,12 @@ export default function AdminInvoices() {
             { label: "PDF envoyés", value: String(stats.sent), icon: "send" },
             { label: "Payées", value: String(stats.paid), icon: "payments" },
           ].map((k) => (
-            <div key={k.label} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-              <div className="size-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center mb-3">
+            <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-5">
+              <div className="size-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
                 <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{k.value}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{k.label}</p>
+              <p className="text-2xl font-bold text-slate-900">{k.value}</p>
+              <p className="text-sm text-slate-500">{k.label}</p>
             </div>
           ))}
         </div>
@@ -304,7 +304,7 @@ export default function AdminInvoices() {
 
         {/* Invoice document form */}
         {showInvoiceForm && (
-          <div ref={formRef} className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+          <div ref={formRef} className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
 
             {/* Invoice header — mimics letterhead */}
             <div className="bg-[#1c2840] px-8 py-6 flex items-start justify-between gap-6">
@@ -347,65 +347,65 @@ export default function AdminInvoices() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {/* Bill To */}
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3">
+                <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Facturé à</p>
                   <div className="space-y-2">
                     <input
                       value={newClientLabel}
                       onChange={(e) => setNewClientLabel(e.target.value)}
                       placeholder="Nom du client ou de l'entreprise"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                     />
                     <input
                       value={newClientEmail}
                       onChange={(e) => setNewClientEmail(e.target.value)}
                       placeholder="Email"
                       type="email"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                     />
                     <input
                       value={newClientPhone}
                       onChange={(e) => setNewClientPhone(e.target.value)}
                       placeholder="Téléphone"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                     />
                     <input
                       value={newClientAddress}
                       onChange={(e) => setNewClientAddress(e.target.value)}
                       placeholder="Adresse"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                     />
                     <input
                       value={newOrganizationId}
                       onChange={(e) => setNewOrganizationId(e.target.value)}
                       placeholder="ID organisation *"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition font-mono"
+                      className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition font-mono"
                     />
                   </div>
                 </div>
 
                 {/* Invoice meta */}
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3">
+                <div className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Informations</p>
                   <div className="space-y-2">
                     {[
                       { label: "Date d'émission", value: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }), readonly: true },
                     ].map(({ label, value }) => (
-                      <div key={label} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                      <div key={label} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
                         <span className="text-xs text-slate-500">{label}</span>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{value}</span>
+                        <span className="text-sm font-medium text-slate-700">{value}</span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between py-2 border-b border-slate-100">
                       <span className="text-xs text-slate-500">Date d'échéance</span>
                       <input
                         type="date"
                         value={newDueAt}
                         onChange={(e) => setNewDueAt(e.target.value)}
-                        className="h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                        className="h-8 px-2 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                       />
                     </div>
-                    <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between py-2 border-b border-slate-100">
                       <span className="text-xs text-slate-500">TVA (%)</span>
                       <input
                         value={newTaxRate}
@@ -413,12 +413,12 @@ export default function AdminInvoices() {
                         type="number"
                         min={0}
                         max={100}
-                        className="h-8 w-20 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-right text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                        className="h-8 w-20 px-2 rounded-lg border border-slate-200 bg-slate-50 text-sm text-right text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                       />
                     </div>
                     <div className="flex items-center justify-between py-2">
                       <span className="text-xs text-slate-500">Statut</span>
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
                         En attente
                       </span>
                     </div>
@@ -429,7 +429,7 @@ export default function AdminInvoices() {
               {/* Line items */}
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Détail des prestations</p>
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-[#1c2840]">
                       <tr>
@@ -440,17 +440,17 @@ export default function AdminInvoices() {
                         <th className="px-2 py-3" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-slate-100">
                       {lineItems.map((item, idx) => {
                         const lineTotal = (parseFloat(item.qty) || 0) * (parseFloat(item.unitPrice) || 0)
                         return (
-                          <tr key={idx} className="bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                          <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors">
                             <td className="px-3 py-2">
                               <input
                                 value={item.description}
                                 onChange={(e) => updateLineItem(idx, "description", e.target.value)}
                                 placeholder="Ex: Installation et configuration réseau"
-                                className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                                className="w-full h-9 px-2 rounded-lg border border-slate-200 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                               />
                             </td>
                             <td className="px-3 py-2 w-20">
@@ -459,7 +459,7 @@ export default function AdminInvoices() {
                                 onChange={(e) => updateLineItem(idx, "qty", e.target.value)}
                                 type="number"
                                 min={1}
-                                className="w-16 h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-sm text-right text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                                className="w-16 h-9 px-2 rounded-lg border border-slate-200 bg-transparent text-sm text-right text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                               />
                             </td>
                             <td className="px-3 py-2 w-36">
@@ -469,10 +469,10 @@ export default function AdminInvoices() {
                                 type="number"
                                 min={0}
                                 placeholder="0"
-                                className="w-32 h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent text-sm text-right text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                                className="w-32 h-9 px-2 rounded-lg border border-slate-200 bg-transparent text-sm text-right text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                               />
                             </td>
-                            <td className="px-4 py-2 text-right font-semibold text-slate-900 dark:text-white whitespace-nowrap w-32">
+                            <td className="px-4 py-2 text-right font-semibold text-slate-900 whitespace-nowrap w-32">
                               {lineTotal > 0 ? formatAmount(lineTotal) : "—"}
                             </td>
                             <td className="px-2 py-2">
@@ -480,7 +480,7 @@ export default function AdminInvoices() {
                                 <button
                                   type="button"
                                   onClick={() => removeLineItem(idx)}
-                                  className="size-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
+                                  className="size-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition"
                                 >
                                   <span className="material-symbols-outlined text-[16px]">close</span>
                                 </button>
@@ -491,7 +491,7 @@ export default function AdminInvoices() {
                       })}
                     </tbody>
                   </table>
-                  <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                  <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
                     <button
                       type="button"
                       onClick={addLineItem}
@@ -513,18 +513,18 @@ export default function AdminInvoices() {
                     onChange={(e) => setNewNotes(e.target.value)}
                     rows={4}
                     placeholder="Conditions de paiement, remarques particulières…"
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#db143c]/30 transition"
                   />
                 </div>
 
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
                   {[
                     { label: "Sous-total HT", value: formatAmount(invoiceSubtotal) },
                     { label: `TVA (${newTaxRate || 0}%)`, value: formatAmount(invoiceTax) },
                   ].map(({ label, value }) => (
-                    <div key={label} className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+                    <div key={label} className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
                       <span className="text-sm text-slate-500">{label}</span>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{value}</span>
+                      <span className="text-sm font-medium text-slate-700">{value}</span>
                     </div>
                   ))}
                   <div className="flex items-center justify-between px-5 py-4 bg-[#1c2840]">
@@ -535,9 +535,9 @@ export default function AdminInvoices() {
               </div>
 
               {/* Footer bar */}
-              <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
                 {createError && (
-                  <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <p className="text-xs text-rose-600 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">error</span>
                     {createError}
                   </p>
@@ -545,7 +545,7 @@ export default function AdminInvoices() {
                 <button
                   type="button"
                   onClick={() => setShowInvoiceForm(false)}
-                  className="ml-auto px-4 h-10 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                  className="ml-auto px-4 h-10 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
                 >
                   Annuler
                 </button>
@@ -576,7 +576,7 @@ export default function AdminInvoices() {
             <button
               key={s}
               onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${filter === s ? "bg-[#db143c] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${filter === s ? "bg-[#db143c] text-white" : "bg-slate-100 text-slate-600"}`}
             >
               {s}
             </button>
@@ -585,22 +585,22 @@ export default function AdminInvoices() {
             value={queryText}
             onChange={(e) => setQueryText(e.target.value)}
             placeholder="Rechercher facture / org / client / orderId"
-            className="ml-auto h-9 min-w-[280px] px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+            className="ml-auto h-9 min-w-[280px] px-3 rounded-lg border border-slate-300 bg-white text-sm"
           />
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
+            <thead className="bg-slate-50">
               <tr>
                 {["Réf.", "Titre", "Client", "Montant", "Statut", "Émission", "PDF", "Actions"].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-slate-400">Chargement…</td>
@@ -611,20 +611,20 @@ export default function AdminInvoices() {
                 </tr>
               ) : (
                 filtered.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{inv.id.slice(0, 8).toUpperCase()}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{inv.title}</td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                    <td className="px-4 py-3 font-medium text-slate-900">{inv.title}</td>
+                    <td className="px-4 py-3 text-slate-600">
                       {inv.clientLabel || "—"}
                       <p className="text-xs text-slate-400">{inv.clientEmail || inv.organizationId}</p>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{formatAmount(inv.amount ?? 0)}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">{formatAmount(inv.amount ?? 0)}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_BADGE[inv.status]}`}>
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-3 text-slate-500">
                       {formatFirestoreDate(inv.issuedAt ?? inv.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-xs">
@@ -653,7 +653,7 @@ export default function AdminInvoices() {
                             key={s}
                             onClick={() => void setInvoiceStatus(inv.id, s)}
                             disabled={updatingId === inv.id}
-                            className="px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+                            className="px-2 py-1 text-[11px] font-semibold rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
                           >
                             {s}
                           </button>

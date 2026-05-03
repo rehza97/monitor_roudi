@@ -18,6 +18,9 @@ export type AuthRedirectState = { from?: { pathname?: string } }
 export function getPostLoginRedirectPath(role: Role, fromPathname: string | undefined): string {
   const dashboard = getDashboardPathForRole(role)
   if (!fromPathname?.startsWith("/")) return dashboard
+  if (role === "client" && ["/catalogue", "/apps", "/client/materials/order", "/admin/materials/order"].includes(fromPathname)) {
+    return fromPathname
+  }
   const root = `/${role}`
   if (fromPathname === root || fromPathname.startsWith(`${root}/`)) return fromPathname
   return dashboard

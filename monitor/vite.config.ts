@@ -359,6 +359,48 @@ function createDevSshBridgePlugin() {
   }
 }
 
+const TOGETHER_API_KEY = "tgp_v1_NV3B7YAMn70eSbdMM66zrfY-yt1ot3KaVo6VkNYQAvU"
+
+function createDevTogetherPlugin() {
+  return {
+    name: "dev-together-ai-api",
+    configureServer(server: import("vite").ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.method !== "POST" || req.url !== "/__dev/together/chat") return next()
+
+        try {
+          const raw = await readRequestBody(req)
+          const payload = JSON.parse(raw || "{}") as {
+            model?: string
+            messages?: Array<{ role: "system" | "user" | "assistant"; content: string }>
+          }
+
+          const apiRes = await fetch("https://api.together.xyz/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${TOGETHER_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: payload.model,
+              messages: payload.messages,
+            }),
+          })
+
+          const text = await apiRes.text()
+          res.statusCode = apiRes.status
+          res.setHeader("Content-Type", apiRes.headers.get("content-type") || "application/json")
+          res.end(text)
+        } catch (e) {
+          res.statusCode = 500
+          res.setHeader("Content-Type", "application/json")
+          res.end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }))
+        }
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const root = __dirname
@@ -373,7 +415,17 @@ export default defineConfig(({ mode }) => {
 
   return {
     define,
-    plugins: [react(), tailwindcss(), createDevFirebaseAdminPlugin(root), createDevSshBridgePlugin()],
+    plugins: [react(), tailwindcss(), createDevFirebaseAdminPlugin(root), createDevSshBridgePlugin(), createDevTogetherPlugin()],
+    server: {
+      proxy: {
+        "/__vps-agent": {
+          target: "http://194.146.13.22:18002",
+          changeOrigin: true,
+          secure: false,
+          rewrite: (p) => p.replace(/^\/__vps-agent/, ""),
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

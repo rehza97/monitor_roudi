@@ -18,6 +18,7 @@ import {
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS, ORDER_KIND, type FirestoreOrder } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
+import { notifyAdminsOfOrderCreated } from "@/lib/notifications"
 
 interface OrderDoc extends FirestoreOrder {
   id: string
@@ -26,25 +27,25 @@ interface OrderDoc extends FirestoreOrder {
 const STATUS_TABS = ["Tous", "En attente", "Validée", "En cours", "Rejetée"]
 
 const statusColor: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  "Validée":    "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
-  "Rejetée":    "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
-  "Livré":      "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-300",
+  "En attente": "text-amber-700 bg-amber-50",
+  "Validée":    "text-emerald-700 bg-emerald-50",
+  "En cours":   "text-blue-700 bg-blue-50",
+  "Rejetée":    "text-rose-700 bg-rose-50",
+  "Livré":      "text-slate-600 bg-slate-100",
 }
 
 const priorityColor: Record<string, string> = {
-  "Urgente": "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
-  "Haute":   "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  "Normale": "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
-  "Basse":   "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-300",
+  "Urgente": "text-rose-700 bg-rose-50",
+  "Haute":   "text-amber-700 bg-amber-50",
+  "Normale": "text-blue-700 bg-blue-50",
+  "Basse":   "text-slate-600 bg-slate-100",
 }
 
 const INPUT_CLS =
-  "w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+  "w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
 const TEXTAREA_CLS =
-  "w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c] resize-none"
-const LABEL_CLS = "text-sm font-medium text-slate-700 dark:text-slate-300"
+  "w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#db143c] resize-none"
+const LABEL_CLS = "text-sm font-medium text-slate-700"
 const EDITABLE_STATUSES = new Set(["En attente", "Brouillon"])
 
 interface FormData {
@@ -115,9 +116,9 @@ function RequestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="font-bold text-slate-900 dark:text-white text-lg">
+      <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="font-bold text-slate-900 text-lg">
             {isEdit ? "Modifier la demande" : "Nouvelle demande"}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
@@ -216,7 +217,7 @@ function RequestModal({
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="px-4 h-10 border border-rose-300 text-rose-600 font-semibold rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-sm"
+                  className="px-4 h-10 border border-rose-300 text-rose-600 font-semibold rounded-lg hover:bg-rose-50 text-sm"
                 >
                   Supprimer
                 </button>
@@ -287,7 +288,7 @@ export default function ClientRequests() {
     if (!db || !user?.organizationId) return
     setSaving(true)
     try {
-      await addDoc(collection(db, COLLECTIONS.orders), {
+      const payload = {
         organizationId: user.organizationId,
         kind: "client_request",
         status: "En attente",
@@ -302,7 +303,9 @@ export default function ClientRequests() {
           .map((f) => f.trim())
           .filter(Boolean),
         createdAt: serverTimestamp(),
-      } as FirestoreOrder)
+      } as FirestoreOrder
+      const ref = await addDoc(collection(db, COLLECTIONS.orders), payload)
+      await notifyAdminsOfOrderCreated(ref.id, payload)
       setShowAdd(false)
     } finally {
       setSaving(false)
@@ -361,7 +364,7 @@ export default function ClientRequests() {
       <div className="p-6 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <p className="text-slate-500 text-sm">
             {filtered.length} demande{filtered.length !== 1 ? "s" : ""}
           </p>
           <button
@@ -374,15 +377,15 @@ export default function ClientRequests() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === tab
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
               {tab}
@@ -398,7 +401,7 @@ export default function ClientRequests() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-9 h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+            className="w-full pl-10 pr-9 h-10 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             placeholder="Rechercher…"
           />
           {search && (
@@ -412,27 +415,27 @@ export default function ClientRequests() {
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
+            <thead className="bg-slate-50">
               <tr>
                 {["Réf.", "Type", "Budget", "Priorité", "Date", "Statut", "Actions"].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                    className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100">
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       {Array.from({ length: 7 }).map((__, j) => (
                         <td key={j} className="px-4 py-3">
-                          <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-20" />
+                          <div className="h-4 bg-slate-100 rounded w-20" />
                         </td>
                       ))}
                     </tr>
@@ -440,12 +443,12 @@ export default function ClientRequests() {
                 : filtered.map((o) => (
                     <tr
                       key={o.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-4 py-3 font-mono text-xs text-slate-400">
                         {o.id.slice(0, 8).toUpperCase()}
                       </td>
-                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white max-w-[180px] truncate">
+                      <td className="px-4 py-3 font-medium text-slate-900 max-w-[180px] truncate">
                         {o.kind === ORDER_KIND.materialSupply
                           ? (o.materialName ?? "Commande matériel")
                           : (o.requestType ?? "—")}
@@ -453,15 +456,15 @@ export default function ClientRequests() {
                           <span
                             className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                               o.kind === ORDER_KIND.materialSupply
-                                ? "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400"
-                                : "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400"
+                                ? "text-amber-700 bg-amber-50"
+                                : "text-blue-700 bg-blue-50"
                             }`}
                           >
                             {o.kind === ORDER_KIND.materialSupply ? "Matériel" : "Software / Demande"}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                      <td className="px-4 py-3 text-slate-500">
                         {o.kind === ORDER_KIND.materialSupply
                           ? `${o.quantity ?? 1} unité(s)`
                           : (o.budgetLabel ?? "—")}
@@ -477,7 +480,7 @@ export default function ClientRequests() {
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                         {formatFirestoreDate(o.createdAt)}
                       </td>
                       <td className="px-4 py-3">
@@ -489,33 +492,29 @@ export default function ClientRequests() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {o.kind === ORDER_KIND.clientRequest ? (
-                            <>
-                              <Link
-                                to={`/client/requests/${o.id}`}
-                                className="text-[#db143c] hover:opacity-80 text-xs font-semibold"
-                              >
-                                Voir
-                              </Link>
-                              {canEditOrDeleteOrder(o) ? (
-                                <button
-                                  onClick={() => openEdit(o)}
-                                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                  title="Modifier"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                                </button>
-                              ) : (
-                                <span
-                                  className="text-slate-300 dark:text-slate-600 cursor-not-allowed"
-                                  title="Modification disponible uniquement pour En attente ou Brouillon"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">lock</span>
-                                </span>
-                              )}
-                            </>
+                          <Link
+                            to={`/client/requests/${o.id}`}
+                            className="text-[#db143c] hover:opacity-80 text-xs font-semibold"
+                          >
+                            Voir
+                          </Link>
+                          {o.kind === ORDER_KIND.clientRequest && canEditOrDeleteOrder(o) ? (
+                            <button
+                              onClick={() => openEdit(o)}
+                              className="text-slate-400 hover:text-slate-600"
+                              title="Modifier"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                          ) : o.kind === ORDER_KIND.clientRequest ? (
+                            <span
+                              className="text-slate-300 cursor-not-allowed"
+                              title="Modification disponible uniquement pour En attente ou Brouillon"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">lock</span>
+                            </span>
                           ) : (
-                            <span className="text-xs text-slate-400">Suivi en attente</span>
+                            <span className="text-xs text-slate-400">Suivi</span>
                           )}
                         </div>
                       </td>
@@ -524,7 +523,7 @@ export default function ClientRequests() {
               {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center">
-                    <span className="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 block mb-2">
+                    <span className="material-symbols-outlined text-[36px] text-slate-300 block mb-2">
                       inbox
                     </span>
                     <p className="text-slate-400 text-sm">Aucune demande trouvée</p>

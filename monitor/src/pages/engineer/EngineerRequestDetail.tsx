@@ -12,6 +12,7 @@ import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder, FirestoreProject } from "@/data/schema"
 import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
+import { notifyClientOfOrderStatusChanged } from "@/lib/notifications"
 
 interface Order extends FirestoreOrder { id: string }
 
@@ -19,11 +20,11 @@ const STATUS_STEPS = ["En attente", "Validée", "En cours", "Livré"]
 const ENGINEER_STATUSES = ["En cours", "Livré"]
 
 const statusColors: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400",
-  "Validée":    "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
-  "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
-  "Rejetée":    "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400",
-  "Livré":      "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400",
+  "En attente": "text-amber-700 bg-amber-50",
+  "Validée":    "text-blue-700 bg-blue-50",
+  "En cours":   "text-blue-700 bg-blue-50",
+  "Rejetée":    "text-rose-700 bg-rose-50",
+  "Livré":      "text-emerald-700 bg-emerald-50",
 }
 
 function mapOrderToProjectStatus(status: string): FirestoreProject["status"] {
@@ -72,6 +73,7 @@ export default function EngineerRequestDetail() {
         assignedToId: user.id,
         updatedAt: now,
       })
+      await notifyClientOfOrderStatusChanged(id, order, status)
 
       const projectStatus = mapOrderToProjectStatus(status)
       const projectsRef = collection(db, COLLECTIONS.projects)
@@ -172,7 +174,7 @@ export default function EngineerRequestDetail() {
           </Link>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{order.clientLabel ?? "Client inconnu"}</h2>
+              <h2 className="text-xl font-bold text-slate-900">{order.clientLabel ?? "Client inconnu"}</h2>
               <p className="text-slate-500 text-sm mt-0.5">Réf. {order.id.slice(0, 8).toUpperCase()} · {formatFirestoreDate(order.createdAt)}</p>
             </div>
             <span className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 ${statusColors[order.status] ?? statusColors["En attente"]}`}>
@@ -182,8 +184,8 @@ export default function EngineerRequestDetail() {
         </div>
 
         {/* Status timeline */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Progression</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">Progression</h3>
           <div className="flex items-start">
             {STATUS_STEPS.map((step, i) => {
               const done    = i <= stepIndex
@@ -194,20 +196,20 @@ export default function EngineerRequestDetail() {
                     <div className={`size-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
                       done
                         ? "border-blue-600 bg-blue-600 text-white"
-                        : "border-slate-300 dark:border-slate-600 text-slate-400"
-                    } ${current ? "ring-2 ring-blue-300 ring-offset-2 dark:ring-offset-slate-900" : ""}`}>
+                        : "border-slate-300 text-slate-400"
+                    } ${current ? "ring-2 ring-blue-300 ring-offset-2" : ""}`}>
                       {done && !current ? (
                         <span className="material-symbols-outlined text-[14px]">check</span>
                       ) : (
                         <span>{i + 1}</span>
                       )}
                     </div>
-                    <span className={`text-[11px] mt-1 font-medium text-center ${current ? "text-blue-600 dark:text-blue-400" : done ? "text-slate-700 dark:text-slate-300" : "text-slate-400"}`}>
+                    <span className={`text-[11px] mt-1 font-medium text-center ${current ? "text-blue-600" : done ? "text-slate-700" : "text-slate-400"}`}>
                       {step}
                     </span>
                   </div>
                   {i < STATUS_STEPS.length - 1 && (
-                    <div className={`h-0.5 flex-1 mb-5 ${i < stepIndex ? "bg-blue-500" : "bg-slate-200 dark:bg-slate-700"}`} />
+                    <div className={`h-0.5 flex-1 mb-5 ${i < stepIndex ? "bg-blue-500" : "bg-slate-200"}`} />
                   )}
                 </div>
               )
@@ -216,8 +218,8 @@ export default function EngineerRequestDetail() {
         </div>
 
         {/* Details */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Informations</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">Informations</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             {[
               { label: "Type",      value: order.requestType   },
@@ -228,14 +230,14 @@ export default function EngineerRequestDetail() {
             ].map(({ label, value }) => value ? (
               <div key={label}>
                 <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-                <p className="font-medium text-slate-900 dark:text-white">{value}</p>
+                <p className="font-medium text-slate-900">{value}</p>
               </div>
             ) : null)}
           </div>
           {order.description && (
             <div className="mt-4">
               <p className="text-xs text-slate-500 mb-1">Description</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{order.description}</p>
+              <p className="text-sm text-slate-700 leading-relaxed">{order.description}</p>
             </div>
           )}
           {order.features && order.features.length > 0 && (
@@ -243,7 +245,7 @@ export default function EngineerRequestDetail() {
               <p className="text-xs text-slate-500 mb-2">Fonctionnalités</p>
               <div className="flex flex-wrap gap-2">
                 {order.features.map(f => (
-                  <span key={f} className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">{f}</span>
+                  <span key={f} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{f}</span>
                 ))}
               </div>
             </div>
@@ -251,20 +253,20 @@ export default function EngineerRequestDetail() {
         </div>
 
         {/* Engineer action */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Action ingénieur</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">Action ingénieur</h3>
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Mettre à jour le statut</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Mettre à jour le statut</label>
               <select value={status} onChange={e => setStatus(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {ENGINEER_STATUSES.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Commentaire technique</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Commentaire technique</label>
               <textarea value={comment} onChange={e => setComment(e.target.value)} rows={4}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 placeholder="Ajouter un commentaire technique ou des notes de livraison…" />
             </div>
             <div className="flex items-center gap-3">

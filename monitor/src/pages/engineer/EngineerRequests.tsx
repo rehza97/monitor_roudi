@@ -11,15 +11,16 @@ import {
 import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder, FirestoreProject } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
+import { notifyClientOfOrderStatusChanged } from "@/lib/notifications"
 
 interface Order extends FirestoreOrder { id: string }
 
 const statusColors: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400",
-  "Validée":    "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
-  "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400",
-  "Rejetée":    "text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400",
-  "Livré":      "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400",
+  "En attente": "text-amber-700 bg-amber-50",
+  "Validée":    "text-blue-700 bg-blue-50",
+  "En cours":   "text-blue-700 bg-blue-50",
+  "Rejetée":    "text-rose-700 bg-rose-50",
+  "Livré":      "text-emerald-700 bg-emerald-50",
 }
 
 const priorityColors: Record<string, string> = {
@@ -51,53 +52,53 @@ function ProcessModal({ order, onClose, onSave }: ProcessModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-slate-900 dark:text-white">Traiter la demande</h3>
+          <h3 className="font-bold text-slate-900">Traiter la demande</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Details */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-5 space-y-2 text-sm">
+        <div className="bg-slate-50 rounded-xl p-4 mb-5 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-slate-500">Client</span>
-            <span className="font-medium text-slate-900 dark:text-white">{order.clientLabel ?? "—"}</span>
+            <span className="font-medium text-slate-900">{order.clientLabel ?? "—"}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Type</span>
-            <span className="font-medium text-slate-900 dark:text-white">{order.requestType ?? "—"}</span>
+            <span className="font-medium text-slate-900">{order.requestType ?? "—"}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Priorité</span>
-            <span className={`font-medium ${priorityColors[order.priority ?? ""] ?? "text-slate-900 dark:text-white"}`}>{order.priority ?? "—"}</span>
+            <span className={`font-medium ${priorityColors[order.priority ?? ""] ?? "text-slate-900"}`}>{order.priority ?? "—"}</span>
           </div>
           {order.description && (
             <div>
               <span className="text-slate-500">Description</span>
-              <p className="mt-1 text-slate-700 dark:text-slate-300 text-xs">{order.description}</p>
+              <p className="mt-1 text-slate-700 text-xs">{order.description}</p>
             </div>
           )}
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Statut</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Statut</label>
             <select value={status} onChange={e => setStatus(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {ENGINEER_STATUSES.map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Commentaire technique</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Commentaire technique</label>
             <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               placeholder="Ajouter un commentaire technique…" />
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+              className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
               Annuler
             </button>
             <button type="submit" disabled={saving}
@@ -155,6 +156,7 @@ export default function EngineerRequests() {
       adminComment: comment,
       updatedAt: now,
     })
+    await notifyClientOfOrderStatusChanged(processing.id, processing, status)
 
     const projectStatus = mapOrderToProjectStatus(status)
     const projectsRef = collection(db, COLLECTIONS.projects)
@@ -230,20 +232,20 @@ export default function EngineerRequests() {
       <div className="p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Demandes clients</h2>
+            <h2 className="text-xl font-bold text-slate-900">Demandes clients</h2>
             <p className="text-slate-500 text-sm mt-0.5">{orders.length} demande{orders.length !== 1 ? "s" : ""} au total</p>
           </div>
         </div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex-wrap">
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-1 flex-wrap">
             {ALL_STATUSES.map(s => (
               <button key={s} onClick={() => setStatus(s)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   statusFilter === s
-                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}>
                 {s}
               </button>
@@ -252,13 +254,13 @@ export default function EngineerRequests() {
           <div className="relative ml-auto w-full sm:w-64">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
             <input value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Rechercher…" />
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-20 text-slate-400">
               <span className="material-symbols-outlined animate-spin text-[32px]">progress_activity</span>
@@ -272,7 +274,7 @@ export default function EngineerRequests() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-800">
+                  <tr className="border-b border-slate-100">
                     <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Réf.</th>
                     <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Client</th>
                     <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Type</th>
@@ -282,12 +284,12 @@ export default function EngineerRequests() {
                     <th className="px-5 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-100">
                   {filtered.map(o => (
-                    <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-5 py-3.5 font-mono text-xs text-slate-500">{o.id.slice(0, 8).toUpperCase()}</td>
-                      <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white">{o.clientLabel ?? "—"}</td>
-                      <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">{o.requestType ?? "—"}</td>
+                      <td className="px-5 py-3.5 font-medium text-slate-900">{o.clientLabel ?? "—"}</td>
+                      <td className="px-5 py-3.5 text-slate-600">{o.requestType ?? "—"}</td>
                       <td className="px-5 py-3.5">
                         {o.priority ? (
                           <span className={`font-medium ${priorityColors[o.priority] ?? "text-slate-600"}`}>{o.priority}</span>
@@ -306,7 +308,7 @@ export default function EngineerRequests() {
                             Traiter →
                           </button>
                           <Link to={`/engineer/requests/${o.id}`}
-                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            className="px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
                             Détails
                           </Link>
                         </div>

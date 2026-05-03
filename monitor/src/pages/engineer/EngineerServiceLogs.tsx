@@ -20,10 +20,10 @@ const LEVEL_STYLE: Record<string, string> = {
   debug:   "text-slate-500",
 }
 const LEVEL_BADGE: Record<string, string> = {
-  error:   "text-rose-600 bg-rose-50 dark:bg-rose-900/20",
-  warning: "text-amber-600 bg-amber-50 dark:bg-amber-900/20",
-  info:    "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
-  debug:   "text-slate-500 bg-slate-100 dark:bg-slate-800",
+  error:   "text-rose-600 bg-rose-50",
+  warning: "text-amber-600 bg-amber-50",
+  info:    "text-blue-600 bg-blue-50",
+  debug:   "text-slate-500 bg-slate-100",
 }
 
 function toMs(value: unknown): number {
@@ -130,10 +130,10 @@ export default function EngineerServiceLogs() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Link to="/engineer/monitoring" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <Link to="/engineer/monitoring" className="text-slate-400 hover:text-slate-600 transition-colors">
                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
               </Link>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 Logs — {serviceName || serviceId}
               </h2>
             </div>
@@ -161,9 +161,9 @@ export default function EngineerServiceLogs() {
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                 levelFilter === lvl
                   ? lvl === "all"
-                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent"
+                    ? "bg-[#2463eb] text-white border-transparent"
                     : `${LEVEL_BADGE[lvl]} border-current`
-                  : "border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
               }`}
             >
               {lvl.toUpperCase()}
@@ -176,21 +176,21 @@ export default function EngineerServiceLogs() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filtrer les messages…"
-              className="h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
+              className="h-8 pl-8 pr-3 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
             />
           </div>
         </div>
 
         {/* Terminal */}
-        <div className="bg-slate-950 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700 bg-slate-900">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5">
                 <span className="size-3 rounded-full bg-rose-500" />
                 <span className="size-3 rounded-full bg-amber-400" />
                 <span className="size-3 rounded-full bg-emerald-400" />
               </div>
-              <span className="text-slate-400 text-xs font-mono ml-2">{serviceName || serviceId} · stdout</span>
+              <span className="text-slate-500 text-xs font-mono ml-2">{serviceName || serviceId} · stdout</span>
             </div>
             <span className="text-xs text-slate-500">{filtered.length} lignes affichées</span>
           </div>
@@ -207,7 +207,7 @@ export default function EngineerServiceLogs() {
                 ? new Date(log.ts).toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
                 : "??:??:??"
               return (
-                <div key={log.id} className="flex items-start gap-3 py-0.5 hover:bg-white/5 px-1 rounded group">
+                <div key={log.id} className="flex items-start gap-3 py-0.5 hover:bg-slate-50 px-1 rounded group">
                   <span className="text-slate-600 shrink-0 tabular-nums">{time}</span>
                   <span className={`uppercase shrink-0 font-bold w-7 ${LEVEL_STYLE[log.level] ?? LEVEL_STYLE.info}`}>
                     {log.level === "warning" ? "WARN" : log.level.slice(0, 4).toUpperCase()}
@@ -215,7 +215,7 @@ export default function EngineerServiceLogs() {
                   {log.source && (
                     <span className="text-slate-600 shrink-0">[{log.source}]</span>
                   )}
-                  <span className="text-slate-300 break-all">{log.message}</span>
+                  <span className="text-slate-700 break-all">{log.message}</span>
                 </div>
               )
             })}

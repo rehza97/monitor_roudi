@@ -9,7 +9,7 @@ export function getHeaderNotificationsPath(role: Role): string {
     case "technician":
       return "/technician/notifications"
     case "admin":
-      return "/admin/messages"
+      return "/admin/notifications"
   }
 }
 

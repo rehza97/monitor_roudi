@@ -72,9 +72,9 @@ function statusLabel(v: FirestoreMeeting["status"]): string {
 }
 
 function statusTone(v: FirestoreMeeting["status"]): string {
-  if (v === "cancelled") return "bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-  if (v === "postponed") return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-  return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+  if (v === "cancelled") return "bg-slate-100 text-slate-600 border-slate-200"
+  if (v === "postponed") return "bg-amber-100 text-amber-700 border-amber-200"
+  return "bg-emerald-100 text-emerald-700 border-emerald-200"
 }
 
 function roleLabel(v: UserRole): string {
@@ -93,11 +93,11 @@ function roleLabel(v: UserRole): string {
 }
 
 function eventTone(platform: FirestoreMeeting["platform"], status: FirestoreMeeting["status"]): string {
-  if (status === "cancelled") return "bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-  if (platform === "zoom") return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-  if (platform === "google_meet") return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-  if (platform === "microsoft_teams") return "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
-  return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+  if (status === "cancelled") return "bg-slate-100 text-slate-600 border-slate-200"
+  if (platform === "zoom") return "bg-blue-100 text-blue-700 border-blue-200"
+  if (platform === "google_meet") return "bg-emerald-100 text-emerald-700 border-emerald-200"
+  if (platform === "microsoft_teams") return "bg-violet-100 text-violet-700 border-violet-200"
+  return "bg-amber-100 text-amber-700 border-amber-200"
 }
 
 function toDatetimeLocal(ms: number): string {
@@ -150,12 +150,12 @@ function MeetingDetailsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/45" />
       <div
-        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-xl p-6"
+        className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="space-y-2">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{meeting.title}</h3>
+            <h3 className="text-lg font-bold text-slate-900">{meeting.title}</h3>
             <p className="text-xs text-slate-500">
               {date.toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
@@ -163,67 +163,67 @@ function MeetingDetailsModal({
               {statusLabel(meeting.status)}
             </span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         <div className="space-y-3 text-sm">
-          <p className="text-slate-700 dark:text-slate-300">
+          <p className="text-slate-700">
             <span className="font-semibold">Plateforme:</span> {platformLabel(meeting.platform)}
           </p>
-          <p className="text-slate-700 dark:text-slate-300 break-all">
+          <p className="text-slate-700 break-all">
             <span className="font-semibold">Lien:</span>{" "}
             <a href={meeting.meetingLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
               {meeting.meetingLink}
             </a>
           </p>
-          <p className="text-slate-700 dark:text-slate-300">
+          <p className="text-slate-700">
             <span className="font-semibold">Code:</span> {meeting.meetingCode || "—"}
           </p>
-          <p className="text-slate-700 dark:text-slate-300">
+          <p className="text-slate-700">
             <span className="font-semibold">Cree par:</span> {meeting.createdByName || "—"}
           </p>
-          <p className="text-slate-700 dark:text-slate-300">
+          <p className="text-slate-700">
             <span className="font-semibold">Utilisateurs cibles:</span> {meeting.targetUserNames.join(", ") || "—"}
           </p>
           {meeting.postponedFromMs ? (
-            <p className="text-slate-700 dark:text-slate-300">
+            <p className="text-slate-700">
               <span className="font-semibold">Ancienne date:</span>{" "}
               {new Date(meeting.postponedFromMs).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
           ) : null}
           {meeting.statusNote ? (
-            <p className="text-slate-700 dark:text-slate-300">
+            <p className="text-slate-700">
               <span className="font-semibold">Note statut:</span> {meeting.statusNote}
             </p>
           ) : null}
           {meeting.description ? (
-            <p className="text-slate-700 dark:text-slate-300">
+            <p className="text-slate-700">
               <span className="font-semibold">Description:</span> {meeting.description}
             </p>
           ) : null}
         </div>
 
         {canManage ? (
-          <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Actions de planification</p>
+          <div className="mt-5 pt-4 border-t border-slate-200 space-y-3">
+            <p className="text-xs font-semibold text-slate-600">Actions de planification</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Nouvelle date (report)</label>
+                <label className="block text-xs text-slate-600 mb-1">Nouvelle date (report)</label>
                 <input
                   type="datetime-local"
                   value={postponeDate}
                   onChange={(e) => setPostponeDate(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Note (optionnel)</label>
+                <label className="block text-xs text-slate-600 mb-1">Note (optionnel)</label>
                 <input
                   value={statusNote}
                   onChange={(e) => setStatusNote(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                   placeholder="Motif / commentaire"
                 />
               </div>
@@ -236,7 +236,7 @@ function MeetingDetailsModal({
                 type="button"
                 disabled={mutating || meeting.status === "cancelled"}
                 onClick={() => void handleCancel()}
-                className="flex-1 py-2.5 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-lg border border-rose-200 text-rose-700 text-sm font-semibold hover:bg-rose-50 disabled:opacity-50"
               >
                 Annuler la reunion
               </button>
@@ -477,13 +477,13 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Calendrier des reunions</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{weekLabel}</p>
+            <h2 className="text-2xl font-bold text-slate-900">Calendrier des reunions</h2>
+            <p className="text-slate-500 text-sm mt-1">{weekLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setWeekOffset((w) => w - 1)}
-              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
             >
               <span className="material-symbols-outlined text-[20px]">chevron_left</span>
             </button>
@@ -491,15 +491,15 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
               onClick={() => setWeekOffset(0)}
               className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                 weekOffset === 0
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600"
-                  : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  ? "border-blue-500 bg-blue-50 text-blue-600"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
               }`}
             >
               Aujourd'hui
             </button>
             <button
               onClick={() => setWeekOffset((w) => w + 1)}
-              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
             >
               <span className="material-symbols-outlined text-[20px]">chevron_right</span>
             </button>
@@ -514,8 +514,8 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-slate-200">
             {DAYS.map((d, i) => {
               const date = new Date(weekStart)
               date.setDate(date.getDate() + i)
@@ -524,9 +524,9 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
                 date.getMonth() === today.getMonth() &&
                 date.getDate() === today.getDate()
               return (
-                <div key={d} className={`px-4 py-3 text-center border-r border-slate-200 dark:border-slate-800 last:border-0 ${isToday ? "bg-blue-50 dark:bg-blue-900/10" : ""}`}>
+                <div key={d} className={`px-4 py-3 text-center border-r border-slate-200 last:border-0 ${isToday ? "bg-blue-50" : ""}`}>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{d}</p>
-                  <p className={`text-xl font-bold mt-1 ${isToday ? "text-blue-600" : "text-slate-900 dark:text-white"}`}>{date.getDate()}</p>
+                  <p className={`text-xl font-bold mt-1 ${isToday ? "text-blue-600" : "text-slate-900"}`}>{date.getDate()}</p>
                 </div>
               )
             })}
@@ -535,7 +535,7 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
             {DAYS.map((_, i) => {
               const dayMeetings = meetingsForDay(i)
               return (
-                <div key={i} className="border-r border-slate-200 dark:border-slate-800 last:border-0 p-2 space-y-1.5">
+                <div key={i} className="border-r border-slate-200 last:border-0 p-2 space-y-1.5">
                   {dayMeetings.map((m) => (
                     <button
                       key={m.id}
@@ -553,7 +553,7 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
                     </button>
                   ))}
                   {!loading && dayMeetings.length === 0 ? (
-                    <div className="flex items-center justify-center h-20 text-slate-300 dark:text-slate-700 text-xs">—</div>
+                    <div className="flex items-center justify-center h-20 text-slate-300 text-xs">—</div>
                   ) : null}
                 </div>
               )
@@ -561,8 +561,8 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-4">Prochaines reunions</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="font-bold text-slate-900 mb-4">Prochaines reunions</h3>
           {loading ? (
             <p className="text-sm text-slate-400">Chargement…</p>
           ) : upcoming.length === 0 ? (
@@ -573,12 +573,12 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
                 <button
                   key={m.id}
                   onClick={() => setSelectedMeeting(m)}
-                  className="w-full flex items-center gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
+                  className="w-full flex items-center gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-left"
                 >
                   <div className={`w-1.5 self-stretch rounded-full shrink-0 ${eventTone(m.platform, m.status).split(" ")[0]}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={`text-sm font-semibold text-slate-900 dark:text-white ${m.status === "cancelled" ? "line-through" : ""}`}>{m.title}</p>
+                      <p className={`text-sm font-semibold text-slate-900 ${m.status === "cancelled" ? "line-through" : ""}`}>{m.title}</p>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${statusTone(m.status)}`}>
                         {statusLabel(m.status)}
                       </span>
@@ -610,23 +610,23 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setCreateOpen(false)}>
           <div className="absolute inset-0 bg-black/45" />
           <div
-            className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6"
+            className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-slate-900 dark:text-white">Programmer une reunion</h3>
-              <button onClick={() => setCreateOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <h3 className="font-bold text-slate-900">Programmer une reunion</h3>
+              <button onClick={() => setCreateOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
             <form className="space-y-4" onSubmit={(e) => void createMeeting(e)}>
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Titre *</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Titre *</label>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                   placeholder="Ex: Revue technique sprint"
                   required
                 />
@@ -634,21 +634,21 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Date et heure *</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Date et heure *</label>
                   <input
                     type="datetime-local"
                     value={dateTimeLocal}
                     onChange={(e) => setDateTimeLocal(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Plateforme *</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Plateforme *</label>
                   <select
                     value={platform}
                     onChange={(e) => setPlatform(e.target.value as FirestoreMeeting["platform"])}
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                   >
                     {PLATFORM_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -659,40 +659,40 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Lien de reunion *</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Lien de reunion *</label>
                   <input
                     value={meetingLink}
                     onChange={(e) => setMeetingLink(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                     placeholder="https://..."
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Code de reunion</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Code de reunion</label>
                   <input
                     value={meetingCode}
                     onChange={(e) => setMeetingCode(e.target.value)}
-                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm"
                     placeholder="Ex: 123-456-789"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Description</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full min-h-20 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm resize-y"
+                  className="w-full min-h-20 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm resize-y"
                   placeholder="Objectif de la reunion..."
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between gap-3 mb-2">
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Utilisateurs cibles *</label>
-                  <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  <label className="block text-xs font-medium text-slate-600">Utilisateurs cibles *</label>
+                  <label className="flex items-center gap-2 text-xs text-slate-600">
                     <input
                       type="checkbox"
                       checked={allUsers}
@@ -705,15 +705,15 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
                 {allUsers ? (
                   <p className="text-xs text-slate-500">Cette reunion sera visible par tous les utilisateurs.</p>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 p-2 space-y-1">
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 p-2 space-y-1">
                     {targetUsers.map((u) => (
-                      <label key={u.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 text-sm">
+                      <label key={u.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 text-sm">
                         <input
                           type="checkbox"
                           checked={selectedTargetIds.includes(u.id)}
                           onChange={() => toggleTarget(u.id)}
                         />
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{u.name}</span>
+                        <span className="font-medium text-slate-800">{u.name}</span>
                         <span className="text-xs text-slate-500">{roleLabel(u.role)}</span>
                         <span className="text-xs text-slate-400 truncate">{u.email}</span>
                       </label>
@@ -733,7 +733,7 @@ export default function MeetingsPlannerPage({ role, navItems, canManage }: Meeti
                 <button
                   type="button"
                   onClick={() => setCreateOpen(false)}
-                  className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Annuler
                 </button>

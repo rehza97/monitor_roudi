@@ -37,29 +37,29 @@ function toMs(value: unknown): number {
 }
 
 const PROJECT_COLOR: Record<string, string> = {
-  active:    "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-  pending:   "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-  delivered: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-  cancelled: "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700",
+  active:    "bg-blue-100 text-blue-700 border-blue-200",
+  pending:   "bg-indigo-100 text-indigo-700 border-indigo-200",
+  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  cancelled: "bg-slate-100 text-slate-500 border-slate-200",
 }
 
-const MEETING_COLOR = "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+const MEETING_COLOR = "bg-purple-100 text-purple-700 border-purple-200"
 
 function EventModal({ event, onClose }: { event: CalEvent; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${event.kind === "meeting" ? MEETING_COLOR : PROJECT_COLOR[event.status] ?? PROJECT_COLOR.active}`}>
             {event.kind === "meeting" ? "Réunion" : "Projet"}
           </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{event.title}</h3>
-        <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+        <h3 className="text-lg font-bold text-slate-900 mb-3">{event.title}</h3>
+        <div className="space-y-2 text-sm text-slate-600">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[16px] text-blue-500">calendar_today</span>
             {event.date.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long" })}
@@ -77,7 +77,7 @@ function EventModal({ event, onClose }: { event: CalEvent; onClose: () => void }
         </div>
         {event.link && (
           <a href={event.link} target="_blank" rel="noreferrer"
-            className="mt-4 flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+            className="mt-4 flex items-center gap-1.5 text-sm text-blue-600 hover:underline">
             <span className="material-symbols-outlined text-[16px]">open_in_new</span>
             Rejoindre la réunion
           </a>
@@ -200,25 +200,25 @@ export default function EngineerCalendar() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Calendrier</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{weekLabel}</p>
+            <h2 className="text-2xl font-bold text-slate-900">Calendrier</h2>
+            <p className="text-slate-500 text-sm mt-1">{weekLabel}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setWeekOffset((w) => w - 1)}
-              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors">
+              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors">
               <span className="material-symbols-outlined text-[20px]">chevron_left</span>
             </button>
             <button onClick={() => setWeekOffset(0)}
               className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                 weekOffset === 0
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600"
-                  : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  ? "border-blue-500 bg-blue-50 text-blue-600"
+                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
               }`}
             >
               Aujourd'hui
             </button>
             <button onClick={() => setWeekOffset((w) => w + 1)}
-              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors">
+              className="size-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors">
               <span className="material-symbols-outlined text-[20px]">chevron_right</span>
             </button>
           </div>
@@ -227,11 +227,11 @@ export default function EngineerCalendar() {
         {/* KPIs */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Projets", value: kpis.projects, icon: "folder_open", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20" },
-            { label: "Réunions", value: kpis.meetings, icon: "video_call", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20" },
-            { label: "Cette semaine", value: kpis.thisWeek, icon: "event", color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+            { label: "Projets", value: kpis.projects, icon: "folder_open", color: "text-blue-600", bg: "bg-blue-50" },
+            { label: "Réunions", value: kpis.meetings, icon: "video_call", color: "text-purple-600", bg: "bg-purple-50" },
+            { label: "Cette semaine", value: kpis.thisWeek, icon: "event", color: "text-emerald-600", bg: "bg-emerald-50" },
           ].map((k) => (
-            <div key={k.label} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center gap-3">
+            <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
               <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${k.bg}`}>
                 <span className={`material-symbols-outlined text-[20px] ${k.color}`}>{k.icon}</span>
               </div>
@@ -244,14 +244,14 @@ export default function EngineerCalendar() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-blue-400" />Projet</div>
           <div className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-purple-400" />Réunion</div>
         </div>
 
         {/* Week grid */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-slate-200">
             {DAYS.map((d, i) => {
               const date = new Date(weekStart)
               date.setDate(date.getDate() + i)
@@ -260,9 +260,9 @@ export default function EngineerCalendar() {
                 date.getMonth() === today.getMonth() &&
                 date.getDate() === today.getDate()
               return (
-                <div key={d} className={`px-3 py-3 text-center border-r border-slate-200 dark:border-slate-800 last:border-0 ${isToday ? "bg-blue-50 dark:bg-blue-900/10" : ""}`}>
+                <div key={d} className={`px-3 py-3 text-center border-r border-slate-200 last:border-0 ${isToday ? "bg-blue-50" : ""}`}>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{d}</p>
-                  <p className={`text-xl font-bold mt-1 ${isToday ? "text-blue-600" : "text-slate-900 dark:text-white"}`}>{date.getDate()}</p>
+                  <p className={`text-xl font-bold mt-1 ${isToday ? "text-blue-600" : "text-slate-900"}`}>{date.getDate()}</p>
                 </div>
               )
             })}
@@ -271,10 +271,10 @@ export default function EngineerCalendar() {
             {DAYS.map((_, i) => {
               const dayEvs = eventsForDay(i)
               return (
-                <div key={i} className="border-r border-slate-200 dark:border-slate-800 last:border-0 p-1.5 space-y-1">
+                <div key={i} className="border-r border-slate-200 last:border-0 p-1.5 space-y-1">
                   {loading && i === 0 && (
                     <div className="animate-pulse space-y-1 pt-2">
-                      <div className="h-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+                      <div className="h-10 rounded-lg bg-slate-100" />
                     </div>
                   )}
                   {dayEvs.map((ev) => (
@@ -290,7 +290,7 @@ export default function EngineerCalendar() {
                     </button>
                   ))}
                   {!loading && dayEvs.length === 0 && (
-                    <div className="flex items-center justify-center h-16 text-slate-300 dark:text-slate-700 text-xs">—</div>
+                    <div className="flex items-center justify-center h-16 text-slate-300 text-xs">—</div>
                   )}
                 </div>
               )
@@ -299,8 +299,8 @@ export default function EngineerCalendar() {
         </div>
 
         {/* Upcoming events */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-4">Prochains événements</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="font-bold text-slate-900 mb-4">Prochains événements</h3>
           {loading ? (
             <p className="text-sm text-slate-400">Chargement…</p>
           ) : upcoming.length === 0 ? (
@@ -309,14 +309,14 @@ export default function EngineerCalendar() {
             <div className="space-y-2">
               {upcoming.map((ev) => (
                 <button key={ev.id} onClick={() => setSelected(ev)}
-                  className="w-full flex items-center gap-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left">
-                  <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${ev.kind === "meeting" ? "bg-purple-100 dark:bg-purple-900/20" : "bg-blue-100 dark:bg-blue-900/20"}`}>
+                  className="w-full flex items-center gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-left">
+                  <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${ev.kind === "meeting" ? "bg-purple-100" : "bg-blue-100"}`}>
                     <span className={`material-symbols-outlined text-[16px] ${ev.kind === "meeting" ? "text-purple-600" : "text-blue-600"}`}>
                       {ev.kind === "meeting" ? "video_call" : "folder_open"}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{ev.title}</p>
+                    <p className="text-sm font-semibold text-slate-900 truncate">{ev.title}</p>
                     <p className="text-xs text-slate-500">
                       {ev.date.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "short" })}
                       {ev.kind === "meeting" && ` · ${ev.date.toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit" })}`}

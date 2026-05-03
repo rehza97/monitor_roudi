@@ -64,41 +64,41 @@ function EntryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-slate-900 dark:text-white">
+          <h3 className="font-bold text-slate-900">
             {isEdit ? "Modifier l'entrée" : "Nouvelle entrée"}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Projet *</label>
+            <label className="text-sm font-medium text-slate-700">Projet *</label>
             <input
               value={projectTitle}
               onChange={(e) => setProjectTitle(e.target.value)}
               required
               placeholder="Nom du projet ou de la tâche"
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Date *</label>
+              <label className="text-sm font-medium text-slate-700">Date *</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Heures *</label>
+              <label className="text-sm font-medium text-slate-700">Heures *</label>
               <input
                 type="number"
                 min="0.25"
@@ -108,29 +108,29 @@ function EntryModal({
                 onChange={(e) => setHours(e.target.value)}
                 required
                 placeholder="Ex: 2.5"
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+            <label className="text-sm font-medium text-slate-700">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Ce qui a été fait…"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-between py-2 rounded-lg bg-slate-50 dark:bg-slate-800 px-3">
+          <div className="flex items-center justify-between py-2 rounded-lg bg-slate-50 px-3">
             <div>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">Facturable</p>
+              <p className="text-sm font-medium text-slate-900">Facturable</p>
               <p className="text-xs text-slate-500">Inclure dans la facturation client</p>
             </div>
             <button type="button" onClick={() => setBillable((b) => !b)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${billable ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700"}`}>
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${billable ? "bg-blue-600" : "bg-slate-200"}`}>
               <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${billable ? "translate-x-6" : "translate-x-1"}`} />
             </button>
           </div>
@@ -138,12 +138,12 @@ function EntryModal({
           <div className="flex gap-2 pt-2">
             {isEdit && onDelete && (
               <button type="button" onClick={() => void handleDelete()} disabled={deleting}
-                className="px-4 py-2.5 rounded-lg text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-60 transition-colors">
+                className="px-4 py-2.5 rounded-lg text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 transition-colors">
                 {deleting ? "Suppression…" : "Supprimer"}
               </button>
             )}
             <div className="flex-1" />
-            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-100">
               Annuler
             </button>
             <button type="submit" disabled={saving}
@@ -242,8 +242,8 @@ export default function EngineerTimeTracking() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Suivi du temps</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Loggez vos heures par projet pour la facturation.</p>
+            <h2 className="text-2xl font-bold text-slate-900">Suivi du temps</h2>
+            <p className="text-slate-500 text-sm mt-1">Loggez vos heures par projet pour la facturation.</p>
           </div>
           <button
             onClick={() => setModal({ mode: "add" })}
@@ -257,12 +257,12 @@ export default function EngineerTimeTracking() {
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Cette semaine", value: `${kpis.weekHours.toFixed(1)}h`,  icon: "calendar_today",  color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-900/20" },
-            { label: "Ce mois",       value: `${kpis.monthHours.toFixed(1)}h`, icon: "calendar_month",  color: "text-indigo-600",  bg: "bg-indigo-50 dark:bg-indigo-900/20" },
-            { label: "Facturables",   value: `${kpis.billable.toFixed(1)}h`,   icon: "receipt_long",    color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-            { label: "Top projet",    value: kpis.topProject ? kpis.topProject[0].slice(0, 16) : "—", icon: "star", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20" },
+            { label: "Cette semaine", value: `${kpis.weekHours.toFixed(1)}h`,  icon: "calendar_today",  color: "text-blue-600",    bg: "bg-blue-50" },
+            { label: "Ce mois",       value: `${kpis.monthHours.toFixed(1)}h`, icon: "calendar_month",  color: "text-indigo-600",  bg: "bg-indigo-50" },
+            { label: "Facturables",   value: `${kpis.billable.toFixed(1)}h`,   icon: "receipt_long",    color: "text-emerald-600", bg: "bg-emerald-50" },
+            { label: "Top projet",    value: kpis.topProject ? kpis.topProject[0].slice(0, 16) : "—", icon: "star", color: "text-amber-600", bg: "bg-amber-50" },
           ].map((k) => (
-            <div key={k.label} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center gap-3">
+            <div key={k.label} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
               <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${k.bg}`}>
                 <span className={`material-symbols-outlined text-[20px] ${k.color}`}>{k.icon}</span>
               </div>
@@ -276,8 +276,8 @@ export default function EngineerTimeTracking() {
 
         {/* Project breakdown */}
         {byProject.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Répartition par projet</h3>
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <h3 className="font-semibold text-slate-900 mb-4">Répartition par projet</h3>
             <div className="space-y-3">
               {byProject.map(([proj, h]) => {
                 const total = byProject.reduce((s, [, x]) => s + x, 0)
@@ -285,10 +285,10 @@ export default function EngineerTimeTracking() {
                 return (
                   <div key={proj} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-900 dark:text-white truncate max-w-[60%]">{proj}</span>
+                      <span className="font-medium text-slate-900 truncate max-w-[60%]">{proj}</span>
                       <span className="text-slate-500 tabular-nums">{h.toFixed(1)}h · {pct.toFixed(0)}%</span>
                     </div>
-                    <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
                       <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -300,11 +300,11 @@ export default function EngineerTimeTracking() {
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex-wrap">
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-1 flex-wrap">
             <button
               onClick={() => setWeekFilter("all")}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                weekFilter === "all" ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                weekFilter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
               Tout
@@ -314,7 +314,7 @@ export default function EngineerTimeTracking() {
                 key={w}
                 onClick={() => setWeekFilter(w)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  weekFilter === w ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  weekFilter === w ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                 }`}
               >
                 Sem. {new Date(w).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
@@ -324,15 +324,15 @@ export default function EngineerTimeTracking() {
           <div className="relative ml-auto w-full sm:w-60">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
             <input value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Rechercher…" />
           </div>
         </div>
 
         {/* Entries list */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900 dark:text-white">Entrées de temps</h3>
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900">Entrées de temps</h3>
             <span className="text-sm text-slate-500">{filtered.reduce((s, e) => s + e.hours, 0).toFixed(1)}h total</span>
           </div>
 
@@ -350,19 +350,19 @@ export default function EngineerTimeTracking() {
               </button>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="divide-y divide-slate-100">
               {filtered.map((entry) => (
-                <div key={entry.id} className="px-5 py-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 group">
-                  <div className="size-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                <div key={entry.id} className="px-5 py-4 flex items-center gap-4 hover:bg-slate-50 group">
+                  <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                     <span className="text-sm font-black text-blue-600">{entry.hours.toFixed(1)}h</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-slate-900 dark:text-white text-sm truncate max-w-[280px]">
+                      <p className="font-semibold text-slate-900 text-sm truncate max-w-[280px]">
                         {entry.projectTitle}
                       </p>
                       {entry.billable && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600">
                           FACT.
                         </span>
                       )}
@@ -372,13 +372,13 @@ export default function EngineerTimeTracking() {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    <p className="text-xs font-medium text-slate-700">
                       {new Date(entry.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
                     </p>
                   </div>
                   <button
                     onClick={() => setModal({ mode: "edit", entry })}
-                    className="opacity-0 group-hover:opacity-100 size-8 flex items-center justify-center rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 size-8 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-400 transition-all"
                   >
                     <span className="material-symbols-outlined text-[16px]">edit</span>
                   </button>

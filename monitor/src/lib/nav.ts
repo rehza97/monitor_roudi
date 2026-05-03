@@ -3,8 +3,7 @@ import type { NavItem } from "@/components/layouts/DashboardLayout"
 export const clientNav: NavItem[] = [
   { icon: "dashboard",      label: "Tableau de bord",   to: "/client/dashboard" },
   { icon: "apps",           label: "Mes Applications",  to: "/client/apps" },
-  { icon: "deployed_code",  label: "Produits Software", to: "/client/software-store" },
-  { icon: "inventory_2",    label: "Produits Matériels",to: "/client/material-store" },
+  { icon: "shopping_cart",   label: "Panier",            to: "/client/materials/order" },
   { icon: "description",    label: "Mes Demandes",      to: "/client/requests" },
   { icon: "monitoring",     label: "Monitoring",        to: "/client/monitoring" },
   { icon: "calendar_month", label: "Réunions",          to: "/client/meetings" },

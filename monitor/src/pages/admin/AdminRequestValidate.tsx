@@ -8,6 +8,7 @@ import { COLLECTIONS, ORDER_KIND, type FirestoreInvoice, type FirestoreOrder } f
 import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, updateDoc, where } from "@/lib/firebase-firestore"
 import { formatFirestoreDate } from "@/lib/utils"
 import OrderAttachmentsList from "@/components/OrderAttachmentsList"
+import { notifyClientOfOrderStatusChanged } from "@/lib/notifications"
 
 type EngineerOption = { id: string; name: string; email: string }
 
@@ -20,6 +21,8 @@ export default function AdminRequestValidate() {
   const [loadError, setLoadError] = useState("")
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState("")
+  const [choice, setChoice] = useState<"accept" | "reject">("accept")
+  const [priority, setPriority] = useState("")
   const [decision, setDecision] = useState<Decision>("idle")
   const [invoiceTitle, setInvoiceTitle] = useState("")
   const [invoiceAmount, setInvoiceAmount] = useState("")
@@ -30,12 +33,18 @@ export default function AdminRequestValidate() {
   const [resolvedClientLabel, setResolvedClientLabel] = useState("")
   const [resolvedClientEmail, setResolvedClientEmail] = useState("")
   const [engineers, setEngineers] = useState<EngineerOption[]>([])
+  const [engineersLoading, setEngineersLoading] = useState(true)
   const [assignedToId, setAssignedToId] = useState("")
   const [assignBusy, setAssignBusy] = useState(false)
   const [assignError, setAssignError] = useState("")
+  const [assignSuccess, setAssignSuccess] = useState("")
 
   useEffect(() => {
-    if (!db) return
+    if (!db) {
+      setEngineersLoading(false)
+      return
+    }
+    setEngineersLoading(true)
     const unsub = onSnapshot(
       query(collection(db, COLLECTIONS.users), where("role", "==", "engineer")),
       (snap) => {
@@ -45,6 +54,11 @@ export default function AdminRequestValidate() {
             return { id: d.id, name: data.name ?? "—", email: data.email ?? "" }
           }),
         )
+        setEngineersLoading(false)
+      },
+      (err) => {
+        setAssignError(err instanceof Error ? err.message : "Impossible de charger les ingénieurs.")
+        setEngineersLoading(false)
       },
     )
     return unsub
@@ -139,8 +153,8 @@ export default function AdminRequestValidate() {
     }
   }, [id])
 
-  async function persistDecision(status: string) {
-    if (!db || !id || !user) throw new Error("Impossible d'enregistrer.")
+  async function persistDecision(status: string, extra: Record<string, unknown> = {}) {
+    if (!db || !id || !user || !order) throw new Error("Impossible d'enregistrer.")
     const eng = engineers.find((e) => e.id === assignedToId)
     await updateDoc(doc(db, COLLECTIONS.orders, id), {
       status,
@@ -148,21 +162,25 @@ export default function AdminRequestValidate() {
       assignedToId: assignedToId || null,
       assignedEngineerName: eng?.name ?? null,
       updatedAt: serverTimestamp(),
+      ...extra,
     })
+    await notifyClientOfOrderStatusChanged(id, order, status)
   }
 
   async function handleAssign() {
-    if (!db || !id || !assignedToId) return
+    if (!db || !id) return
     setAssignBusy(true)
     setAssignError("")
+    setAssignSuccess("")
     try {
       const eng = engineers.find((e) => e.id === assignedToId)
       await updateDoc(doc(db, COLLECTIONS.orders, id), {
-        assignedToId,
+        assignedToId: assignedToId || null,
         assignedEngineerName: eng?.name ?? null,
         updatedAt: serverTimestamp(),
       })
-      setOrder((prev) => prev ? { ...prev, assignedToId, assignedEngineerName: eng?.name } : prev)
+      setOrder((prev) => prev ? { ...prev, assignedToId: assignedToId || null, assignedEngineerName: eng?.name ?? null } : prev)
+      setAssignSuccess(eng ? `Assigné à ${eng.name}.` : "Assignation retirée.")
     } catch (err) {
       setAssignError(err instanceof Error ? err.message : "Impossible d'assigner.")
     } finally {
@@ -173,7 +191,7 @@ export default function AdminRequestValidate() {
   async function handleValidate() {
     setDecision("validating")
     try {
-      await persistDecision("Validée")
+      await persistDecision("Validée", { priority: priority || null })
       setDecision("validated")
     } catch {
       setDecision("idle")
@@ -230,10 +248,10 @@ export default function AdminRequestValidate() {
     return (
       <DashboardLayout role="admin" navItems={adminNav} pageTitle="Validation de la demande">
         <div className="flex flex-col items-center justify-center py-24 gap-5">
-          <div className="size-20 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
+          <div className="size-20 rounded-full bg-emerald-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-emerald-600 text-[40px]">check_circle</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Demande validée</h2>
+          <h2 className="text-xl font-bold text-slate-900">Demande validée</h2>
           <p className="text-slate-500 text-sm text-center max-w-xs">
             La demande <strong>{id}</strong> a été validée.
           </p>
@@ -250,7 +268,7 @@ export default function AdminRequestValidate() {
           {id ? (
             <Link
               to={`/admin/invoices?orderId=${id}`}
-              className="flex items-center gap-2 px-5 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">receipt_long</span>
               Créer la facture
@@ -265,10 +283,10 @@ export default function AdminRequestValidate() {
     return (
       <DashboardLayout role="admin" navItems={adminNav} pageTitle="Validation de la demande">
         <div className="flex flex-col items-center justify-center py-24 gap-5">
-          <div className="size-20 rounded-full bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center">
+          <div className="size-20 rounded-full bg-rose-100 flex items-center justify-center">
             <span className="material-symbols-outlined text-rose-600 text-[40px]">cancel</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Demande rejetée</h2>
+          <h2 className="text-xl font-bold text-slate-900">Demande rejetée</h2>
           <p className="text-slate-500 text-sm text-center max-w-xs">
             La demande <strong>{id}</strong> a été rejetée.
           </p>
@@ -312,12 +330,12 @@ export default function AdminRequestValidate() {
 
   const statusBadge =
     order.status === "Validée"
-      ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
+      ? "text-emerald-700 bg-emerald-50"
       : order.status === "Rejetée"
-        ? "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400"
+        ? "text-rose-700 bg-rose-50"
         : order.status === "En cours"
-          ? "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400"
-          : "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400"
+          ? "text-blue-700 bg-blue-50"
+          : "text-amber-700 bg-amber-50"
 
   const features = Array.isArray(order.features) ? order.features : []
   const clientLabel = resolvedClientLabel || order.clientLabel || "—"
@@ -329,16 +347,19 @@ export default function AdminRequestValidate() {
     .slice(0, 2)
     .toUpperCase() || "?"
 
+  const canValidate = choice === "accept" && priority.trim().length > 0
+  const canReject = choice === "reject" && comment.trim().length > 0
+
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Validation de la demande">
-      <div className="p-6 w-full space-y-6">
+      <div className="p-6 w-full space-y-6 bg-[#f5f7fb] min-h-full">
         <Link to="/admin/requests" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span> Retour
         </Link>
 
         <div className="flex items-start gap-4 justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-bold text-slate-900">
               {order.requestType ?? "Demande"}
             </h2>
             <p className="text-slate-500 text-sm mt-1">
@@ -353,20 +374,20 @@ export default function AdminRequestValidate() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-5">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Description du besoin</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h3 className="font-semibold text-slate-900 mb-3">Description du besoin</h3>
+              <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
                 {order.description?.trim() || "—"}
               </p>
             </div>
             {features.length > 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Fonctionnalités / tags</h3>
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <h3 className="font-semibold text-slate-900 mb-3">Fonctionnalités / tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {features.map((f) => (
                     <span
                       key={f}
-                      className="text-xs font-medium px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full"
+                      className="text-xs font-medium px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full"
                     >
                       {f}
                     </span>
@@ -378,26 +399,74 @@ export default function AdminRequestValidate() {
             {id ? <OrderAttachmentsList orderId={id} title="Fichiers fournis par le client" /> : null}
 
             {order.status === "En attente" || order.status === "En cours" ? (
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-                <h3 className="font-semibold text-slate-900 dark:text-white">Décision</h3>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Commentaire interne <span className="text-slate-400 font-normal">(optionnel)</span>
-                  </label>
-                  <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#db143c] resize-none"
-                    placeholder="Ajouter un commentaire…"
-                  />
+              <div className="bg-white rounded-2xl border border-[#dbe3f1] p-6 space-y-5 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+                <h3 className="font-semibold text-slate-900">Validation de la demande</h3>
+                <p className="text-sm text-slate-500">Choisissez une décision puis confirmez.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setChoice("accept")}
+                    className={`text-left rounded-xl border px-4 py-3 transition ${
+                      choice === "accept"
+                        ? "border-[#2f6df6] bg-[#eef4ff]"
+                        : "border-slate-200 bg-white hover:border-[#bfd1fb]"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-slate-900">Valider la demande</p>
+                    <p className="text-xs text-slate-500 mt-1">Passe le statut à “Validée”.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChoice("reject")}
+                    className={`text-left rounded-xl border px-4 py-3 transition ${
+                      choice === "reject"
+                        ? "border-[#2f6df6] bg-[#eef4ff]"
+                        : "border-slate-200 bg-white hover:border-[#bfd1fb]"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-slate-900">Rejeter la demande</p>
+                    <p className="text-xs text-slate-500 mt-1">Nécessite un motif de rejet.</p>
+                  </button>
                 </div>
+
+                {choice === "accept" ? (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Niveau de priorité</label>
+                    <div className="relative">
+                      <select
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value)}
+                        className="w-full h-11 pl-3 pr-8 rounded-lg border border-[#cfd9ec] bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2f6df6]/35 focus:border-[#2f6df6] appearance-none"
+                      >
+                        <option value="">Choisir la priorité…</option>
+                        <option value="Urgente">Urgente</option>
+                        <option value="Haute">Haute</option>
+                        <option value="Normale">Normale</option>
+                        <option value="Basse">Basse</option>
+                      </select>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[16px]">expand_more</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Motif du rejet</label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 rounded-lg border border-[#cfd9ec] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6df6]/35 focus:border-[#2f6df6] resize-none"
+                      placeholder="Expliquez pourquoi la demande est rejetée…"
+                    />
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => void handleValidate()}
-                    disabled={busy}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-bold rounded-lg transition-colors"
+                    disabled={busy || !canValidate}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#2f6df6] hover:bg-[#235be0] disabled:opacity-60 text-white text-sm font-bold rounded-lg transition-colors"
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       {decision === "validating" ? "hourglass_empty" : "check_circle"}
@@ -407,8 +476,8 @@ export default function AdminRequestValidate() {
                   <button
                     type="button"
                     onClick={() => void handleReject()}
-                    disabled={busy}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white text-sm font-bold rounded-lg transition-colors"
+                    disabled={busy || !canReject}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#e24b4b] hover:bg-[#cf3f3f] disabled:opacity-60 text-white text-sm font-bold rounded-lg transition-colors"
                   >
                     <span className="material-symbols-outlined text-[18px]">
                       {decision === "rejecting" ? "hourglass_empty" : "cancel"}
@@ -426,8 +495,8 @@ export default function AdminRequestValidate() {
           </div>
 
           <div className="space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Détails</h3>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+              <h3 className="font-semibold text-slate-900 text-sm">Détails</h3>
               {[
                 { label: "Budget", value: order.budgetLabel ?? "—" },
                 { label: "Délai", value: order.timelineLabel ?? "—" },
@@ -436,18 +505,18 @@ export default function AdminRequestValidate() {
               ].map((i) => (
                 <div key={i.label} className="flex justify-between text-sm gap-2">
                   <span className="text-slate-500">{i.label}</span>
-                  <span className="font-medium text-slate-900 dark:text-white text-right">{i.value}</span>
+                  <span className="font-medium text-slate-900 text-right">{i.value}</span>
                 </div>
               ))}
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Client</h3>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+              <h3 className="font-semibold text-slate-900 text-sm">Client</h3>
               <div className="flex items-center gap-3">
                 <div className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold">
                   {clientInitials}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900">
                     {clientLabel}
                   </p>
                   <p className="text-xs text-slate-400">{clientEmail}</p>
@@ -455,30 +524,42 @@ export default function AdminRequestValidate() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Ingénieur assigné</h3>
-              {order.assignedToId && order.assignedToId !== assignedToId ? null : null}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+              <h3 className="font-semibold text-slate-900 text-sm">Ingénieur assigné</h3>
               <div className="relative">
                 <select
                   value={assignedToId}
-                  onChange={(e) => setAssignedToId(e.target.value)}
-                  className="w-full h-10 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] appearance-none"
+                  onChange={(e) => {
+                    setAssignedToId(e.target.value)
+                    setAssignError("")
+                    setAssignSuccess("")
+                  }}
+                  disabled={engineersLoading || engineers.length === 0}
+                  className="w-full h-10 pl-3 pr-8 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] appearance-none"
                 >
-                  <option value="">— Aucun ingénieur —</option>
+                  <option value="">
+                    {engineersLoading ? "Chargement des ingénieurs..." : "— Aucun ingénieur —"}
+                  </option>
                   {engineers.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
+                    <option key={e.id} value={e.id}>
+                      {e.name}{e.email ? ` · ${e.email}` : ""}
+                    </option>
                   ))}
                 </select>
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[16px]">expand_more</span>
               </div>
+              {!engineersLoading && engineers.length === 0 ? (
+                <p className="text-xs text-amber-700">Aucun compte ingénieur trouvé dans Firestore.</p>
+              ) : null}
               {assignError ? <p className="text-xs text-rose-600">{assignError}</p> : null}
+              {assignSuccess ? <p className="text-xs text-emerald-600">{assignSuccess}</p> : null}
               <button
                 type="button"
                 onClick={() => void handleAssign()}
-                disabled={assignBusy || !assignedToId}
+                disabled={assignBusy || engineersLoading || assignedToId === (order.assignedToId ?? "")}
                 className="w-full h-9 rounded-lg bg-[#db143c] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
               >
-                {assignBusy ? "Enregistrement…" : "Assigner"}
+                {assignBusy ? "Enregistrement…" : assignedToId ? "Assigner" : "Retirer l'assignation"}
               </button>
               {order.assignedToId && (
                 <p className="text-xs text-slate-400 flex items-center gap-1">
@@ -492,11 +573,11 @@ export default function AdminRequestValidate() {
             </div>
 
             {order.status === "Validée" && (
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
-                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Facturation</h3>
+              <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+                <h3 className="font-semibold text-slate-900 text-sm">Facturation</h3>
 
                 {linkedInvoiceId ? (
-                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-sm text-emerald-700">
                     Facture liée: <span className="font-mono">{linkedInvoiceId}</span>
                     <div className="mt-1">
                       <Link to="/admin/invoices" className="text-[#db143c] font-semibold hover:opacity-80">
@@ -511,7 +592,7 @@ export default function AdminRequestValidate() {
                       <input
                         value={invoiceTitle}
                         onChange={(e) => setInvoiceTitle(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -521,7 +602,7 @@ export default function AdminRequestValidate() {
                         onChange={(e) => setInvoiceAmount(e.target.value)}
                         type="number"
                         min={1}
-                        className="w-full h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -530,11 +611,11 @@ export default function AdminRequestValidate() {
                         value={invoiceDueAt}
                         onChange={(e) => setInvoiceDueAt(e.target.value)}
                         type="date"
-                        className="w-full h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                        className="w-full h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm"
                       />
                     </div>
                     {invoiceError ? (
-                      <p className="text-xs text-rose-600 dark:text-rose-400">{invoiceError}</p>
+                      <p className="text-xs text-rose-600">{invoiceError}</p>
                     ) : null}
                     <button
                       type="button"

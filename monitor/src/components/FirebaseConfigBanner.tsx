@@ -9,13 +9,13 @@ export default function FirebaseConfigBanner() {
   return (
     <div
       role="alert"
-      className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+      className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-2">
         <p className="font-semibold">Configuration Firebase incomplète</p>
-        <p className="text-amber-900/90 dark:text-amber-100/90">{getFirebaseConfigUserMessage()}</p>
+        <p className="text-amber-900/90">{getFirebaseConfigUserMessage()}</p>
         {isDev ? (
-          <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200/90">
+          <p className="text-xs leading-relaxed text-amber-800">
             {getFirebaseConfigDeveloperHint()}
           </p>
         ) : null}

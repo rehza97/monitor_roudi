@@ -30,7 +30,7 @@ function notifColorClass(n: Notif): string {
 
 function notifBgClass(n: Notif): string {
   if (n.color && n.color.includes("bg-")) return n.color
-  return n.read ? "bg-slate-100 dark:bg-slate-800" : "bg-amber-50 dark:bg-amber-900/20"
+  return n.read ? "bg-slate-100" : "bg-amber-50"
 }
 
 export default function TechnicianNotifications() {
@@ -124,27 +124,27 @@ export default function TechnicianNotifications() {
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Notifications">
-      <div className="p-6 w-full space-y-3">
+      <div className="p-6 w-full space-y-3 bg-[#221e10] min-h-[calc(100vh-64px)]">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <p className="text-slate-500 text-sm">{notifs.length} notifications</p>
+            <p className="text-[#bab29c] text-sm">{notifs.length} notifications</p>
             {unread > 0 && (
-              <span className="size-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">{unread}</span>
+              <span className="size-5 rounded-full bg-[#f2b90d] text-slate-900 text-[10px] font-bold flex items-center justify-center">{unread}</span>
             )}
           </div>
           <button
             onClick={() => void markAllRead()}
             disabled={unread === 0}
-            className="text-sm text-amber-600 hover:text-amber-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            className="text-sm text-[#f2b90d] hover:text-[#f8d35f] font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
             Tout marquer comme lu
           </button>
         </div>
 
         {loading ? (
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center text-slate-400">Chargement…</div>
+          <div className="rounded-xl border border-[#393528] bg-[#2d281a] p-8 text-center text-[#bab29c]">Chargement…</div>
         ) : notifs.length === 0 ? (
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-[#bab29c]">
             <span className="material-symbols-outlined text-[32px] block mb-2">notifications_off</span>
             <p className="text-sm">Aucune notification</p>
           </div>
@@ -153,29 +153,29 @@ export default function TechnicianNotifications() {
             <button
               key={n.id}
               onClick={() => void handleClick(n)}
-              className={`w-full text-left flex items-start gap-4 p-4 rounded-xl border transition-all hover:shadow-sm ${
+              className={`w-full text-left flex items-start gap-4 p-4 rounded-xl border transition-all ${
                 n.read
-                  ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-70"
-                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ring-1 ring-amber-200 dark:ring-amber-800/50"
+                  ? "bg-[#2d281a] border-[#393528] opacity-80 hover:bg-[#342f22]"
+                  : "bg-[#2d281a] border-[#f2b90d]/40 ring-1 ring-[#f2b90d]/30 hover:bg-[#342f22]"
               }`}
             >
               <div className={`size-10 rounded-lg ${notifBgClass(n)} ${notifColorClass(n)} flex items-center justify-center shrink-0`}>
                 <span className="material-symbols-outlined text-[20px]">{notifIcon(n)}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-sm ${n.read ? "text-slate-500 dark:text-slate-400" : "font-semibold text-slate-900 dark:text-white"}`}>
+                <p className={`text-sm ${n.read ? "text-[#bab29c]" : "font-semibold text-white"}`}>
                   {n.title}
                 </p>
-                {n.message && <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>}
+                {n.message && <p className="text-xs text-[#bab29c] mt-0.5">{n.message}</p>}
                 {n.link && (
-                  <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-0.5">
+                  <p className="text-xs text-[#f2b90d] mt-0.5 flex items-center gap-0.5">
                     Voir le détail <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
                   </p>
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className="text-xs text-slate-400 whitespace-nowrap">{formatFirestoreDateTime(n.createdAt)}</span>
-                {!n.read && <span className="size-2 rounded-full bg-amber-500" />}
+                <span className="text-xs text-[#bab29c] whitespace-nowrap">{formatFirestoreDateTime(n.createdAt)}</span>
+                {!n.read && <span className="size-2 rounded-full bg-[#f2b90d]" />}
               </div>
             </button>
           ))

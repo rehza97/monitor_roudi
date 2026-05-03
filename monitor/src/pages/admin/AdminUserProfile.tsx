@@ -109,39 +109,39 @@ export default function AdminUserProfile() {
         </Link>
 
         {error ? (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm text-rose-700">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
 
-        <form onSubmit={(e) => void handleSave(e)} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+        <form onSubmit={(e) => void handleSave(e)} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Nom</label>
+              <label className="text-sm font-medium text-slate-700">Nom</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 disabled={loading}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+              <label className="text-sm font-medium text-slate-700">Email</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
                 disabled={loading}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Rôle</label>
+              <label className="text-sm font-medium text-slate-700">Rôle</label>
               <select
                 value={form.role}
                 onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as UserRole }))}
                 disabled={loading}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white"
               >
                 <option value="admin">admin</option>
                 <option value="client">client</option>
@@ -150,44 +150,44 @@ export default function AdminUserProfile() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Organization ID</label>
+              <label className="text-sm font-medium text-slate-700">Organization ID</label>
               <input
                 value={form.organizationId}
                 onChange={(e) => setForm((p) => ({ ...p, organizationId: e.target.value }))}
                 disabled={loading}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Type compte</label>
+              <label className="text-sm font-medium text-slate-700">Type compte</label>
               <select
                 value={form.accountType}
                 onChange={(e) => setForm((p) => ({ ...p, accountType: e.target.value }))}
                 disabled={loading}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white"
               >
                 <option value="other">other</option>
                 <option value="student">student</option>
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Téléphone</label>
+              <label className="text-sm font-medium text-slate-700">Téléphone</label>
               <input
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
                 disabled={loading}
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white"
               />
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bio</label>
+            <label className="text-sm font-medium text-slate-700">Bio</label>
             <textarea
               rows={4}
               value={form.bio}
               onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
               disabled={loading}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
             />
           </div>
 
@@ -196,7 +196,7 @@ export default function AdminUserProfile() {
               type="button"
               onClick={() => void handleDelete()}
               disabled={loading || deleting || saving}
-              className="py-2.5 px-3 border border-rose-200 dark:border-rose-900 text-rose-600 rounded-lg text-sm font-medium disabled:opacity-60"
+              className="py-2.5 px-3 border border-rose-200 text-rose-600 rounded-lg text-sm font-medium disabled:opacity-60"
             >
               {deleting ? "Suppression…" : "Supprimer"}
             </button>

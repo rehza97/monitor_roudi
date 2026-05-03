@@ -22,9 +22,9 @@ type Engineer = EngineerRosterRow & {
 }
 
 const statusColor: Record<string, string> = {
-  Disponible: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
-  Occupé: "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  Congé: "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-400",
+  Disponible: "text-emerald-700 bg-emerald-50",
+  Occupé: "text-amber-700 bg-amber-50",
+  Congé: "text-slate-600 bg-slate-100",
 }
 
 const specialties = ["Toutes les spécialités", "Fullstack", "Backend", "Frontend", "Mobile", "DevOps"]
@@ -204,16 +204,16 @@ function EngineerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <form
-        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-5"
+        className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white">
+            <h3 className="font-bold text-slate-900">
               {mode?.type === "add" ? "Ajouter un ingénieur" : "Modifier l'ingénieur"}
             </h3>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-xs text-slate-500">
               Renseignez le profil puis enregistrez.
             </p>
           </div>
@@ -222,7 +222,7 @@ function EngineerModal({
               <button
                 type="button"
                 onClick={autofillForDev}
-                className="h-8 px-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="h-8 px-2.5 rounded-md border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
               >
                 Remplir (dev)
               </button>
@@ -234,61 +234,61 @@ function EngineerModal({
         </div>
 
         {localError ? (
-          <p className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 rounded-lg">
+          <p className="text-sm text-rose-600 bg-rose-50 px-3 py-2 rounded-lg">
             {localError}
           </p>
         ) : null}
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3.5">
+        <div className="rounded-xl border border-slate-200 p-4 space-y-3.5">
           {[
             { key: "name" as const, label: "Nom complet", type: "text" },
             { key: "email" as const, label: "Email", type: "email" },
             { key: "phone" as const, label: "Téléphone", type: "tel" },
           ].map((f) => (
             <div key={f.key} className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{f.label}</label>
+              <label className="text-sm font-medium text-slate-700">{f.label}</label>
               <input
                 value={form[f.key]}
                 onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
                 type={f.type}
                 required
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
               />
             </div>
           ))}
         </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Mot de passe (optionnel)</label>
+        <div className="rounded-xl border border-slate-200 p-4 space-y-1.5">
+          <label className="text-sm font-medium text-slate-700">Mot de passe (optionnel)</label>
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
             placeholder="Laisser vide pour génération auto"
-            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
           />
         </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-3.5">
+        <div className="rounded-xl border border-slate-200 p-4 space-y-3.5">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Projets actifs</label>
+            <label className="text-sm font-medium text-slate-700">Projets actifs</label>
             <input
               type="number"
               min={0}
               max={10000}
               value={form.projects}
               onChange={(e) => setForm((p) => ({ ...p, projects: Number(e.target.value) || 0 }))}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Spécialité</label>
+              <label className="text-sm font-medium text-slate-700">Spécialité</label>
               <select
                 value={form.specialty}
                 onChange={(e) => setForm((p) => ({ ...p, specialty: e.target.value }))}
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
               >
                 {specialties.slice(1).map((s) => (
                   <option key={s}>{s}</option>
@@ -296,11 +296,11 @@ function EngineerModal({
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Statut</label>
+              <label className="text-sm font-medium text-slate-700">Statut</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+                className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
               >
                 {statuses.map((s) => (
                   <option key={s}>{s}</option>
@@ -316,7 +316,7 @@ function EngineerModal({
               type="button"
               onClick={() => void handleDelete()}
               disabled={deleting || saving}
-              className="py-2.5 px-3 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 rounded-lg text-sm font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-60"
+              className="py-2.5 px-3 border border-rose-200 text-rose-600 rounded-lg text-sm font-medium hover:bg-rose-50 disabled:opacity-60"
             >
               {deleting ? "…" : "Supprimer"}
             </button>
@@ -324,7 +324,7 @@ function EngineerModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Annuler
           </button>
@@ -412,99 +412,119 @@ export default function AdminEngineers() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Gestion des Ingénieurs">
-      <div className="p-6 space-y-5">
+      <div className="w-full bg-[#f8f6f6] p-8 space-y-6">
         {listError ? (
-          <div className="rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {listError}
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between">
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {loading ? "Chargement…" : `${filtered.length} ingénieur${filtered.length !== 1 ? "s" : ""}`}
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-[#181112] mb-1">Gestion des Ingénieurs</h2>
+            <p className="text-[#896169] text-sm">Gérez la liste des ingénieurs et leurs informations professionnelles.</p>
+          </div>
           <button
             type="button"
             onClick={() => setModal({ type: "add" })}
             disabled={!db || Boolean(listError)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#db143c] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="bg-[#db143c] hover:bg-[#b01030] text-white px-5 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-sm shadow-[#db143c]/30 active:scale-95 disabled:opacity-50"
           >
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
-            Ajouter un ingénieur
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            <span className="text-sm font-semibold">Ajouter un Ingénieur</span>
           </button>
         </div>
 
-        <div className="flex gap-3">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-[#e6dbdd] flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#896169]">
               search
             </span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#db143c]"
-              placeholder="Rechercher un ingénieur…"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#f8f6f6] border-transparent focus:border-[#db143c] focus:bg-white focus:ring-0 rounded-lg text-sm text-[#181112] placeholder-[#896169] transition-all"
+              placeholder="Rechercher par nom, email ou spécialité..."
             />
           </div>
-          <select
-            value={specialty}
-            onChange={(e) => setSpecialty(e.target.value)}
-            className="h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none"
-          >
-            {specialties.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <select
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              className="px-4 py-2.5 bg-[#f8f6f6] border border-transparent hover:border-[#e6dbdd] rounded-lg text-[#896169] hover:text-[#181112] text-sm font-medium transition-all"
+            >
+              {specialties.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+            <button className="px-4 py-2.5 bg-[#f8f6f6] border border-transparent hover:border-[#e6dbdd] rounded-lg text-[#896169] hover:text-[#181112] flex items-center gap-2 transition-all">
+              <span className="material-symbols-outlined text-[20px]">download</span>
+              <span className="text-sm font-medium">Exporter</span>
+            </button>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
+        <div className="bg-white rounded-xl shadow-sm border border-[#e6dbdd] overflow-hidden">
+          <table className="w-full text-left border-collapse text-sm">
+            <thead>
               <tr>
-                {["Ingénieur", "Spécialité", "Projets actifs", "Statut", ""].map((h) => (
+                {["Nom & Prénom", "Coordonnées", "Spécialité", "Statut", "Actions"].map((h) => (
                   <th
                     key={h}
-                    className="text-left px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                    className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-[#896169]"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100">
               {filtered.map((e) => (
-                <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="px-5 py-3.5">
+                <tr key={e.id} className="hover:bg-[#f8f6f6]/30 transition-colors group">
+                  <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-full bg-[#db143c] text-white text-xs font-bold flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full bg-[#db143c]/10 text-[#db143c] flex items-center justify-center font-bold text-sm">
                         {e.name
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </div>
                       <div>
-                        <p className="font-medium text-slate-900 dark:text-white">{e.name}</p>
-                        <p className="text-xs text-slate-400">{e.email}</p>
+                        <div className="font-medium text-[#181112]">{e.name}</div>
+                        <div className="text-xs text-[#896169]">ID: #{e.id.slice(0, 6).toUpperCase()}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">{e.specialty}</td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">{e.projects}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="py-4 px-6">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-sm text-[#181112]">
+                        <span className="material-symbols-outlined text-[16px] text-[#896169]">mail</span>
+                        {e.email}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-[#896169]">
+                        <span className="material-symbols-outlined text-[16px]">call</span>
+                        {e.phone || "—"}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 text-[#896169]">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      {e.specialty}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
                     <span
                       className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColor[e.status] ?? "text-slate-600 bg-slate-100"}`}
                     >
                       {e.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/admin/engineers/${e.id}`)}
-                      className="text-xs text-[#db143c] font-medium hover:opacity-80 flex items-center gap-0.5"
-                    >
-                      Gérer <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                    </button>
+                  <td className="py-4 px-6 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button type="button" onClick={() => navigate(`/admin/engineers/${e.id}`)} className="p-2 text-[#896169] hover:text-[#db143c] hover:bg-[#db143c]/5 rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -519,6 +539,14 @@ export default function AdminEngineers() {
               ) : null}
             </tbody>
           </table>
+          <div className="px-6 py-4 border-t border-[#e6dbdd] flex items-center justify-between bg-[#f8f6f6]/30">
+            <p className="text-sm text-[#896169]">
+              {loading ? "Chargement…" : `Affichage de 1 à ${filtered.length} sur ${engineers.length} ingénieurs`}
+            </p>
+            <div className="flex gap-2">
+              <button className="px-3 py-1 rounded bg-[#db143c] text-white text-sm font-medium shadow-sm">1</button>
+            </div>
+          </div>
         </div>
       </div>
 

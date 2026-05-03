@@ -39,9 +39,9 @@ function formatAmount(amount: number): string {
       k % 1 === 0
         ? `${k.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} k`
         : `${k.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} k`
-    return `${formatted} DA`
+    return `${formatted} DZD`
   }
-  return `${amount.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} DA`
+  return `${amount.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} DZD`
 }
 
 const statusConfig: Record<
@@ -49,15 +49,15 @@ const statusConfig: Record<
   { badge: string; icon: string }
 > = {
   "En attente": {
-    badge: "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
+    badge: "text-amber-700 bg-amber-50",
     icon: "schedule",
   },
   Payée: {
-    badge: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
+    badge: "text-emerald-700 bg-emerald-50",
     icon: "check_circle",
   },
   "En retard": {
-    badge: "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
+    badge: "text-rose-700 bg-rose-50",
     icon: "error",
   },
 }
@@ -164,55 +164,55 @@ export default function ClientPayments() {
       value: String(invoices.length),
       icon: "receipt_long",
       color: "text-blue-600",
-      bg: "bg-blue-50 dark:bg-blue-900/20",
+      bg: "bg-blue-50",
     },
     {
       label: "Montant total payé",
       value: formatAmount(totalPaid),
       icon: "check_circle",
       color: "text-emerald-600",
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
+      bg: "bg-emerald-50",
     },
     {
       label: "Montant en attente",
       value: formatAmount(totalPending),
       icon: "schedule",
       color: "text-amber-600",
-      bg: "bg-amber-50 dark:bg-amber-900/20",
+      bg: "bg-amber-50",
     },
   ]
 
   return (
     <DashboardLayout role="client" navItems={clientNav} pageTitle="Factures & Paiements">
-      <div className="p-6 w-full space-y-6">
+      <div className="p-6 w-full space-y-6 bg-[#f6f6f8] min-h-[calc(100vh-64px)]">
         {/* Stats row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {stats.map((s) => (
             <div
               key={s.label}
-              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5"
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm"
             >
               <div
                 className={`size-10 rounded-lg ${s.bg} ${s.color} flex items-center justify-center mb-3`}
               >
                 <span className="material-symbols-outlined text-[20px]">{s.icon}</span>
               </div>
-              <p className="text-xl font-bold text-slate-900 dark:text-white">{s.value}</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{s.label}</p>
+              <p className="text-xl font-bold text-slate-900">{s.value}</p>
+              <p className="text-sm text-slate-500 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-fit border border-slate-200">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setFilter(tab)}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 filter === tab
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
               {tab}
@@ -221,22 +221,22 @@ export default function ClientPayments() {
         </div>
 
         {/* Invoice list */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="font-semibold text-slate-900 dark:text-white">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="font-semibold text-slate-900">
               Historique des factures
             </h3>
           </div>
 
           {/* Loading */}
           {loading && (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="divide-y divide-slate-100">
               {[1, 2, 3].map((n) => (
                 <div key={n} className="flex items-center gap-4 px-6 py-4 animate-pulse">
-                  <div className="size-9 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  <div className="size-9 rounded-lg bg-slate-200 shrink-0" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
-                    <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+                    <div className="h-4 bg-slate-200 rounded w-1/2" />
+                    <div className="h-3 bg-slate-200 rounded w-1/3" />
                   </div>
                 </div>
               ))}
@@ -246,10 +246,10 @@ export default function ClientPayments() {
           {/* Empty */}
           {!loading && filtered.length === 0 && (
             <div className="py-16 flex flex-col items-center text-center">
-              <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[48px] mb-3">
+              <span className="material-symbols-outlined text-slate-300 text-[48px] mb-3">
                 receipt_long
               </span>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <p className="text-slate-500 text-sm">
                 {filter === "Tous"
                   ? "Aucune facture pour le moment."
                   : `Aucune facture avec le statut "${filter}".`}
@@ -259,21 +259,21 @@ export default function ClientPayments() {
 
           {/* Rows */}
           {!loading && filtered.length > 0 && (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="divide-y divide-slate-100">
               {filtered.map((inv) => {
                 const sc =
                   statusConfig[(inv.status as InvoiceStatus) ?? "En attente"] ??
                   statusConfig["En attente"]
                 return (
                   <div key={inv.id} className="flex items-center gap-4 px-6 py-4">
-                    <div className="size-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                    <div className="size-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
                       <span className="material-symbols-outlined text-slate-500 text-[18px]">
                         description
                       </span>
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-slate-900 truncate">
                         {inv.title}
                       </p>
                       <p className="text-xs text-slate-400">
@@ -282,7 +282,7 @@ export default function ClientPayments() {
                       </p>
                     </div>
 
-                    <p className="font-bold text-slate-900 dark:text-white text-sm tabular-nums shrink-0">
+                    <p className="font-bold text-slate-900 text-sm tabular-nums shrink-0">
                       {formatAmount(inv.amount ?? 0)}
                     </p>
 
@@ -296,7 +296,7 @@ export default function ClientPayments() {
                       <button
                         onClick={() => handlePay(inv)}
                         disabled={paying === inv.id}
-                        className="px-3 py-1.5 bg-[#db143c] hover:bg-[#b01030] disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 shrink-0"
+                        className="px-3 py-1.5 bg-[#0891b2] hover:bg-cyan-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 shrink-0"
                       >
                         <span className="material-symbols-outlined text-[14px]">
                           {paying === inv.id ? "hourglass_empty" : "payments"}
@@ -309,7 +309,7 @@ export default function ClientPayments() {
                       onClick={() => handleDownload(inv)}
                       disabled={downloading === inv.id}
                       title={downloaded.has(inv.id) ? "Téléchargé" : "Télécharger"}
-                      className="size-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-60 shrink-0"
+                      className="size-8 flex items-center justify-center rounded-lg hover:bg-cyan-50 transition-colors disabled:opacity-60 shrink-0"
                     >
                       <span
                         className={`material-symbols-outlined text-[18px] ${

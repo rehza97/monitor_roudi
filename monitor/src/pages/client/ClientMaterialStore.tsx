@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "@/lib/firebase-firestore"
 import { COLLECTIONS, ORDER_KIND, type FirestoreInventoryItem, type FirestoreOrder } from "@/data/schema"
+import { notifyAdminsOfOrderCreated } from "@/lib/notifications"
 
 interface ProductDoc extends FirestoreInventoryItem {
   id: string
@@ -46,7 +47,7 @@ export default function ClientMaterialStore() {
     setSuccess("")
     setError("")
     try {
-      await addDoc(collection(db, COLLECTIONS.orders), {
+      const payload = {
         organizationId: user.organizationId,
         kind: ORDER_KIND.materialSupply,
         createdByUserId: user.id,
@@ -57,7 +58,9 @@ export default function ClientMaterialStore() {
         notes: `Commande matériel depuis espace client (${item.sku ?? item.id})`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      } as FirestoreOrder)
+      } as FirestoreOrder
+      const ref = await addDoc(collection(db, COLLECTIONS.orders), payload)
+      await notifyAdminsOfOrderCreated(ref.id, payload)
       setSuccess(`Commande envoyée: ${item.name ?? "Produit"} (x${qty})`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de créer la commande.")
@@ -69,32 +72,32 @@ export default function ClientMaterialStore() {
   return (
     <DashboardLayout role="client" navItems={clientNav} pageTitle="Produits Matériels">
       <div className="p-6 space-y-5">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Catalogue Matériel</h2>
+        <h2 className="text-xl font-bold text-slate-900">Catalogue Matériel</h2>
 
         {success ? (
-          <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
             {success}
           </div>
         ) : null}
         {error ? (
-          <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 px-4 py-2.5 text-sm text-rose-700 dark:text-rose-300">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50">
+              <thead className="bg-slate-50">
                 <tr>
                   {["Produit", "Catégorie", "Stock", "Prix", "Quantité", ""].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-slate-400">Chargement…</td>
@@ -105,21 +108,21 @@ export default function ClientMaterialStore() {
                   </tr>
                 ) : (
                   products.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-slate-900 dark:text-white">{item.name ?? "Produit"}</p>
+                        <p className="font-medium text-slate-900">{item.name ?? "Produit"}</p>
                         <p className="text-xs text-slate-400">{item.sku ?? item.id}</p>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{item.category ?? "Général"}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{item.stock ?? 0}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{item.priceDisplay ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-600">{item.category ?? "Général"}</td>
+                      <td className="px-4 py-3 text-slate-600">{item.stock ?? 0}</td>
+                      <td className="px-4 py-3 text-slate-600">{item.priceDisplay ?? "—"}</td>
                       <td className="px-4 py-3">
                         <input
                           type="number"
                           min={1}
                           value={qtyById[item.id] ?? 1}
                           onChange={(e) => setQty(item.id, Number(e.target.value))}
-                          className="w-20 h-8 px-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                          className="w-20 h-8 px-2 rounded-md border border-slate-300 bg-white text-sm"
                         />
                       </td>
                       <td className="px-4 py-3">

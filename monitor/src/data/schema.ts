@@ -359,7 +359,27 @@ export const ROOT_COLLECTIONS = {
   engineers: "engineers",
   organizationInvites: "organization_invites",
   attachments: "attachments",
+  /** Saved SSH targets for Engineer remote control (scope: client | engineer | ai | company) */
+  remoteVpsEntries: "remote_vps_entries",
 } as const
+
+/** VPS entry destination — who "owns" this machine in the UI */
+export type RemoteVpsScope = "client" | "engineer" | "ai" | "company"
+
+/** Firestore `remote_vps_entries/{id}` — engineer SSH presets */
+export interface FirestoreRemoteVpsEntry {
+  label: string
+  scope: RemoteVpsScope
+  sshHost: string
+  sshPort: number
+  sshUser: string
+  sshPassword?: string
+  /** When true (company default VPS): no reboot / shutdown / terminate from UI */
+  lifecycleProtected?: boolean
+  createdAt?: unknown
+  updatedAt?: unknown
+  createdByUserId?: string
+}
 
 /**
  * Child collections under a root document.

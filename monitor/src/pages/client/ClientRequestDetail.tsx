@@ -10,114 +10,17 @@ import { canClientAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate, formatFirestoreDateTime } from "@/lib/utils"
 import OrderAttachmentsList from "@/components/OrderAttachmentsList"
 
-const statusColor: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  "Validée":    "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "En cours":   "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
-  "Rejetée":    "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
-  "Livré":      "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-300",
-}
-
-const priorityColor: Record<string, string> = {
-  "Urgente": "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
-  "Haute":   "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  "Normale": "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
-  "Basse":   "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-300",
-}
-
-const STEPS = ["En attente", "Validée", "En cours", "Livré"] as const
-type Step = (typeof STEPS)[number]
-
-function stepIndex(status: string): number {
-  const idx = STEPS.indexOf(status as Step)
-  return idx === -1 ? 0 : idx
-}
-
-function Timeline({ status }: { status: string }) {
-  const current = stepIndex(status)
-  const isRejected = status === "Rejetée"
-
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-      <h3 className="font-semibold text-slate-900 dark:text-white mb-6">Progression</h3>
-
-      {isRejected ? (
-        <div className="flex items-center gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg">
-          <span className="material-symbols-outlined text-rose-500 text-[24px]">cancel</span>
-          <div>
-            <p className="font-semibold text-rose-700 dark:text-rose-400">Demande rejetée</p>
-            <p className="text-sm text-rose-600/70 dark:text-rose-400/70">
-              Votre demande n'a pas été retenue.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-start gap-0">
-          {STEPS.map((step, i) => {
-            const done    = i < current
-            const active  = i === current
-
-            return (
-              <div key={step} className="flex-1 flex flex-col items-center">
-                {/* Connector + circle row */}
-                <div className="flex items-center w-full">
-                  <div
-                    className={`flex-1 h-0.5 ${i === 0 ? "bg-transparent" : done || active ? "bg-[#db143c]" : "bg-slate-200 dark:bg-slate-700"}`}
-                  />
-                  <div
-                    className={`size-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${
-                      done
-                        ? "bg-[#db143c] border-[#db143c] text-white"
-                        : active
-                        ? "bg-white dark:bg-slate-900 border-[#db143c]"
-                        : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
-                    }`}
-                  >
-                    {done ? (
-                      <span className="material-symbols-outlined text-[16px]">check</span>
-                    ) : active ? (
-                      <div className="size-2.5 rounded-full bg-[#db143c]" />
-                    ) : (
-                      <div className="size-2.5 rounded-full bg-slate-300 dark:bg-slate-600" />
-                    )}
-                  </div>
-                  <div
-                    className={`flex-1 h-0.5 ${i === STEPS.length - 1 ? "bg-transparent" : done ? "bg-[#db143c]" : "bg-slate-200 dark:bg-slate-700"}`}
-                  />
-                </div>
-
-                {/* Label */}
-                <p
-                  className={`mt-2 text-xs font-medium text-center ${
-                    done || active
-                      ? "text-slate-900 dark:text-white"
-                      : "text-slate-400 dark:text-slate-500"
-                  }`}
-                >
-                  {step}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
-      <span className="text-sm text-slate-500 dark:text-slate-400 sm:w-36 shrink-0">{label}</span>
-      <span className="text-sm text-slate-900 dark:text-white font-medium flex-1">{value}</span>
-    </div>
-  )
+const statusStyle: Record<string, string> = {
+  "En attente": "bg-amber-50 text-amber-700 border-amber-100",
+  "Validée": "bg-emerald-50 text-emerald-700 border-emerald-100",
+  "En cours": "bg-blue-50 text-blue-700 border-blue-100",
+  "Rejetée": "bg-red-50 text-red-700 border-red-100",
+  "Livré": "bg-slate-100 text-slate-700 border-slate-200",
 }
 
 export default function ClientRequestDetail() {
   const { user } = useAuth()
   const { id } = useParams<{ id: string }>()
-
   const [order, setOrder] = useState<(FirestoreOrder & { id: string }) | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -135,15 +38,14 @@ export default function ClientRequestDetail() {
         const snap = await getDoc(doc(db, COLLECTIONS.orders, id))
         if (!snap.exists()) {
           setNotFound(true)
-        } else {
-          const data = snap.data() as FirestoreOrder
-          if (!canClientAccessOrder(data, user)) {
-            setNotFound(true)
-            setOrder(null)
-          } else {
-            setOrder({ id: snap.id, ...data })
-          }
+          return
         }
+        const data = snap.data() as FirestoreOrder
+        if (!canClientAccessOrder(data, user)) {
+          setNotFound(true)
+          return
+        }
+        setOrder({ id: snap.id, ...data })
       } catch {
         setNotFound(true)
       } finally {
@@ -151,150 +53,126 @@ export default function ClientRequestDetail() {
       }
     }
 
-    fetchOrder()
+    void fetchOrder()
   }, [id, user])
+
+  if (!loading && notFound) {
+    return (
+      <DashboardLayout role="client" navItems={clientNav} pageTitle="Détail de la demande">
+        <div className="flex min-h-[70vh] items-center justify-center p-8">
+          <div className="max-w-lg rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <h2 className="text-2xl font-bold text-slate-900">Demande introuvable</h2>
+            <p className="mt-2 text-slate-500">Cette demande n'existe pas ou vous n'avez pas l'accès.</p>
+            <Link to="/client/requests" className="mt-6 inline-flex rounded-lg bg-[#0891b2] px-5 py-2.5 font-semibold text-white">Retour aux demandes</Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout role="client" navItems={clientNav} pageTitle="Détail de la demande">
-      <div className="p-6 w-full space-y-6">
-        <Link
-          to="/client/requests"
-          className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Retour aux demandes
-        </Link>
-
-        {loading && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 animate-pulse space-y-4">
-              <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded" />
-              <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex gap-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                  <div className="h-4 w-28 bg-slate-100 dark:bg-slate-800 rounded" />
-                  <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!loading && notFound && (
-          <div className="flex flex-col items-center gap-4 py-20">
-            <span className="material-symbols-outlined text-[48px] text-slate-300 dark:text-slate-600">
-              search_off
-            </span>
-            <p className="font-semibold text-slate-900 dark:text-white">Demande introuvable</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              La demande demandée n'existe pas ou vous n'avez pas les droits pour la consulter.
-            </p>
-            <Link
-              to="/client/requests"
-              className="px-5 py-2.5 bg-[#db143c] text-white font-semibold rounded-lg hover:opacity-90 text-sm"
-            >
-              Retour à mes demandes
-            </Link>
-          </div>
-        )}
-
-        {!loading && order && (
+      <div className="mx-auto max-w-6xl space-y-6 p-6">
+        {loading || !order ? (
+          <div className="h-72 animate-pulse rounded-xl border border-slate-200 bg-white" />
+        ) : (
           <>
-            {/* Header */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-              <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                    {order.requestType ?? "Demande sans titre"}
-                  </h2>
-                  <p className="text-xs font-mono text-slate-400 mt-1">
-                    Ref. {order.id.slice(0, 8).toUpperCase()} · Créée le{" "}
-                    {formatFirestoreDate(order.createdAt)}
-                  </p>
+            <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
+              <div>
+                <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <span className="rounded bg-[#0891b2]/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-[#0891b2]">{order.requestType || "Demande client"}</span>
+                  <span className="text-xs font-medium text-slate-500">Soumis le {formatFirestoreDate(order.createdAt)}</span>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {order.priority && (
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full ${priorityColor[order.priority] ?? "text-slate-600 bg-slate-100"}`}
-                    >
-                      {order.priority}
-                    </span>
-                  )}
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColor[order.status] ?? "text-slate-600 bg-slate-100"}`}
-                  >
-                    {order.status}
-                  </span>
-                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                  {order.kind === "material_supply" ? order.materialName ?? "Commande matériel" : order.requestType ?? "Demande client"}
+                </h1>
+                <p className="mt-2 text-base text-slate-500">Réf: REQ-{order.id.slice(0, 8).toUpperCase()} - Priorité {order.priority ?? "Normale"}</p>
               </div>
+              <span className={`inline-flex rounded-full border px-3 py-1.5 text-sm font-medium ${statusStyle[order.status] ?? "bg-slate-100 text-slate-700 border-slate-200"}`}>
+                {order.status}
+              </span>
             </div>
 
-            {/* Timeline */}
-            <Timeline status={order.status} />
-
-            <OrderAttachmentsList orderId={order.id} />
-
-            {/* Details */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">Détails</h3>
-
-              <DetailRow label="Type" value={order.requestType ?? "—"} />
-              <DetailRow label="Budget" value={order.budgetLabel ?? "—"} />
-              <DetailRow label="Délai" value={order.timelineLabel ?? "—"} />
-              <DetailRow label="Priorité" value={order.priority ?? "—"} />
-              <DetailRow label="Statut" value={order.status} />
-              <DetailRow
-                label="Date de création"
-                value={formatFirestoreDateTime(order.createdAt)}
-              />
-
-              {order.description && (
-                <div className="py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1.5">Description</p>
-                  <p className="text-sm text-slate-900 dark:text-white leading-relaxed whitespace-pre-wrap">
-                    {order.description}
-                  </p>
-                </div>
-              )}
-
-              {(order.features ?? []).length > 0 && (
-                <div className="py-3">
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
-                    Fonctionnalités demandées
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(order.features ?? []).map((f, i) => (
-                      <span
-                        key={i}
-                        className="text-sm px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-700 dark:text-slate-300"
-                      >
-                        {f}
-                      </span>
-                    ))}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="space-y-6 lg:col-span-2">
+                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h3 className="flex items-center gap-2 font-semibold text-slate-900"><span className="material-symbols-outlined text-[20px] text-[#0891b2]">notes</span>Description du projet</h3>
                   </div>
-                </div>
-              )}
-            </div>
+                  <div className="space-y-4 p-6 leading-relaxed text-slate-600">
+                    <p>{order.kind === "material_supply" ? order.notes || `Quantité: ${order.quantity ?? 1}` : order.description || "Aucune description fournie."}</p>
+                  </div>
+                </section>
 
-            {/* Admin comment */}
-            {order.adminComment && (
-              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-blue-500 text-[20px]">
-                    comment
-                  </span>
-                  <p className="font-semibold text-blue-800 dark:text-blue-300 text-sm">
-                    Commentaire de l'équipe
-                  </p>
-                </div>
-                <p className="text-sm text-blue-700 dark:text-blue-400 leading-relaxed">
-                  {order.adminComment}
-                </p>
+                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+                    <h3 className="flex items-center gap-2 font-semibold text-slate-900"><span className="material-symbols-outlined text-[20px] text-[#0891b2]">code</span>Spécifications</h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                      <Info label={order.kind === "material_supply" ? "Quantité" : "Budget"} value={order.kind === "material_supply" ? `${order.quantity ?? 1} unité(s)` : order.budgetLabel || "Montant à définir (DZD)"} />
+                      <Info label="Date limite" value={order.timelineLabel || "À définir"} />
+                      <Info label="Priorité" value={order.priority || "Normale"} />
+                      <Info label="Dernière mise à jour" value={formatFirestoreDateTime(order.updatedAt ?? order.createdAt)} />
+                    </div>
+                    <div className="mt-6 border-t border-slate-100 pt-6">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Documents joints</p>
+                      <OrderAttachmentsList orderId={order.id} />
+                    </div>
+                  </div>
+                </section>
               </div>
-            )}
+
+              <div className="space-y-6">
+                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4"><h3 className="text-sm font-semibold text-slate-900">Informations client</h3></div>
+                  <div className="flex flex-col items-center p-6 text-center">
+                    <div className="mb-4 flex size-20 items-center justify-center rounded-full border-2 border-white bg-[#0891b2]/10 text-xl font-bold text-[#0891b2] shadow-sm">
+                      {(order.clientLabel || user?.name || "CL").slice(0, 2).toUpperCase()}
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900">{order.clientLabel || user?.name || "Client"}</h4>
+                    <p className="mb-4 text-sm text-slate-500">{order.clientEmail || user?.email || "—"}</p>
+                    <div className="mt-2 w-full space-y-3 text-left">
+                      <ContactRow icon="mail" value={order.clientEmail || user?.email || "—"} />
+                      <ContactRow icon="business" value={order.organizationId || "Organisation non renseignée"} />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-100 bg-slate-50/50 px-6 py-4"><h3 className="text-sm font-semibold text-slate-900">Suivi</h3></div>
+                  <div className="space-y-4 p-6">
+                    <Info label="Statut" value={order.status} />
+                    <Info label="Référence" value={`REQ-${order.id.slice(0, 8).toUpperCase()}`} />
+                    <Link to="/client/messages" className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0891b2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-700">
+                      Contacter l'équipe
+                      <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </Link>
+                  </div>
+                </section>
+              </div>
+            </div>
           </>
         )}
       </div>
     </DashboardLayout>
+  )
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="text-sm font-medium text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+function ContactRow({ icon, value }: { icon: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded p-2 text-sm text-slate-600 transition-colors hover:bg-slate-50">
+      <span className="material-symbols-outlined text-[20px] text-slate-400">{icon}</span>
+      <span className="truncate">{value}</span>
+    </div>
   )
 }

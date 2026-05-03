@@ -415,11 +415,11 @@ export default function AdminMessages() {
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Messagerie Administrative">
       <div className="flex h-[calc(100vh-64px)]">
-        <div className="w-72 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-2">
+        <div className="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col">
+          <div className="p-4 border-b border-slate-100 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">Conversations</p>
+                <p className="text-sm font-semibold text-slate-700 truncate">Conversations</p>
                 {totalUnread > 0 && (
                   <span className="size-5 rounded-full bg-[#db143c] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                     {totalUnread}
@@ -435,7 +435,7 @@ export default function AdminMessages() {
               </button>
             </div>
             {firestoreError && (
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">{firestoreError}</p>
+              <p className="text-[11px] text-amber-700">{firestoreError}</p>
             )}
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
@@ -444,19 +444,19 @@ export default function AdminMessages() {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+                className="w-full pl-9 pr-3 h-9 rounded-lg bg-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-[#db143c]"
                 placeholder="Rechercher…"
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {filtered.map(c => (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => selectConversation(c.id)}
-                className={`w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
-                  selectedId === c.id ? "bg-rose-50 dark:bg-rose-900/10" : ""
+                className={`w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors ${
+                  selectedId === c.id ? "bg-rose-50" : ""
                 }`}
               >
                 <div className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -464,7 +464,7 @@ export default function AdminMessages() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline gap-1">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{c.name}</p>
+                    <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
                     <span className="text-[10px] text-slate-400 shrink-0">{c.time}</span>
                   </div>
                   <p className="text-xs text-slate-500 truncate">
@@ -487,13 +487,13 @@ export default function AdminMessages() {
         </div>
 
         {selected ? (
-          <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 min-w-0">
-            <div className="flex items-center gap-3 px-5 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex-1 flex flex-col bg-slate-50 min-w-0">
+            <div className="flex items-center gap-3 px-5 py-3.5 bg-white border-b border-slate-200">
               <div className="size-9 rounded-full bg-[#db143c] text-white text-xs font-bold flex items-center justify-center shrink-0">
                 {getInitials(selected.name)}
               </div>
               <div>
-                <p className="font-semibold text-slate-900 dark:text-white text-sm">{selected.name}</p>
+                <p className="font-semibold text-slate-900 text-sm">{selected.name}</p>
                 <p className="text-xs text-slate-400">{selected.role}</p>
               </div>
             </div>
@@ -510,7 +510,7 @@ export default function AdminMessages() {
                     className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm ${
                       m.mine
                         ? "bg-[#db143c] text-white rounded-br-sm"
-                        : "bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-bl-sm"
+                        : "bg-white text-slate-900 border border-slate-200 rounded-bl-sm"
                     }`}
                   >
                     {m.text}
@@ -521,12 +521,12 @@ export default function AdminMessages() {
               <div ref={bottomRef} />
             </div>
 
-            <div className="px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+            <div className="px-4 py-3 bg-white border-t border-slate-200">
               <form className="flex items-center gap-2" onSubmit={sendMessage}>
                 <input
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  className="flex-1 h-10 px-4 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+                  className="flex-1 h-10 px-4 text-sm rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
                   placeholder="Écrire un message…"
                 />
                 <button
@@ -540,10 +540,10 @@ export default function AdminMessages() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="flex-1 flex items-center justify-center bg-slate-50">
             <div className="text-center">
               <span className="material-symbols-outlined text-slate-300 text-[48px] block mb-2">chat</span>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">Sélectionnez une conversation</p>
+              <p className="text-slate-500 text-sm">Sélectionnez une conversation</p>
             </div>
           </div>
         )}
@@ -556,24 +556,24 @@ export default function AdminMessages() {
         >
           <div className="absolute inset-0 bg-black/40" />
           <div
-            className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md max-h-[min(80vh,520px)] flex flex-col"
+            className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md max-h-[min(80vh,520px)] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">Nouvelle conversation</h3>
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm">Nouvelle conversation</h3>
               <button type="button" onClick={() => setNewOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-3 border-b border-slate-100">
               <input
                 value={pickSearch}
                 onChange={e => setPickSearch(e.target.value)}
                 placeholder="Rechercher par nom ou email…"
-                className="w-full h-9 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm"
+                className="w-full h-9 px-3 rounded-lg bg-slate-100 text-sm"
               />
             </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
               {pickLoading ? (
                 <p className="p-6 text-center text-sm text-slate-400">Chargement…</p>
               ) : (
@@ -583,13 +583,13 @@ export default function AdminMessages() {
                     type="button"
                     disabled={creating}
                     onClick={() => startConversationWith(u)}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-center gap-3 disabled:opacity-50"
+                    className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 disabled:opacity-50"
                   >
-                    <div className="size-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">
+                    <div className="size-9 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold">
                       {getInitials(u.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{u.name}</p>
+                      <p className="text-sm font-medium text-slate-900 truncate">{u.name}</p>
                       <p className="text-xs text-slate-500 truncate">
                         {roleLabel(u.role)} · {u.email}
                       </p>

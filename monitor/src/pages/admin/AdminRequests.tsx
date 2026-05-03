@@ -24,6 +24,10 @@ import {
   where,
 } from "@/lib/firebase-firestore"
 import { formatFirestoreDate } from "@/lib/utils"
+import {
+  notifyAdminsOfOrderCreated,
+  notifyClientOfOrderStatusChanged,
+} from "@/lib/notifications"
 
 type Row = {
   id: string
@@ -35,10 +39,10 @@ type Row = {
 }
 
 const statusColor: Record<string, string> = {
-  "En attente": "text-amber-700 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400",
-  Validée: "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400",
-  "En cours": "text-blue-700 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400",
-  Rejetée: "text-rose-700 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-400",
+  "En attente": "text-amber-700 bg-amber-50",
+  Validée: "text-emerald-700 bg-emerald-50",
+  "En cours": "text-blue-700 bg-blue-50",
+  Rejetée: "text-rose-700 bg-rose-50",
 }
 
 const statuses = ["Tous les statuts", "En attente", "Validée", "En cours", "Rejetée"]
@@ -125,12 +129,12 @@ function RequestModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <form
-        className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4"
+        className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => void handleSubmit(e)}
       >
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-bold text-slate-900 dark:text-white">
+          <h3 className="font-bold text-slate-900">
             {isEdit ? "Modifier la demande" : "Nouvelle demande"}
           </h3>
           <div className="flex items-center gap-2">
@@ -138,7 +142,7 @@ function RequestModal({
               <button
                 type="button"
                 onClick={autofillForDev}
-                className="h-8 px-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="h-8 px-2.5 rounded-md border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
               >
                 Remplir (dev)
               </button>
@@ -157,22 +161,22 @@ function RequestModal({
           { label: "Délai souhaité", value: timelineLabel, set: setTimelineLabel, type: "text", required: false },
         ].map(({ label, value, set, type, required }) => (
           <div key={label} className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>
+            <label className="text-sm font-medium text-slate-700">{label}</label>
             <input
               value={value}
               onChange={(e) => set(e.target.value)}
               type={type}
               required={required}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
             />
           </div>
         ))}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Priorité</label>
+          <label className="text-sm font-medium text-slate-700">Priorité</label>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
-            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white"
           >
             {["Basse", "Normale", "Haute", "Urgente"].map((p) => (
               <option key={p}>{p}</option>
@@ -181,11 +185,11 @@ function RequestModal({
         </div>
         {isEdit ? (
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Statut</label>
+            <label className="text-sm font-medium text-slate-700">Statut</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+              className="w-full h-10 px-3 text-sm rounded-lg border border-slate-300 bg-white"
             >
               {statuses.slice(1).map((s) => (
                 <option key={s}>{s}</option>
@@ -194,19 +198,19 @@ function RequestModal({
           </div>
         ) : null}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Description</label>
+          <label className="text-sm font-medium text-slate-700">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-[#db143c]"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#db143c]"
           />
         </div>
         <div className="flex gap-2 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium"
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
           >
             Annuler
           </button>
@@ -309,17 +313,23 @@ export default function AdminRequests() {
     if (!db) throw new Error("Firestore indisponible.")
     if (!user?.id) throw new Error("Utilisateur non connecté.")
     if (docId) {
+      const previous = rawById[docId]
       await updateDoc(doc(db, COLLECTIONS.orders, docId), {
         ...payload,
         updatedAt: serverTimestamp(),
       })
+      if (previous && previous.status !== payload.status) {
+        await notifyClientOfOrderStatusChanged(docId, previous, payload.status)
+      }
     } else {
-      await addDoc(collection(db, COLLECTIONS.orders), {
+      const createPayload = {
         ...payload,
         createdByUserId: user.id,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      })
+      } as FirestoreOrder
+      const ref = await addDoc(collection(db, COLLECTIONS.orders), createPayload)
+      await notifyAdminsOfOrderCreated(ref.id, createPayload)
     }
   }
 
@@ -338,133 +348,109 @@ export default function AdminRequests() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Demandes">
-      <div className="p-6 space-y-5">
+      <div className="w-full bg-[#f8fafc] p-6 md:p-8 lg:px-12">
         {listError ? (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm text-rose-700">
+          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {listError}
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex gap-3 flex-1 min-w-[200px]">
-            <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-                search
-              </span>
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-[#0f172a]">Liste des Demandes</h1>
+              <p className="mt-2 text-[#64748b]">Gérez et examinez toutes les demandes d'application entrantes.</p>
+            </div>
+            <button
+              type="button"
+              disabled={!db || !user}
+              onClick={() => setModal({ type: "add" })}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-medium shadow-sm disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[20px]">add</span>
+              Nouvelle Demande
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+            <div className="relative w-full lg:w-96 group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="material-symbols-outlined text-[#64748b]">search</span>
+              </div>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#db143c]"
-                placeholder="Rechercher par client, référence, type…"
+                className="block w-full pl-10 pr-3 py-2.5 border border-[#e2e8f0] rounded-lg bg-[#f8fafc] text-sm text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                placeholder="Rechercher un client, ID ou thème..."
               />
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
-                </button>
-              ) : null}
             </div>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            >
-              {statuses.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
+            <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="inline-flex rounded-lg bg-[#f8fafc] px-4 py-2.5 text-sm font-medium text-[#0f172a] ring-1 ring-inset ring-[#e2e8f0]">
+                {statuses.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
           </div>
-          <button
-            type="button"
-            disabled={!db || !user}
-            onClick={() => setModal({ type: "add" })}
-            className="flex items-center gap-2 px-4 py-2 bg-[#db143c] text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            Nouvelle demande
-          </button>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-xs text-slate-500">
-              {loading ? "Chargement…" : `${filtered.length} demande${filtered.length !== 1 ? "s" : ""}`}
-            </p>
+          <div className="rounded-xl border border-[#e2e8f0] bg-white overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-[#e2e8f0] text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {["ID", "Client", "Domaine", "Thème", "Date", "Statut", "Action"].map((h) => (
+                      <th key={h} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-[#64748b]">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e2e8f0]">
+                  {filtered.map((r) => (
+                    <tr key={r.id} className="group hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2563eb]">{r.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="mr-3 h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                            {(r.client || "CL").slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="text-sm font-medium text-[#0f172a]">{r.client}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#64748b]">{r.type || "—"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#0f172a]">{r.budget || "—"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#64748b]">{r.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[r.status] ?? "bg-slate-100 text-slate-600"}`}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="inline-flex items-center gap-2">
+                          <button type="button" onClick={() => setModal({ type: "edit", id: r.id, initial: rawById[r.id] ?? ({} as FirestoreOrder) })} className="text-slate-500 hover:text-slate-800">Modifier</button>
+                          <Link to={`/admin/requests/${r.id}`} className="text-[#2563eb] hover:text-[#1d4ed8] font-medium inline-flex items-center gap-1">Voir Détails<span className="material-symbols-outlined text-[16px]">arrow_forward</span></Link>
+                          <button type="button" onClick={() => void handleDelete(r.id)} className="text-rose-600 hover:underline">Suppr.</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loading && filtered.length === 0 && !listError ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-slate-400">
+                        {rows.length === 0 ? "Aucune demande. Créez-en une avec « Nouvelle demande »." : "Aucune demande ne correspond aux filtres."}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-[#e2e8f0] flex items-center justify-between">
+              <div className="text-sm text-[#64748b]">
+                {loading ? "Chargement…" : `Affichage de 1 à ${filtered.length} sur ${rows.length} résultats`}
+              </div>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 text-sm font-medium text-slate-500 bg-white border border-slate-300 rounded-md">Précédent</button>
+                <button className="px-3 py-1 text-sm font-medium text-slate-500 bg-white border border-slate-300 rounded-md">Suivant</button>
+              </div>
+            </div>
           </div>
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50">
-              <tr>
-                {["Réf.", "Client", "Type", "Budget", "Date", "Statut", ""].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-slate-400">{r.id.slice(0, 10)}…</td>
-                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{r.client}</td>
-                  <td className="px-4 py-3 text-slate-500">{r.type}</td>
-                  <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">{r.budget}</td>
-                  <td className="px-4 py-3 text-slate-500">{r.date}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColor[r.status] ?? "bg-slate-100 text-slate-600"}`}
-                    >
-                      {r.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setModal({
-                            type: "edit",
-                            id: r.id,
-                            initial: rawById[r.id] ?? ({} as FirestoreOrder),
-                          })
-                        }
-                        className="text-xs text-slate-500 hover:text-slate-800"
-                      >
-                        Modifier
-                      </button>
-                      <Link
-                        to={`/admin/requests/${r.id}`}
-                        className="text-xs text-[#db143c] font-medium hover:opacity-80"
-                      >
-                        Traiter →
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(r.id)}
-                        className="text-xs text-rose-600 hover:underline"
-                      >
-                        Suppr.
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && filtered.length === 0 && !listError ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-400 text-sm">
-                    {rows.length === 0
-                      ? "Aucune demande. Créez-en une avec « Nouvelle demande »."
-                      : "Aucune demande ne correspond aux filtres."}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
         </div>
       </div>
 

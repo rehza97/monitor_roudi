@@ -8,21 +8,18 @@ import "./index.css"
 import App from "./App.tsx"
 import FirebaseConfigBanner from "@/components/FirebaseConfigBanner.tsx"
 import DevAutofillButton from "@/components/DevAutofillButton.tsx"
-import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { AuthProvider } from "@/contexts/AuthContext.tsx"
 import { Toaster } from "sonner"
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider>
+        <AuthProvider>
           <FirebaseConfigBanner />
           <DevAutofillButton />
           <App />
           <Toaster richColors position="top-right" closeButton />
-        </ThemeProvider>
-      </AuthProvider>
+        </AuthProvider>
     </BrowserRouter>
   </StrictMode>
 )

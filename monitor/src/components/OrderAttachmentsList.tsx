@@ -74,7 +74,7 @@ export default function OrderAttachmentsList({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 py-2">
+      <div className="flex items-center gap-2 text-sm text-slate-500 py-2">
         <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
         Chargement des fichiers…
       </div>
@@ -86,8 +86,8 @@ export default function OrderAttachmentsList({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-      <h3 className="font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
         <span className="material-symbols-outlined text-[#db143c] text-[20px]">attach_file</span>
         {title}
       </h3>
@@ -98,26 +98,26 @@ export default function OrderAttachmentsList({
           return (
             <li
               key={r.id}
-              className="flex items-start gap-3 p-2 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20"
+              className="flex items-start gap-3 p-2 rounded-lg border border-slate-100 bg-slate-50/50"
             >
               {isImage && r.downloadUrl ? (
                 <a
                   href={r.downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="shrink-0 size-16 rounded-md overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100"
+                  className="shrink-0 size-16 rounded-md overflow-hidden border border-slate-200 bg-slate-100"
                 >
                   <img src={r.downloadUrl} alt="" className="size-full object-cover" />
                 </a>
               ) : (
-                <div className="shrink-0 size-10 rounded-md bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                <div className="shrink-0 size-10 rounded-md bg-slate-200 flex items-center justify-center">
                   <span className="material-symbols-outlined text-slate-500 text-[24px]">description</span>
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{r.fileName}</p>
+                <p className="text-sm font-medium text-slate-900 truncate">{r.fileName}</p>
                 {r.contentType && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{r.contentType}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{r.contentType}</p>
                 )}
                 {r.downloadUrl && (
                   <a

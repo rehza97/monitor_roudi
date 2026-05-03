@@ -108,7 +108,7 @@ function mergeFeatures(lines: string[], existing: CatalogFeature[]): CatalogFeat
     const prev = byTitle.get(title)
     return prev ?? {
       icon: "check_circle",
-      iconBg: "bg-blue-100 dark:bg-blue-900/30",
+      iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
       title,
       desc: "",
@@ -169,7 +169,7 @@ function SectionHeader({ icon, title, subtitle }: { icon: string; title: string;
         <span className="material-symbols-outlined text-[18px] text-[#db143c]">{icon}</span>
       </div>
       <div>
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</p>
+        <p className="text-sm font-semibold text-slate-800">{title}</p>
         {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
       </div>
     </div>
@@ -178,7 +178,7 @@ function SectionHeader({ icon, title, subtitle }: { icon: string; title: string;
 
 function FieldLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
-    <label className="flex items-baseline gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">
+    <label className="flex items-baseline gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">
       {children}
       {hint && <span className="normal-case font-normal text-slate-400 tracking-normal">{hint}</span>}
     </label>
@@ -186,11 +186,11 @@ function FieldLabel({ children, hint }: { children: React.ReactNode; hint?: stri
 }
 
 const inputCls =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition"
+  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition"
 const selectCls =
-  "w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition appearance-none cursor-pointer"
+  "w-full h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition appearance-none cursor-pointer"
 const textareaCls =
-  "w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition leading-relaxed"
+  "w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#db143c]/40 focus:border-[#db143c] transition leading-relaxed"
 
 function AppEditorModal({
   open,
@@ -298,17 +298,17 @@ function AppEditorModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-h-[92vh] flex flex-col border border-slate-200 dark:border-slate-800">
+      <div className="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-2xl max-h-[92vh] flex flex-col border border-slate-200">
 
         {/* Header */}
-        <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="size-9 rounded-xl bg-[#db143c] flex items-center justify-center">
             <span className="material-symbols-outlined text-white text-[20px]">
               {isEdit ? "edit" : "add_circle"}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base leading-tight">
+            <h3 className="font-bold text-slate-900 text-base leading-tight">
               {isEdit ? "Modifier l'application" : "Nouvelle application catalogue"}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -317,7 +317,7 @@ function AppEditorModal({
           </div>
           <button
             onClick={onClose}
-            className="size-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="size-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -333,7 +333,7 @@ function AppEditorModal({
         >
 
           {/* Section 1 — Identité */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
             <SectionHeader icon="fingerprint" title="Identité" subtitle="Nom, slug et catégorie" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
@@ -384,7 +384,7 @@ function AppEditorModal({
               <div>
                 <FieldLabel>Icône Material</FieldLabel>
                 <div className="flex gap-2 items-center">
-                  <div className="size-10 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center">
+                  <div className="size-10 shrink-0 rounded-lg border border-slate-200 bg-white flex items-center justify-center">
                     <span className="material-symbols-outlined text-[#db143c] text-[20px]">
                       {form.icon || "deployed_code"}
                     </span>
@@ -412,7 +412,7 @@ function AppEditorModal({
           </div>
 
           {/* Section 2 — Présentation */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
             <SectionHeader icon="campaign" title="Présentation" subtitle="Tagline et badge" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
@@ -488,7 +488,7 @@ function AppEditorModal({
           </div>
 
           {/* Section 3 — Tarification & Licence */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
             <SectionHeader icon="sell" title="Tarification & Licence" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -513,7 +513,7 @@ function AppEditorModal({
           </div>
 
           {/* Section 4 — Statistiques */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
             <SectionHeader icon="bar_chart" title="Statistiques & Méta" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {([
@@ -539,13 +539,13 @@ function AppEditorModal({
           </div>
 
           {/* Section 5 — Médias */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
             <SectionHeader icon="photo_library" title="Médias" subtitle="Image principale et galerie" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <div>
                 <FieldLabel>Image principale</FieldLabel>
                 <div className="relative">
-                  <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/40 cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group overflow-hidden">
+                  <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-slate-300 bg-white cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group overflow-hidden">
                     {displayImage ? (
                       <img src={displayImage} alt="preview" className="h-full w-full object-contain rounded-xl p-1" />
                     ) : (
@@ -568,14 +568,14 @@ function AppEditorModal({
                       type="button"
                       onClick={clearMainImage}
                       title="Retirer l'image"
-                      className="absolute top-1.5 right-1.5 size-6 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm transition"
+                      className="absolute top-1.5 right-1.5 size-6 rounded-full bg-white/95 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm transition"
                     >
                       <span className="material-symbols-outlined text-[14px]">close</span>
                     </button>
                   )}
                 </div>
                 {imageFile && (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
+                  <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">check_circle</span>
                     {imageFile.name}
                   </p>
@@ -589,7 +589,7 @@ function AppEditorModal({
               </div>
               <div>
                 <FieldLabel>Galerie (upload multiple)</FieldLabel>
-                <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/40 cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group">
+                <label className="flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-slate-300 bg-white cursor-pointer hover:border-[#db143c]/50 hover:bg-[#db143c]/5 transition group">
                   <span className="material-symbols-outlined text-slate-300 group-hover:text-[#db143c]/60 text-[32px] transition">upload_file</span>
                   <span className="text-xs text-slate-400 group-hover:text-slate-600 transition">
                     PNG, JPEG, WEBP, SVG (plusieurs images)
@@ -605,26 +605,26 @@ function AppEditorModal({
                 {(keptGalleryUrls.length > 0 || galleryPreviews.length > 0) && (
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     {keptGalleryUrls.map((url) => (
-                      <div key={`kept-${url}`} className="relative h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 group">
+                      <div key={`kept-${url}`} className="relative h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group">
                         <img src={url} alt="gallery" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => removeKeptGalleryUrl(url)}
                           title="Retirer cette image"
-                          className="absolute top-1 right-1 size-5 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm opacity-0 group-hover:opacity-100 transition"
+                          className="absolute top-1 right-1 size-5 rounded-full bg-white/95 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm opacity-0 group-hover:opacity-100 transition"
                         >
                           <span className="material-symbols-outlined text-[12px]">close</span>
                         </button>
                       </div>
                     ))}
                     {galleryPreviews.map((src, idx) => (
-                      <div key={`new-${idx}-${src}`} className="relative h-16 rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 group">
+                      <div key={`new-${idx}-${src}`} className="relative h-16 rounded-lg overflow-hidden border border-emerald-300 bg-emerald-50 group">
                         <img src={src} alt={`preview-${idx + 1}`} className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => removePendingGalleryFile(idx)}
                           title="Retirer ce fichier"
-                          className="absolute top-1 right-1 size-5 rounded-full bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm opacity-0 group-hover:opacity-100 transition"
+                          className="absolute top-1 right-1 size-5 rounded-full bg-white/95 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-rose-600 hover:border-rose-300 shadow-sm opacity-0 group-hover:opacity-100 transition"
                         >
                           <span className="material-symbols-outlined text-[12px]">close</span>
                         </button>
@@ -635,7 +635,7 @@ function AppEditorModal({
                 <p className="text-xs text-slate-400 mt-1.5">
                   {keptGalleryUrls.length} existante{keptGalleryUrls.length > 1 ? "s" : ""}
                   {galleryFiles.length > 0 && (
-                    <span className="text-emerald-600 dark:text-emerald-400">
+                    <span className="text-emerald-600">
                       {" "}+ {galleryFiles.length} nouvelle{galleryFiles.length > 1 ? "s" : ""}
                     </span>
                   )}
@@ -645,7 +645,7 @@ function AppEditorModal({
           </div>
 
           {/* Section 6 — Contenu */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 p-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
             <SectionHeader icon="article" title="Contenu" subtitle="Description, fonctionnalités, compatibilité" />
             <div className="space-y-4">
               <div>
@@ -694,13 +694,13 @@ function AppEditorModal({
           </div>
 
           {/* Footer actions */}
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 mt-2">
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 mt-2">
             {isEdit && onDelete ? (
               <button
                 type="button"
                 onClick={() => void handleDelete()}
                 disabled={saving || deleting}
-                className="flex items-center gap-1.5 px-4 h-10 rounded-lg border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-sm font-semibold hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50 transition"
+                className="flex items-center gap-1.5 px-4 h-10 rounded-lg border border-rose-200 text-rose-600 text-sm font-semibold hover:bg-rose-50 disabled:opacity-50 transition"
               >
                 <span className="material-symbols-outlined text-[16px]">delete</span>
                 {deleting ? "Suppression…" : "Supprimer"}
@@ -709,7 +709,7 @@ function AppEditorModal({
             <button
               type="button"
               onClick={onClose}
-              className="ml-auto px-4 h-10 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="ml-auto px-4 h-10 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
             >
               Annuler
             </button>
@@ -904,7 +904,7 @@ export default function AdminCatalogApps() {
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Catalogue Applications">
       <div className="p-6 space-y-5">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500">
             {apps.length} application{apps.length !== 1 ? "s" : ""} dans `catalog_products`
           </p>
           <button
@@ -916,7 +916,7 @@ export default function AdminCatalogApps() {
           </button>
         </div>
         {saveError ? (
-          <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 px-4 py-2.5 text-sm text-rose-700 dark:text-rose-300">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-700">
             {saveError}
           </div>
         ) : null}
@@ -924,10 +924,10 @@ export default function AdminCatalogApps() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-52 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              <div key={i} className="h-52 rounded-xl bg-slate-100 animate-pulse" />
             ))
           ) : apps.length === 0 ? (
-            <div className="col-span-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-14 text-center text-slate-500">
+            <div className="col-span-full rounded-xl border border-slate-200 bg-white px-6 py-14 text-center text-slate-500">
               Aucune application. Ajoutez la première entrée du catalogue.
             </div>
           ) : (
@@ -935,10 +935,10 @@ export default function AdminCatalogApps() {
               <button
                 key={app.id}
                 onClick={() => openEdit(app)}
-                className="text-left bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:border-[#db143c]/40 transition-colors"
+                className="text-left bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-[#db143c]/40 transition-colors"
               >
                 {app.image ? (
-                  <div className="h-36 w-full bg-slate-100 dark:bg-slate-800">
+                  <div className="h-36 w-full bg-slate-100">
                     <img src={app.image} alt={app.name} className="h-full w-full object-cover" />
                   </div>
                 ) : null}
@@ -951,9 +951,9 @@ export default function AdminCatalogApps() {
                       {app.category}
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-900 dark:text-white">{app.name}</h3>
+                  <h3 className="font-bold text-slate-900">{app.name}</h3>
                   <p className="text-xs text-slate-400 mt-1">/{app.slug}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 line-clamp-2">{app.tagline}</p>
+                  <p className="text-sm text-slate-500 mt-3 line-clamp-2">{app.tagline}</p>
                   <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
                     <span>{app.version}</span>
                     <span>{app.price}</span>

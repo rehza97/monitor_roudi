@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { technicianNav } from "@/lib/nav"
+import { db, isFirebaseConfigured } from "@/config/firebase"
+import { COMPANY_DEFAULT_VPS_LABEL, ENGINEER_REMOTE_DEFAULTS } from "@/config/engineerRemoteHardcoded"
+import { COLLECTIONS, type RemoteVpsScope } from "@/data/schema"
+import { collection, onSnapshot, query } from "@/lib/firebase-firestore"
+import { fetchVpsAgentSnapshot, type VpsMetrics } from "@/lib/vps-agent-metrics"
 
 type WsEvent =
   | { type: "status"; connected?: boolean; message?: string }
@@ -17,30 +22,96 @@ type PerfSnapshot = {
   diskPercent: string | null
   runningContainers: number | null
   updatedAtMs: number | null
+  hostUptimeSeconds: number | null
 }
 
-const AUTO_HOST = import.meta.env.VITE_REMOTE_DEFAULT_HOST ?? ""
-const AUTO_PORT = import.meta.env.VITE_REMOTE_DEFAULT_PORT ?? "22"
-const AUTO_USERNAME = import.meta.env.VITE_REMOTE_DEFAULT_USERNAME ?? ""
-
 function wsUrl(): string {
+  const explicit = import.meta.env.VITE_SSH_WS_URL?.trim()
+  if (explicit) return explicit
   const proto = window.location.protocol === "https:" ? "wss" : "ws"
   return `${proto}://${window.location.host}/__dev/ssh/ws`
 }
 
 function requiresDevTunnel(): boolean {
-  const host = window.location.hostname
-  return !(host === "localhost" || host === "127.0.0.1")
+  if (import.meta.env.VITE_SSH_WS_URL?.trim()) return false
+  const h = window.location.hostname
+  return !(h === "localhost" || h === "127.0.0.1")
 }
 
-function buildAutoMonitorScript(): string {
+interface RemoteTarget {
+  id: string
+  label: string
+  sshHost: string
+  sshPort: number
+  sshUser: string
+  sshPassword?: string
+  scope: RemoteVpsScope
+  lifecycleProtected: boolean
+}
+
+function parseRemoteTarget(id: string, data: Record<string, unknown>): RemoteTarget | null {
+  const label = typeof data.label === "string" ? data.label.trim() : ""
+  const sshHost = typeof data.sshHost === "string" ? data.sshHost.trim() : ""
+  const sshUser = typeof data.sshUser === "string" ? data.sshUser.trim() : ""
+  const sshPortRaw = data.sshPort
+  const sshPort =
+    typeof sshPortRaw === "number" && Number.isFinite(sshPortRaw)
+      ? sshPortRaw
+      : Number(sshPortRaw) || 22
+  if (!label || !sshHost || !sshUser) return null
+  const sshPassword = typeof data.sshPassword === "string" ? data.sshPassword : undefined
+  const scope: RemoteVpsScope =
+    data.scope === "client" || data.scope === "engineer" || data.scope === "ai" || data.scope === "company"
+      ? data.scope
+      : "company"
+  const lifecycleProtected =
+    typeof data.lifecycleProtected === "boolean"
+      ? data.lifecycleProtected
+      : scope === "company" && sshHost === ENGINEER_REMOTE_DEFAULTS.host && label.trim() === COMPANY_DEFAULT_VPS_LABEL
+  return {
+    id,
+    label,
+    sshHost,
+    sshPort,
+    sshUser,
+    sshPassword,
+    scope,
+    lifecycleProtected,
+  }
+}
+
+function fallbackTargets(): RemoteTarget[] {
+  const host =
+    import.meta.env.VITE_REMOTE_DEFAULT_HOST?.trim() || ENGINEER_REMOTE_DEFAULTS.host
+  const port = Number(import.meta.env.VITE_REMOTE_DEFAULT_PORT) || ENGINEER_REMOTE_DEFAULTS.port
+  const username =
+    import.meta.env.VITE_REMOTE_DEFAULT_USERNAME?.trim() || ENGINEER_REMOTE_DEFAULTS.username
+  const password =
+    import.meta.env.VITE_REMOTE_DEFAULT_PASSWORD?.trim() || ENGINEER_REMOTE_DEFAULTS.password
   return [
-    "echo '__MON__ CONTAINERS='$(docker ps -q | wc -l | tr -d ' ')",
-    "echo '__MON__ LOAD='$(awk '{print $1\",\"$2\",\"$3}' /proc/loadavg)",
-    "echo '__MON__ MEM='$(free -m | awk '/Mem:/ {print $3\",\"$2}')",
-    "echo '__MON__ DISK='$(df -Pm / | awk 'NR==2 {print $3\",\"$2\",\"$5}')",
-    "echo '__MON__ CPU='$(vmstat 1 2 | tail -1 | awk '{print 100-$15}')",
-  ].join("\\n")
+    {
+      id: "__fallback_primary__",
+      label: "Serveur Principal - Rodaina Core (v2.4.1)",
+      sshHost: host,
+      sshPort: port,
+      sshUser: username,
+      sshPassword: password || undefined,
+      scope: "company",
+      lifecycleProtected: true,
+    },
+  ]
+}
+
+function regionLabel(t: RemoteTarget | undefined): string {
+  if (!t) return "—"
+  if (t.scope === "company") return "Europe-West (Paris)"
+  return "—"
+}
+
+function instanceLabelForUi(t: RemoteTarget | undefined): string {
+  if (!t) return "—"
+  const slug = t.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12).toLowerCase()
+  return slug ? `inst-${slug}` : "—"
 }
 
 function initialPerf(): PerfSnapshot {
@@ -54,13 +125,56 @@ function initialPerf(): PerfSnapshot {
     diskPercent: null,
     runningContainers: null,
     updatedAtMs: null,
+    hostUptimeSeconds: null,
   }
 }
 
+function vpsMetricsToPerf(m: VpsMetrics): PerfSnapshot {
+  const cpu = m.host.cpu
+  const mem = m.host.memory
+  const disk = m.host.disk
+  return {
+    cpuPercent: cpu.percent,
+    loadAvg: `${cpu.load_1m.toFixed(2)} · ${cpu.load_5m.toFixed(2)} · ${cpu.load_15m.toFixed(2)}`,
+    memUsedMb: Math.round(mem.used_gb * 1024),
+    memTotalMb: Math.round(mem.total_gb * 1024),
+    diskUsedMb: Math.round(disk.used_gb * 1024),
+    diskTotalMb: Math.round(disk.total_gb * 1024),
+    diskPercent: `${Math.round(disk.percent)}%`,
+    runningContainers: m.container_summary.running,
+    updatedAtMs: Date.now(),
+    hostUptimeSeconds: m.host.uptime_seconds,
+  }
+}
+
+function formatHostUptime(sec: number | null): string {
+  if (sec == null || !Number.isFinite(sec)) return "—"
+  const s = Math.floor(sec)
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (d > 0) return `${d}j ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
+function formatAgo(ms: number | null) {
+  if (!ms) return "—"
+  const sec = Math.max(1, Math.floor((Date.now() - ms) / 1000))
+  if (sec < 60) return `Il y a ${sec}s`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `Il y a ${min}m`
+  const hr = Math.floor(min / 60)
+  return `Il y a ${hr}h`
+}
+
 export default function TechnicianRemoteControl() {
-  const [host, setHost] = useState(AUTO_HOST)
-  const [port, setPort] = useState(AUTO_PORT)
-  const [username, setUsername] = useState(AUTO_USERNAME)
+  const [targets, setTargets] = useState<RemoteTarget[]>(() => fallbackTargets())
+  const [selectedId, setSelectedId] = useState("")
+
+  const [host, setHost] = useState("")
+  const [port, setPort] = useState("22")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
 
   const [connected, setConnected] = useState(false)
@@ -71,12 +185,49 @@ export default function TechnicianRemoteControl() {
   const [histIdx, setHistIdx] = useState(-1)
   const [errorText, setErrorText] = useState<string | null>(null)
   const [perf, setPerf] = useState<PerfSnapshot>(initialPerf)
+  const [metricsApiError, setMetricsApiError] = useState<string | null>(null)
 
   const socketRef = useRef<WebSocket | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
-  const parseBufferRef = useRef("")
-  const monitorTimerRef = useRef<number | null>(null)
   const devTunnelRequired = requiresDevTunnel()
+
+  useEffect(() => {
+    if (!db || !isFirebaseConfigured) return
+    const q = query(collection(db, COLLECTIONS.remoteVpsEntries))
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const rows: RemoteTarget[] = []
+        snap.forEach((d) => {
+          const p = parseRemoteTarget(d.id, d.data() as Record<string, unknown>)
+          if (p) rows.push(p)
+        })
+        rows.sort((a, b) => a.label.localeCompare(b.label, "fr"))
+        setTargets(rows.length > 0 ? rows : fallbackTargets())
+      },
+      () => setTargets(fallbackTargets()),
+    )
+    return () => unsub()
+  }, [])
+
+  useEffect(() => {
+    if (targets.length === 0) return
+    setSelectedId((prev) => {
+      if (prev && targets.some((t) => t.id === prev)) return prev
+      return targets[0].id
+    })
+  }, [targets])
+
+  useEffect(() => {
+    const t = targets.find((x) => x.id === selectedId)
+    if (!t) return
+    setHost(t.sshHost)
+    setPort(String(t.sshPort))
+    setUsername(t.sshUser)
+    setPassword(t.sshPassword ?? "")
+  }, [selectedId, targets])
+
+  const selectedTarget = useMemo(() => targets.find((x) => x.id === selectedId), [targets, selectedId])
 
   useEffect(() => {
     if (!terminalRef.current) return
@@ -84,28 +235,38 @@ export default function TechnicianRemoteControl() {
   }, [output])
 
   useEffect(() => {
-    return () => {
-      if (monitorTimerRef.current) {
-        window.clearInterval(monitorTimerRef.current)
-        monitorTimerRef.current = null
+    let cancelled = false
+    async function loadMetrics() {
+      try {
+        const snap = await fetchVpsAgentSnapshot()
+        if (cancelled) return
+        setPerf(vpsMetricsToPerf(snap.metrics))
+        setMetricsApiError(null)
+      } catch (err) {
+        if (cancelled) return
+        setMetricsApiError(err instanceof Error ? err.message : "Métriques indisponibles")
       }
+    }
+    void loadMetrics()
+    const id = window.setInterval(() => void loadMetrics(), 15_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
       socketRef.current?.close()
       socketRef.current = null
     }
   }, [])
 
   function appendOutput(text: string) {
-    setOutput((prev) => {
-      const next = `${prev}${text}`
-      return next.slice(-140_000)
-    })
+    setOutput((prev) => `${prev}${text}`.slice(-140_000))
   }
 
   function disconnect() {
-    if (monitorTimerRef.current) {
-      window.clearInterval(monitorTimerRef.current)
-      monitorTimerRef.current = null
-    }
     if (socketRef.current) {
       try {
         socketRef.current.send(JSON.stringify({ type: "disconnect" }))
@@ -119,53 +280,11 @@ export default function TechnicianRemoteControl() {
     setConnecting(false)
   }
 
-  function parseMonitorLines(chunk: string) {
-    const merged = `${parseBufferRef.current}${chunk}`
-    const lines = merged.split(/\r?\n/)
-    parseBufferRef.current = lines.pop() ?? ""
-
-    for (const raw of lines) {
-      const line = raw.trim()
-      if (!line.startsWith("__MON__ ")) continue
-      const payload = line.replace("__MON__ ", "")
-      const eqIdx = payload.indexOf("=")
-      if (eqIdx <= 0) continue
-      const key = payload.slice(0, eqIdx)
-      const value = payload.slice(eqIdx + 1)
-
-      setPerf((prev) => {
-        const next: PerfSnapshot = { ...prev, updatedAtMs: Date.now() }
-        if (key === "CONTAINERS") {
-          const n = Number(value)
-          next.runningContainers = Number.isFinite(n) ? n : prev.runningContainers
-        } else if (key === "LOAD") {
-          next.loadAvg = value || prev.loadAvg
-        } else if (key === "MEM") {
-          const [used, total] = value.split(",").map((x) => Number(x))
-          next.memUsedMb = Number.isFinite(used) ? used : prev.memUsedMb
-          next.memTotalMb = Number.isFinite(total) ? total : prev.memTotalMb
-        } else if (key === "DISK") {
-          const [used, total, pct] = value.split(",")
-          const usedN = Number(used)
-          const totalN = Number(total)
-          next.diskUsedMb = Number.isFinite(usedN) ? usedN : prev.diskUsedMb
-          next.diskTotalMb = Number.isFinite(totalN) ? totalN : prev.diskTotalMb
-          next.diskPercent = pct ?? prev.diskPercent
-        } else if (key === "CPU") {
-          const n = Number(value)
-          next.cpuPercent = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : prev.cpuPercent
-        }
-        return next
-      })
-    }
-  }
-
   function connect() {
     if (!host.trim() || !username.trim()) {
       setErrorText("Host et utilisateur sont obligatoires.")
       return
     }
-
     setErrorText(null)
     setConnecting(true)
 
@@ -198,14 +317,13 @@ export default function TechnicianRemoteControl() {
           if (!data.connected) setConnecting(false)
           if (data.connected) {
             appendOutput(`\r\n[connected to ${host}]\r\n`)
-            appendOutput("[auto-run] docker ps + background VPS performance monitoring (15s)\\n")
-            ws.send(JSON.stringify({ type: "input", data: "docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'\\n" }))
-            ws.send(JSON.stringify({ type: "input", data: `${buildAutoMonitorScript()}\n` }))
-            if (monitorTimerRef.current) window.clearInterval(monitorTimerRef.current)
-            monitorTimerRef.current = window.setInterval(() => {
-              if (!socketRef.current || socketRef.current.readyState !== 1) return
-              socketRef.current.send(JSON.stringify({ type: "input", data: `${buildAutoMonitorScript()}\n` }))
-            }, 15_000)
+            appendOutput("[auto-run] docker ps\r\n")
+            ws.send(
+              JSON.stringify({
+                type: "input",
+                data: "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'\n",
+              }),
+            )
           }
         }
         if (data.message && !data.connected) appendOutput(`\r\n[${data.message}]\r\n`)
@@ -214,7 +332,6 @@ export default function TechnicianRemoteControl() {
 
       if (data.type === "output") {
         setConnecting(false)
-        parseMonitorLines(data.data)
         appendOutput(data.data)
         return
       }
@@ -227,17 +344,17 @@ export default function TechnicianRemoteControl() {
     }
 
     ws.onclose = () => {
-      if (monitorTimerRef.current) {
-        window.clearInterval(monitorTimerRef.current)
-        monitorTimerRef.current = null
-      }
       setConnected(false)
       setConnecting(false)
       appendOutput("\r\n[connection closed]\r\n")
     }
 
     ws.onerror = () => {
-      setErrorText("Impossible d'ouvrir le tunnel SSH (dev server).")
+      setErrorText(
+        import.meta.env.VITE_SSH_WS_URL?.trim()
+          ? "Pont SSH inaccessible (vérifiez que « npm run ssh-bridge » tourne et que VITE_SSH_WS_URL est correct)."
+          : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » avec VITE_SSH_WS_URL).",
+      )
       setConnecting(false)
     }
   }
@@ -257,7 +374,6 @@ export default function TechnicianRemoteControl() {
       setCmd("")
       return
     }
-
     if (e.key === "ArrowUp") {
       e.preventDefault()
       const next = Math.min(histIdx + 1, history.length - 1)
@@ -265,7 +381,6 @@ export default function TechnicianRemoteControl() {
       setCmd(history[next] ?? "")
       return
     }
-
     if (e.key === "ArrowDown") {
       e.preventDefault()
       const next = Math.max(histIdx - 1, -1)
@@ -274,194 +389,253 @@ export default function TechnicianRemoteControl() {
     }
   }
 
-  const quickCmds = [
-    "docker ps",
-    "docker stats --no-stream",
-    "docker compose ps",
-    "uptime",
-    "free -h",
-    "df -h",
-  ]
+  const quickCmds = ["docker ps", "docker stats --no-stream", "docker compose ps", "uptime", "free -h", "df -h"]
 
   const memPercent =
     perf.memUsedMb != null && perf.memTotalMb && perf.memTotalMb > 0
       ? Math.round((perf.memUsedMb / perf.memTotalMb) * 100)
       : null
   const diskPercentNum = perf.diskPercent ? Number(perf.diskPercent.replace("%", "")) : null
+  const uptimeText = useMemo(() => formatHostUptime(perf.hostUptimeSeconds), [perf.hostUptimeSeconds])
 
   return (
-    <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à Distance">
-      <div className="p-6 w-full space-y-6">
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-300">
-          Monitoring Docker via tunnel SSH WebSocket `__dev/ssh/ws`. Les identifiants ne sont plus embarqués dans le frontend.
-          {devTunnelRequired ? " Ouvrez cette interface depuis l'environnement dev local pour activer la connexion." : ""}
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-            <div className="lg:col-span-2">
-              <label className="text-xs text-slate-500">Host</label>
-              <input
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                disabled={connected || connecting}
-                className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                placeholder="194.146.13.22"
-              />
+    <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Contrôle à distance">
+      <div className="w-full bg-[#111621] p-6 text-slate-100 lg:p-8">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-8">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div className="flex min-w-72 flex-col gap-2">
+              <h1 className="text-4xl font-black tracking-[-0.033em] text-white">Contrôle à distance</h1>
+              <p className="text-base text-[#9da6b9]">Gérez et envoyez des commandes aux instances d'application en temps réel.</p>
             </div>
-
-            <div>
-              <label className="text-xs text-slate-500">Port</label>
-              <input
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                disabled={connected || connecting}
-                className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                placeholder="22"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500">Utilisateur SSH</label>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={connected || connecting}
-                className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                placeholder="root"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-500">Mot de passe</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={connected || connecting}
-              className="mt-1 w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-              placeholder="password"
-            />
-          </div>
-
-          {errorText ? <p className="text-xs text-rose-600">{errorText}</p> : null}
-
-          <div className="flex justify-end">
-            <button
-              onClick={connected ? disconnect : connect}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${
-                connected ? "bg-rose-600 hover:bg-rose-700" : "bg-amber-500 hover:bg-amber-600"
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset ${
+                connected
+                  ? "bg-green-500/10 text-green-400 ring-green-500/20"
+                  : "bg-amber-500/10 text-amber-300 ring-amber-500/25"
               }`}
-              disabled={connecting}
             >
-              {connecting ? "Connexion..." : connected ? "Déconnecter" : "Connecter SSH"}
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-            <p className="text-xs text-slate-500">Containers running</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{perf.runningContainers ?? "—"}</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-            <p className="text-xs text-slate-500">CPU</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-              {perf.cpuPercent != null ? `${perf.cpuPercent.toFixed(1)}%` : "—"}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">Load: {perf.loadAvg ?? "—"}</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-            <p className="text-xs text-slate-500">Memory</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-              {memPercent != null ? `${memPercent}%` : "—"}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              {perf.memUsedMb != null && perf.memTotalMb != null ? `${perf.memUsedMb} / ${perf.memTotalMb} MB` : "—"}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-            <p className="text-xs text-slate-500">Disk /</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-              {perf.diskPercent ?? "—"}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              {perf.diskUsedMb != null && perf.diskTotalMb != null ? `${perf.diskUsedMb} / ${perf.diskTotalMb} MB` : "—"}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Background Monitoring</p>
-            <p className="text-[11px] text-slate-500">
-              {connected ? "Active (every 15s)" : "Inactive"}{perf.updatedAtMs ? ` · Last update ${new Date(perf.updatedAtMs).toLocaleTimeString("fr-FR")}` : ""}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
-            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-              <div className="h-full bg-amber-500" style={{ width: `${perf.cpuPercent ?? 0}%` }} />
-            </div>
-            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-              <div className="h-full bg-blue-500" style={{ width: `${memPercent ?? 0}%` }} />
-            </div>
-            <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-              <div className="h-full bg-emerald-500" style={{ width: `${Number.isFinite(diskPercentNum as number) ? diskPercentNum : 0}%` }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-slate-900 dark:bg-black rounded-xl border border-slate-700 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
-            <span className="text-slate-300 text-xs font-mono">{`ssh ${username || "user"}@${host || "host"}`}</span>
-            <span className={`text-xs ${connected ? "text-emerald-400" : "text-slate-500"}`}>
-              {connected ? "Connecté" : connecting ? "Connexion..." : "Hors ligne"}
+              {connected ? "Système opérationnel" : "Système hors ligne"}
             </span>
           </div>
 
-          <div
-            ref={terminalRef}
-            className="p-4 min-h-[360px] max-h-[460px] overflow-y-auto text-[13px] leading-5 font-mono whitespace-pre-wrap text-slate-200"
-          >
-            {output || "Connectez-vous pour lancer la session SSH."}
+          <div className="rounded-xl border border-[#282d39] bg-[#1c212c] p-6 shadow-sm">
+            <div className="flex flex-col items-end gap-4 md:flex-row">
+              <label className="flex min-w-64 flex-1 flex-col">
+                <span className="pb-2 text-sm font-medium text-white">Sélectionner l'instance d'application</span>
+                <div className="relative">
+                  <select
+                    value={selectedId}
+                    onChange={(e) => {
+                      const id = e.target.value
+                      if (connected || connecting) disconnect()
+                      setSelectedId(id)
+                    }}
+                    disabled={connected || connecting || targets.length === 0}
+                    className="h-12 w-full appearance-none rounded-lg border border-[#282d39] bg-[#111621] pl-4 pr-10 text-white disabled:opacity-60"
+                  >
+                    {targets.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined pointer-events-none absolute right-3 top-3 text-slate-400">expand_more</span>
+                </div>
+              </label>
+
+              <div className="flex items-center gap-4 border-l border-[#282d39] pl-6">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">ID Instance</span>
+                  <span className="font-mono text-sm text-white">{instanceLabelForUi(selectedTarget)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Région</span>
+                  <span className="text-sm font-medium text-white">{regionLabel(selectedTarget)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+              <input value={host} onChange={(e) => setHost(e.target.value)} disabled={connected || connecting} placeholder="Host" className="h-10 rounded-lg border border-[#282d39] bg-[#111621] px-3 text-sm text-white" />
+              <input value={port} onChange={(e) => setPort(e.target.value)} disabled={connected || connecting} placeholder="Port" className="h-10 rounded-lg border border-[#282d39] bg-[#111621] px-3 text-sm text-white" />
+              <input value={username} onChange={(e) => setUsername(e.target.value)} disabled={connected || connecting} placeholder="Utilisateur SSH" className="h-10 rounded-lg border border-[#282d39] bg-[#111621] px-3 text-sm text-white" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={connected || connecting} placeholder="Mot de passe" className="h-10 rounded-lg border border-[#282d39] bg-[#111621] px-3 text-sm text-white" />
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-xs text-slate-400">{devTunnelRequired ? "Ouvrir via localhost/127.0.0.1 pour activer le tunnel SSH dev." : "Tunnel SSH WebSocket actif via /__dev/ssh/ws"}</p>
+              <button
+                onClick={connected ? disconnect : connect}
+                disabled={connecting}
+                className={`h-10 rounded-lg px-5 text-sm font-semibold text-white ${connected ? "bg-red-600 hover:bg-red-700" : "bg-[#dc2626] hover:bg-red-700"}`}
+              >
+                {connecting ? "Connexion..." : connected ? "Déconnecter" : "Connecter SSH"}
+              </button>
+            </div>
+            {errorText ? <p className="mt-2 text-xs text-rose-400">{errorText}</p> : null}
           </div>
 
-          <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-700">
-            <span className="text-emerald-400 font-mono text-sm shrink-0">$</span>
-            <input
-              value={cmd}
-              onChange={(e) => setCmd(e.target.value)}
-              onKeyDown={handleKey}
-              disabled={!connected}
-              className="flex-1 bg-transparent font-mono text-sm text-white focus:outline-none disabled:cursor-not-allowed placeholder:text-slate-600"
-              placeholder={connected ? "Entrer une commande shell" : "Connectez-vous d'abord"}
-            />
-            <button
-              onClick={() => {
-                sendLine(cmd)
-                setCmd("")
-              }}
-              disabled={!connected}
-              className="size-8 flex items-center justify-center rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">send</span>
-            </button>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="group relative overflow-hidden rounded-xl border border-[#282d39] bg-[#1c212c] p-6 shadow-sm">
+              <div className="absolute right-0 top-0 p-4 opacity-10"><span className="material-symbols-outlined text-6xl text-[#dc2626]">check_circle</span></div>
+              <div className="mb-2 flex items-center gap-2 text-[#9da6b9]"><span className="material-symbols-outlined text-[20px]">dns</span><span className="text-sm font-medium">État actuel</span></div>
+              <p
+                className={`flex items-center gap-2 text-3xl font-bold leading-tight ${
+                  connected ? "text-green-500" : "text-slate-400"
+                }`}
+              >
+                {connected ? (
+                  <>
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
+                    </span>
+                    En ligne
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex h-3 w-3 rounded-full bg-slate-500" />
+                    Hors ligne
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="group relative overflow-hidden rounded-xl border border-[#282d39] bg-[#1c212c] p-6 shadow-sm">
+              <div className="absolute right-0 top-0 p-4 opacity-10"><span className="material-symbols-outlined text-6xl text-[#dc2626]">schedule</span></div>
+              <div className="mb-2 flex items-center gap-2 text-[#9da6b9]"><span className="material-symbols-outlined text-[20px]">timer</span><span className="text-sm font-medium">Temps de fonctionnement</span></div>
+              <p className="text-3xl font-bold leading-tight text-white">{uptimeText}</p>
+            </div>
+            <div className="group relative overflow-hidden rounded-xl border border-[#282d39] bg-[#1c212c] p-6 shadow-sm">
+              <div className="absolute right-0 top-0 p-4 opacity-10"><span className="material-symbols-outlined text-6xl text-[#dc2626]">history</span></div>
+              <div className="mb-2 flex items-center gap-2 text-[#9da6b9]"><span className="material-symbols-outlined text-[20px]">terminal</span><span className="text-sm font-medium">Dernière activité</span></div>
+              <p className="text-3xl font-bold leading-tight text-white">{formatAgo(perf.updatedAtMs)}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          {quickCmds.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => sendLine(c)}
-              disabled={!connected}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40"
-            >
-              {c}
-            </button>
-          ))}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="flex flex-col gap-6 lg:col-span-1">
+              <h2 className="flex items-center gap-2 text-xl font-bold text-white"><span className="material-symbols-outlined text-[#dc2626]">tune</span>Panneau de contrôle</h2>
+              <div className="flex h-full flex-col justify-between gap-4 rounded-xl border border-[#282d39] bg-[#1c212c] p-6 shadow-sm">
+                <button
+                  type="button"
+                  disabled={!connected}
+                  onClick={() => sendLine("docker start $(docker ps -aq)")}
+                  className="group w-full rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-left hover:bg-green-500/20 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <p className="font-bold text-white">Démarrer</p>
+                  <p className="text-xs text-slate-400">Lancer l&apos;instance</p>
+                </button>
+                <button
+                  type="button"
+                  disabled={!connected || !!selectedTarget?.lifecycleProtected}
+                  title={selectedTarget?.lifecycleProtected ? "Instance protégée — arrêt désactivé" : undefined}
+                  onClick={() => sendLine("docker stop $(docker ps -q)")}
+                  className="group w-full rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-left hover:bg-red-500/20 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <p className="font-bold text-white">Arrêter</p>
+                  <p className="text-xs text-slate-400">Stopper tous les processus</p>
+                </button>
+                <button
+                  type="button"
+                  disabled={!connected || !!selectedTarget?.lifecycleProtected}
+                  title={selectedTarget?.lifecycleProtected ? "Instance protégée — redémarrage désactivé" : undefined}
+                  onClick={() => sendLine("docker restart $(docker ps -q)")}
+                  className="group w-full rounded-lg border border-orange-500/20 bg-orange-500/10 p-4 text-left hover:bg-orange-500/20 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <p className="font-bold text-white">Redémarrer</p>
+                  <p className="text-xs text-slate-400">Redémarrage sécurisé</p>
+                </button>
+                <div className="my-2 h-px w-full bg-[#282d39]" />
+                <button
+                  type="button"
+                  disabled={!connected || !!selectedTarget?.lifecycleProtected}
+                  title={selectedTarget?.lifecycleProtected ? "Instance protégée — mise à jour désactivée" : undefined}
+                  onClick={() => sendLine("docker compose pull && docker compose up -d")}
+                  className="group w-full rounded-lg border border-[#dc2626]/20 bg-[#dc2626]/10 p-4 text-left hover:bg-[#dc2626]/20 disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <p className="font-bold text-white">Mise à jour</p>
+                  <p className="text-xs text-slate-400">Vers version disponible</p>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6 lg:col-span-2">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-xl font-bold text-white"><span className="material-symbols-outlined text-[#dc2626]">terminal</span>Console de commande</h2>
+              </div>
+              <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-[#282d39] bg-[#0f1115] shadow-inner">
+                <div ref={terminalRef} className="max-h-[400px] flex-1 space-y-2 overflow-y-auto p-4 font-mono text-sm text-slate-300">
+                  {output ? (
+                    output.split(/\r?\n/).map((line, i) => (
+                      <div key={i} className="min-h-[1em] whitespace-pre-wrap break-words">{line}</div>
+                    ))
+                  ) : (
+                    <div className="text-slate-500">Aucune sortie console pour le moment.</div>
+                  )}
+                </div>
+                <div className="border-t border-[#282d39] bg-[#181b21] p-3">
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {quickCmds.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        disabled={!connected}
+                        onClick={() => sendLine(q)}
+                        className="rounded border border-[#282d39] bg-[#111621] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-[#1f2530] disabled:opacity-40 disabled:pointer-events-none"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="select-none font-mono font-bold text-[#dc2626]">&gt;</span>
+                    <input
+                      value={cmd}
+                      onChange={(e) => setCmd(e.target.value)}
+                      onKeyDown={handleKey}
+                      disabled={!connected}
+                      placeholder="Tapez une commande ici..."
+                      className="w-full border-none bg-transparent p-0 font-mono text-white placeholder:text-slate-600 focus:ring-0 disabled:opacity-40"
+                    />
+                    <button
+                      type="button"
+                      disabled={!connected}
+                      onClick={() => {
+                        sendLine(cmd)
+                        setCmd("")
+                      }}
+                      className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">send</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="rounded-xl border border-[#282d39] bg-[#1c212c] p-6">
+              <h3 className="mb-4 flex items-center gap-2 font-bold text-white"><span className="material-symbols-outlined text-[#dc2626]">memory</span>Ressources CPU</h3>
+              <div className="relative h-4 w-full overflow-hidden rounded-full bg-[#282d39]"><div className="absolute left-0 top-0 h-full rounded-full bg-[#dc2626]" style={{ width: `${perf.cpuPercent ?? 0}%` }} /></div>
+              <div className="mt-2 flex justify-between text-sm text-slate-400"><span>Utilisé: {perf.cpuPercent != null ? `${perf.cpuPercent.toFixed(1)}%` : "—"}</span><span>Load: {perf.loadAvg ?? "—"}</span></div>
+            </div>
+            <div className="rounded-xl border border-[#282d39] bg-[#1c212c] p-6">
+              <h3 className="mb-4 flex items-center gap-2 font-bold text-white"><span className="material-symbols-outlined text-[#dc2626]">hard_drive</span>Mémoire RAM</h3>
+              <div className="relative h-4 w-full overflow-hidden rounded-full bg-[#282d39]"><div className="absolute left-0 top-0 h-full rounded-full bg-orange-500" style={{ width: `${memPercent ?? 0}%` }} /></div>
+              <div className="mt-2 flex justify-between text-sm text-slate-400"><span>Utilisé: {memPercent != null ? `${memPercent}%` : "—"}</span><span>{perf.memUsedMb != null && perf.memTotalMb != null ? `${perf.memUsedMb} / ${perf.memTotalMb} MB` : "—"}</span></div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#282d39] bg-[#1c212c] p-4 text-xs text-slate-400">
+            <span className="text-slate-500">
+              Métriques agent VPS (/health + /metrics){metricsApiError ? ` · ${metricsApiError}` : ""}
+            </span>
+            <br />
+            Containers: {perf.runningContainers ?? "—"} • Disque: {perf.diskPercent ?? "—"}
+            {perf.diskUsedMb != null && perf.diskTotalMb != null ? ` (${perf.diskUsedMb}/${perf.diskTotalMb} MB)` : ""}
+            {diskPercentNum != null ? ` • Utilisation disque ${diskPercentNum}%` : ""}
+          </div>
         </div>
       </div>
     </DashboardLayout>

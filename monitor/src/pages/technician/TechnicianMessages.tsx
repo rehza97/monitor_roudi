@@ -261,14 +261,14 @@ export default function TechnicianMessages() {
 
   return (
     <DashboardLayout role="technician" navItems={technicianNav} pageTitle="Messagerie">
-      <div className="flex h-[calc(100vh-64px)]">
-        <div className="w-72 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-          <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex h-[calc(100vh-64px)] bg-[#221e10]">
+        <div className="w-80 shrink-0 border-r border-[#393528] bg-[#221e10] flex flex-col">
+          <div className="p-3 border-b border-[#393528]">
             <button
               type="button"
               onClick={() => void startSupportConversation()}
               disabled={creatingConversation}
-              className="mb-3 w-full h-9 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+              className="mb-3 w-full h-9 rounded-lg bg-[#f2b90d] text-slate-900 text-xs font-semibold hover:bg-[#e4ad09] disabled:opacity-60 flex items-center justify-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[15px]">
                 {creatingConversation ? "hourglass_empty" : "add_comment"}
@@ -276,24 +276,24 @@ export default function TechnicianMessages() {
               {creatingConversation ? "Création…" : "Démarrer support"}
             </button>
             <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#bab29c] text-[18px]">search</span>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-10 pl-9 pr-3 text-sm rounded-lg border border-[#393528] bg-[#2d281a] text-white focus:outline-none focus:ring-2 focus:ring-[#f2b90d]"
                 placeholder="Rechercher..."
               />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-sm text-slate-400 px-4 text-center gap-3">
+              <div className="h-full flex flex-col items-center justify-center text-sm text-[#bab29c] px-4 text-center gap-3">
                 <p>Aucune conversation.</p>
                 <button
                   type="button"
                   onClick={() => void startSupportConversation()}
                   disabled={creatingConversation}
-                  className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold disabled:opacity-60"
+                  className="px-3 py-2 rounded-lg bg-[#f2b90d] text-slate-900 text-xs font-semibold disabled:opacity-60"
                 >
                   Démarrer support
                 </button>
@@ -303,8 +303,8 @@ export default function TechnicianMessages() {
               <button
                 key={t.id}
                 onClick={() => selectThread(t.id)}
-                className={`w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 ${
-                  selectedId === t.id ? "bg-blue-50 dark:bg-blue-900/10" : ""
+                className={`w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-[#342f22] transition-colors border-b border-[#393528] ${
+                  selectedId === t.id ? "bg-[#2d281a] border-l-4 border-l-[#f2b90d]" : ""
                 }`}
               >
                 <div className={`size-9 rounded-full ${t.color} text-white text-xs font-bold flex items-center justify-center shrink-0`}>
@@ -312,13 +312,13 @@ export default function TechnicianMessages() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline">
-                    <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{t.name}</p>
-                    <span className="text-[10px] text-slate-400 shrink-0 ml-2">{t.time}</span>
+                    <p className="font-semibold text-white text-sm truncate">{t.name}</p>
+                    <span className="text-[10px] text-[#bab29c] shrink-0 ml-2">{t.time}</span>
                   </div>
-                  <p className="text-xs text-slate-500 truncate">{t.last || "—"}</p>
+                  <p className="text-xs text-[#bab29c] truncate">{t.last || "—"}</p>
                 </div>
                 {t.unread > 0 ? (
-                  <span className="size-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                  <span className="size-5 rounded-full bg-[#f2b90d] text-slate-900 text-[10px] font-bold flex items-center justify-center shrink-0">
                     {t.unread}
                   </span>
                 ) : null}
@@ -327,20 +327,20 @@ export default function TechnicianMessages() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 min-w-0">
+        <div className="flex-1 flex flex-col bg-[#1a1810] min-w-0">
           {!selected ? (
-            <div className="h-full flex items-center justify-center text-sm text-slate-400 px-4 text-center">
+            <div className="h-full flex items-center justify-center text-sm text-[#bab29c] px-4 text-center">
               Sélectionnez une conversation.
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 px-5 py-3.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3 px-5 py-3.5 bg-[#221e10] border-b border-[#393528]">
                 <div className={`size-9 rounded-full ${selected.color} text-white text-xs font-bold flex items-center justify-center shrink-0`}>
                   {selected.initials}
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white text-sm">{selected.name}</p>
-                  <p className="text-xs text-slate-400">{selected.role}</p>
+                  <p className="font-semibold text-white text-sm">{selected.name}</p>
+                  <p className="text-xs text-[#bab29c]">{selected.role}</p>
                 </div>
               </div>
 
@@ -352,27 +352,27 @@ export default function TechnicianMessages() {
                         {m.initials}
                       </div>
                     ) : null}
-                    <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm ${m.mine ? "bg-blue-600 text-white rounded-br-sm" : "bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-bl-sm"}`}>
+                    <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm ${m.mine ? "bg-[#f2b90d] text-slate-900 rounded-br-sm" : "bg-[#2d281a] text-slate-100 border border-[#393528] rounded-bl-sm"}`}>
                       {m.text}
-                      <p className={`text-[10px] mt-1 ${m.mine ? "text-blue-200" : "text-slate-400"}`}>{m.time}</p>
+                      <p className={`text-[10px] mt-1 ${m.mine ? "text-slate-700" : "text-[#bab29c]"}`}>{m.time}</p>
                     </div>
                   </div>
                 ))}
                 <div ref={bottomRef} />
               </div>
 
-              <div className="px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+              <div className="px-4 py-3 bg-[#221e10] border-t border-[#393528]">
                 <form className="flex items-center gap-2" onSubmit={(e) => void sendMessage(e)}>
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="flex-1 h-10 px-4 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 h-10 px-4 text-sm rounded-xl border border-[#393528] bg-[#2d281a] text-white focus:outline-none focus:ring-2 focus:ring-[#f2b90d]"
                     placeholder="Écrire un message..."
                   />
                   <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="size-10 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white transition-colors shrink-0"
+                    className="size-10 flex items-center justify-center rounded-xl bg-[#f2b90d] hover:bg-[#e4ad09] disabled:opacity-40 text-slate-900 transition-colors shrink-0"
                   >
                     <span className="material-symbols-outlined text-[20px]">send</span>
                   </button>

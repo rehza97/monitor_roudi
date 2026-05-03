@@ -157,135 +157,128 @@ export default function AdminClientsLocation() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Localisation des Clients">
-      <div className="flex h-[calc(100vh-64px)]">
-        <div className="flex-1 relative bg-slate-200 dark:bg-slate-800 overflow-hidden">
+      <div className="h-[calc(100vh-64px)] relative bg-slate-200 overflow-hidden">
+        <div className="absolute inset-0">
           <ClientMapView clients={clients} selectedId={selectedId} onSelect={onMapSelect} />
+        </div>
 
-          {firestoreError && (
-            <div className="absolute top-3 left-3 right-3 z-[500] max-w-md mx-auto rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-              {firestoreError}
-            </div>
-          )}
+        {firestoreError && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] max-w-xl w-[calc(100%-2rem)] rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
+            {firestoreError}
+          </div>
+        )}
 
-          <div className="absolute top-3 right-3 z-[500] flex gap-2">
+        <div className="absolute top-6 left-6 right-6 z-[500] flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className="bg-white rounded-xl ring-1 ring-black/5 shadow-lg flex items-center w-full sm:max-w-md px-3">
+            <span className="material-symbols-outlined text-slate-400 text-[20px]">search</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full h-11 px-3 bg-transparent text-sm focus:outline-none placeholder:text-slate-400"
+              placeholder="Rechercher un client, une zone..."
+            />
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <button className="h-10 px-4 rounded-lg bg-white text-sm font-medium text-slate-700 shadow-md ring-1 ring-black/5 whitespace-nowrap">
+              Type de client
+            </button>
+            <button className="h-10 px-4 rounded-lg bg-white text-sm font-medium text-slate-700 shadow-md ring-1 ring-black/5 whitespace-nowrap">
+              Problèmes signalés
+            </button>
             <button
               type="button"
               onClick={openNew}
-              className="flex items-center gap-1.5 rounded-lg bg-[#db143c] text-white text-xs font-semibold px-3 py-2 shadow-lg hover:opacity-90"
+              className="h-10 px-4 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5"
             >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              Ajouter
+              <span className="material-symbols-outlined text-[18px]">add_location</span>
+              Ajouter Site
             </button>
           </div>
+        </div>
 
-          {selected && Number.isFinite(selected.lat) && Number.isFinite(selected.lng) && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[500] bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl p-4 min-w-[240px] max-w-[90vw]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {selected.name[0]}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white text-sm">{selected.name}</p>
-                    <p className="text-xs text-slate-400">{selected.city}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(null)}
-                  className="text-slate-400 hover:text-slate-600 shrink-0"
-                  aria-label="Fermer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
-                </button>
+        {selected && Number.isFinite(selected.lat) && Number.isFinite(selected.lng) && (
+          <div className="absolute top-24 left-6 z-[500] w-80 max-w-[calc(100vw-3rem)] bg-white rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden">
+            <div className="h-28 bg-gradient-to-r from-slate-700 to-slate-500 relative">
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="absolute top-2 right-2 bg-black/30 hover:bg-black/50 text-white rounded-full p-1"
+                aria-label="Fermer"
+              >
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+                <p className="text-white font-bold text-lg">{selected.name}</p>
+                <p className="text-slate-200 text-xs">{selected.city}</p>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs gap-2">
-                <span className="text-slate-400 font-mono">{coordsLabel(selected.lat, selected.lng)}</span>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-slate-400 text-[18px] mt-0.5">location_on</span>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Coordonnées</p>
+                  <p className="text-sm text-slate-700 font-medium">{coordsLabel(selected.lat, selected.lng)}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-500">État</p>
                 <span
-                  className={`font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                     selected.status === "Actif"
-                      ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
-                      : "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-400"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-600"
                   }`}
                 >
                   {selected.status}
                 </span>
               </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => openEdit(selected)}
-                  className="flex-1 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  Modifier
-                </button>
-                <button
-                  type="button"
-                  onClick={removeSelected}
-                  className="flex-1 py-2 text-xs font-medium rounded-lg border border-rose-200 text-rose-700 dark:border-rose-900 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                >
-                  Supprimer
-                </button>
-              </div>
             </div>
-          )}
-        </div>
-
-        <div className="w-72 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
-                search
-              </span>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#db143c]"
-                placeholder="Rechercher un client…"
-              />
+            <div className="p-4 bg-slate-50 border-t border-slate-100 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => openEdit(selected)}
+                className="py-2 text-xs font-medium rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
+              >
+                Modifier
+              </button>
+              <button
+                type="button"
+                onClick={removeSelected}
+                className="py-2 text-xs font-semibold rounded-lg bg-[#dc2626] text-white hover:bg-[#b91c1c]"
+              >
+                Détails
+              </button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-            {filtered.map(c => {
-              const hasCoords = Number.isFinite(c.lat) && Number.isFinite(c.lng)
-              return (
+        )}
+
+        <div className="absolute bottom-8 left-8 z-[500] hidden lg:block">
+          <div className="w-72 max-h-64 rounded-xl bg-white ring-1 ring-black/5 shadow-xl overflow-hidden flex flex-col">
+            <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Liste Rapide</p>
+              <span className="text-[11px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded">{filtered.length}</span>
+            </div>
+            <div className="overflow-y-auto divide-y divide-slate-100">
+              {filtered.slice(0, 12).map(c => (
                 <button
-                  key={c.id}
                   type="button"
-                  onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
-                  className={`w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
-                    selectedId === c.id ? "bg-rose-50 dark:bg-rose-900/10" : ""
-                  }`}
+                  key={c.id}
+                  onClick={() => setSelectedId(c.id)}
+                  className={`w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 ${selectedId === c.id ? "border-l-4 border-[#dc2626] bg-red-50/50" : "border-l-4 border-transparent"}`}
                 >
-                  <div className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {c.name[0]}
+                  <div className="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
+                    {c.name.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{c.name}</p>
-                    <p className="text-xs text-slate-400">
-                      {c.city}
-                      {hasCoords ? ` · ${coordsLabel(c.lat, c.lng)}` : " · Pas de coordonnées"}
-                    </p>
+                    <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{c.city}</p>
                   </div>
-                  <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                      c.status === "Actif"
-                        ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
-                        : "text-slate-600 bg-slate-100 dark:bg-slate-700 dark:text-slate-400"
-                    }`}
-                  >
-                    {c.status}
-                  </span>
                 </button>
-              )
-            })}
-            {filtered.length === 0 && (
-              <p className="px-4 py-8 text-sm text-center text-slate-400">
-                {clients.length === 0
-                  ? "Aucun client en base. Ajoutez-en un pour les afficher sur la carte (OpenStreetMap)."
-                  : "Aucun client trouvé."}
-              </p>
-            )}
+              ))}
+              {filtered.length === 0 && (
+                <p className="p-4 text-xs text-center text-slate-500">Aucun client trouvé.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -297,11 +290,11 @@ export default function AdminClientsLocation() {
         >
           <div className="absolute inset-0 bg-black/40" />
           <form
-            className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4"
+            className="relative bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md p-6 space-y-4"
             onClick={e => e.stopPropagation()}
             onSubmit={saveClient}
           >
-            <h3 className="font-bold text-slate-900 dark:text-white">
+            <h3 className="font-bold text-slate-900">
               {editingId ? "Modifier le client" : "Nouveau client sur la carte"}
             </h3>
             <div className="space-y-3 text-sm">
@@ -311,7 +304,7 @@ export default function AdminClientsLocation() {
                   required
                   value={formName}
                   onChange={e => setFormName(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white"
                 />
               </label>
               <label className="block space-y-1">
@@ -319,7 +312,7 @@ export default function AdminClientsLocation() {
                 <input
                   value={formCity}
                   onChange={e => setFormCity(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white"
                 />
               </label>
               <label className="block space-y-1">
@@ -327,7 +320,7 @@ export default function AdminClientsLocation() {
                 <select
                   value={formStatus}
                   onChange={e => setFormStatus(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white"
                 >
                   <option value="Actif">Actif</option>
                   <option value="Inactif">Inactif</option>
@@ -341,7 +334,7 @@ export default function AdminClientsLocation() {
                     inputMode="decimal"
                     value={formLat}
                     onChange={e => setFormLat(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs"
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white font-mono text-xs"
                   />
                 </label>
                 <label className="block space-y-1">
@@ -351,7 +344,7 @@ export default function AdminClientsLocation() {
                     inputMode="decimal"
                     value={formLng}
                     onChange={e => setFormLng(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs"
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white font-mono text-xs"
                   />
                 </label>
               </div>
@@ -361,7 +354,7 @@ export default function AdminClientsLocation() {
                 type="button"
                 disabled={saving}
                 onClick={() => setModalOpen(false)}
-                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium"
+                className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
               >
                 Annuler
               </button>

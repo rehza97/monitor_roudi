@@ -60,7 +60,7 @@ function toFeatureArray(value: unknown): CatalogFeature[] {
         if (!title) return null
         return {
           icon: "check_circle",
-          iconBg: "bg-blue-100 dark:bg-blue-900/30",
+          iconBg: "bg-blue-100",
           iconColor: "text-blue-600",
           title,
           desc: "",
@@ -72,7 +72,7 @@ function toFeatureArray(value: unknown): CatalogFeature[] {
       if (!title) return null
       return {
         icon: toText(obj.icon, "check_circle"),
-        iconBg: toText(obj.iconBg, "bg-blue-100 dark:bg-blue-900/30"),
+        iconBg: toText(obj.iconBg, "bg-blue-100"),
         iconColor: toText(obj.iconColor, "text-blue-600"),
         title,
         desc: toText(obj.desc),
@@ -112,29 +112,29 @@ const categoryStyles: Record<
   { categoryColor: string; iconBg: string; iconColor: string; heroBg: string; cardBg: string }
 > = {
   devops: {
-    categoryColor: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20",
-    iconBg: "bg-indigo-100 dark:bg-indigo-900/30",
+    categoryColor: "text-indigo-600 bg-indigo-50",
+    iconBg: "bg-indigo-100",
     iconColor: "text-indigo-600",
     heroBg: "from-indigo-900 to-slate-900",
     cardBg: "bg-gradient-to-br from-indigo-900 to-slate-900",
   },
   analytics: {
-    categoryColor: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
-    iconBg: "bg-blue-100 dark:bg-blue-900/30",
+    categoryColor: "text-blue-600 bg-blue-50",
+    iconBg: "bg-blue-100",
     iconColor: "text-blue-600",
     heroBg: "from-blue-900 to-slate-900",
     cardBg: "bg-gradient-to-br from-blue-900 to-slate-900",
   },
   sécurité: {
-    categoryColor: "text-slate-600 bg-slate-100 dark:bg-slate-800",
-    iconBg: "bg-slate-100 dark:bg-slate-800",
+    categoryColor: "text-slate-600 bg-slate-100",
+    iconBg: "bg-slate-100",
     iconColor: "text-slate-600",
     heroBg: "from-slate-900 to-black",
     cardBg: "bg-gradient-to-br from-slate-900 to-black",
   },
   ecologie: {
-    categoryColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20",
-    iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
+    categoryColor: "text-emerald-600 bg-emerald-50",
+    iconBg: "bg-emerald-100",
     iconColor: "text-emerald-600",
     heroBg: "from-emerald-900 to-slate-900",
     cardBg: "bg-gradient-to-br from-emerald-900 to-slate-900",
@@ -145,8 +145,8 @@ function pickStyle(category: string) {
   const key = category.trim().toLowerCase()
   if (categoryStyles[key]) return categoryStyles[key]
   return {
-    categoryColor: "text-violet-600 bg-violet-50 dark:bg-violet-900/20",
-    iconBg: "bg-violet-100 dark:bg-violet-900/30",
+    categoryColor: "text-violet-600 bg-violet-50",
+    iconBg: "bg-violet-100",
     iconColor: "text-violet-600",
     heroBg: "from-violet-900 to-slate-900",
     cardBg: "bg-gradient-to-br from-violet-900 to-slate-900",

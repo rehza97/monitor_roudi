@@ -283,16 +283,38 @@ export default function AdminReports() {
 
   return (
     <DashboardLayout role="admin" navItems={adminNav} pageTitle="Rapports & Statistiques">
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 bg-[#f8fafc] min-h-[calc(100vh-64px)]">
         {error && (
-          <p className="text-sm text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-900 px-3 py-2">
+          <p className="text-sm text-amber-700 rounded-lg border border-amber-200 px-3 py-2">
             {error}
           </p>
         )}
 
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900">Rapports et Statistiques</h2>
+            <p className="text-slate-500 text-sm mt-1">Analysez les performances et les tendances des tickets de support.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+              <span className="material-symbols-outlined text-[20px]">print</span>
+              Imprimer
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#dc2626] text-white rounded-lg text-sm font-medium hover:bg-[#991b1b] transition-all shadow-sm shadow-red-500/20 disabled:opacity-60"
+            >
+              <span className="material-symbols-outlined text-[18px]">{exporting ? "hourglass_empty" : "download"}</span>
+              {exporting ? "Export…" : "Exporter JSON"}
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm text-slate-500 dark:text-slate-400">Période :</span>
+            <span className="text-sm text-slate-500">Période :</span>
             {periods.map(p => (
               <button
                 key={p}
@@ -300,26 +322,17 @@ export default function AdminReports() {
                 onClick={() => setPeriod(p)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   period === p
-                    ? "bg-[#db143c] text-white"
-                    : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    ? "bg-[#dc2626] text-white"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 {p}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">{exporting ? "hourglass_empty" : "download"}</span>
-            {exporting ? "Export…" : "Exporter JSON"}
-          </button>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-slate-500">
           Données en direct : commandes / demandes, factures et déploiements Firestore. Les tendances comparent à la
           période précédente de même durée.
         </p>
@@ -328,9 +341,9 @@ export default function AdminReports() {
           {kpis.map(k => (
             <div
               key={k.label}
-              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5"
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm"
             >
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{k.value}</p>
+              <p className="text-2xl font-bold text-slate-900">{k.value}</p>
               <p className="text-sm text-slate-500 mt-0.5">{k.label}</p>
               <p className={`text-xs font-semibold mt-2 ${k.trendUp ? "text-emerald-600" : "text-rose-600"}`}>
                 {k.trendUp ? "↑" : "↓"} {k.trend}
@@ -340,8 +353,8 @@ export default function AdminReports() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{barTitle}</h3>
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 className="font-semibold text-slate-900 mb-4">{barTitle}</h3>
             {bars.length === 0 ? (
               <p className="text-sm text-slate-400 py-8 text-center">Pas de données sur cette période.</p>
             ) : (
@@ -362,8 +375,8 @@ export default function AdminReports() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Répartition par type de demande</h3>
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 className="font-semibold text-slate-900 mb-4">Répartition par type de demande</h3>
             {typeDistribution.length === 0 ? (
               <p className="text-sm text-slate-400 py-8 text-center">Aucune demande client sur cette période.</p>
             ) : (
@@ -371,10 +384,10 @@ export default function AdminReports() {
                 {typeDistribution.map(t => (
                   <div key={t.label}>
                     <div className="flex justify-between text-sm mb-1 gap-2">
-                      <span className="text-slate-600 dark:text-slate-300 truncate">{t.label}</span>
-                      <span className="font-semibold text-slate-900 dark:text-white shrink-0">{t.pct}%</span>
+                      <span className="text-slate-600 truncate">{t.label}</span>
+                      <span className="font-semibold text-slate-900 shrink-0">{t.pct}%</span>
                     </div>
-                    <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${t.color} transition-all duration-500`}
                         style={{ width: `${t.pct}%` }}
@@ -387,8 +400,8 @@ export default function AdminReports() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 text-sm text-slate-600 dark:text-slate-300">
-          <span className="font-semibold text-slate-900 dark:text-white">Déploiements : </span>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600">
+          <span className="font-semibold text-slate-900">Déploiements : </span>
           {healthyDeployments} sains sur {deploymentCount} suivis (tous horizons, instantané).
         </div>
       </div>

@@ -6,7 +6,6 @@ function isUnassigned(value: unknown): boolean {
 
 export function canClientAccessOrder(order: FirestoreOrder, user: UserProfile | null): boolean {
   if (!user) return false
-  if (order.kind !== "client_request") return false
   if (!user.organizationId) return false
   return order.organizationId === user.organizationId
 }

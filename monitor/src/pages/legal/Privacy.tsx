@@ -38,23 +38,23 @@ const sections = [
 export default function Privacy() {
   return (
     <PublicLayout>
-      <section className="bg-white dark:bg-slate-900 py-16 border-b border-slate-200 dark:border-slate-800">
+      <section className="bg-white py-16 border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-4">Politique de confidentialité</h1>
-          <p className="text-slate-500 dark:text-slate-400">Dernière mise à jour : 1er mars 2025</p>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-4">Politique de confidentialité</h1>
+          <p className="text-slate-500">Dernière mise à jour : 1er mars 2025</p>
         </div>
       </section>
 
-      <section className="py-16 bg-slate-50 dark:bg-slate-950">
+      <section className="py-16 bg-slate-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 md:p-12 space-y-8">
-            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 md:p-12 space-y-8">
+            <p className="text-slate-600 leading-relaxed">
               Chez Rodaina, la protection de vos données personnelles est une priorité. Cette politique décrit comment nous collectons, utilisons et protégeons vos informations conformément à la Loi sur la Protection des Données Personnelles (LPD 18-07).
             </p>
             {sections.map(s => (
               <div key={s.title}>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{s.title}</h2>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{s.content}</p>
+                <h2 className="text-lg font-bold text-slate-900 mb-3">{s.title}</h2>
+                <p className="text-slate-600 leading-relaxed">{s.content}</p>
               </div>
             ))}
           </div>

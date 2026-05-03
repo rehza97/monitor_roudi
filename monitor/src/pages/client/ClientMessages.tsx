@@ -332,20 +332,20 @@ export default function ClientMessages() {
     <DashboardLayout role="client" navItems={clientNav} pageTitle="Messagerie">
       <div className="flex h-[calc(100vh-64px)]">
         {/* ── Left panel: conversation list ─────────────────────────────── */}
-        <div className="w-72 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+        <div className="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col">
           {/* Search header */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
+          <div className="p-4 border-b border-slate-100">
+            <p className="text-sm font-semibold text-slate-900 mb-3">
               Messages
             </p>
             {supportError ? (
-              <p className="mb-2 text-xs text-rose-600 dark:text-rose-400">{supportError}</p>
+              <p className="mb-2 text-xs text-rose-600">{supportError}</p>
             ) : null}
             <button
               type="button"
               onClick={() => void startSupportConversation()}
               disabled={creatingConversation}
-              className="mb-3 w-full h-9 rounded-lg bg-[#db143c] text-white text-xs font-semibold hover:bg-[#b01030] disabled:opacity-60 flex items-center justify-center gap-1.5"
+              className="mb-3 w-full h-9 rounded-lg bg-[#2463eb] text-white text-xs font-semibold hover:bg-[#1d4ed8] disabled:opacity-60 flex items-center justify-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[15px]">
                 {creatingConversation ? "hourglass_empty" : "add_comment"}
@@ -359,22 +359,22 @@ export default function ClientMessages() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400"
+                className="w-full pl-9 pr-3 h-9 rounded-lg bg-slate-100 text-sm text-slate-900 focus:outline-none placeholder:text-slate-400"
                 placeholder="Rechercher…"
               />
             </div>
           </div>
 
           {/* Conversation list */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {loadingConvs && (
-              <div className="space-y-0 divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="space-y-0 divide-y divide-slate-100">
                 {[1, 2, 3].map((n) => (
                   <div key={n} className="flex items-center gap-3 px-4 py-3.5 animate-pulse">
-                    <div className="size-9 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+                    <div className="size-9 rounded-full bg-slate-200 shrink-0" />
                     <div className="flex-1 space-y-1.5">
-                      <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded w-2/3" />
-                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+                      <div className="h-3.5 bg-slate-200 rounded w-2/3" />
+                      <div className="h-3 bg-slate-200 rounded w-1/2" />
                     </div>
                   </div>
                 ))}
@@ -383,17 +383,17 @@ export default function ClientMessages() {
 
             {!loadingConvs && filteredConvs.length === 0 && (
               <div className="py-12 px-4 flex flex-col items-center text-center">
-                <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[40px] mb-2">
+                <span className="material-symbols-outlined text-slate-300 text-[40px] mb-2">
                   chat_bubble
                 </span>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500">
                   Aucune conversation. Contactez le support.
                 </p>
                 <button
                   type="button"
                   onClick={() => void startSupportConversation()}
                   disabled={creatingConversation}
-                  className="mt-4 px-4 py-2 rounded-lg bg-[#db143c] text-white text-xs font-semibold hover:bg-[#b01030] disabled:opacity-60"
+                  className="mt-4 px-4 py-2 rounded-lg bg-[#2463eb] text-white text-xs font-semibold hover:bg-[#1d4ed8] disabled:opacity-60"
                 >
                   {creatingConversation ? "Création…" : "Démarrer une conversation"}
                 </button>
@@ -409,25 +409,25 @@ export default function ClientMessages() {
                   <button
                     key={conv.id}
                     onClick={() => setActiveConvId(conv.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left ${
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors text-left ${
                       isActive
-                        ? "bg-rose-50 dark:bg-rose-900/10 border-l-2 border-[#db143c]"
+                        ? "bg-blue-50 border-l-2 border-[#2463eb]"
                         : ""
                     }`}
                   >
-                    <div className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    <div className="size-9 rounded-full bg-[#2463eb] flex items-center justify-center text-white text-xs font-bold shrink-0">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                        <p className="text-sm font-semibold text-slate-900 truncate">
                           {name}
                         </p>
                         <span className="text-xs text-slate-400 shrink-0 ml-2">
                           {firestoreToTime(conv.lastMessageAt)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
                         {conv.lastMessage ?? "—"}
                       </p>
                     </div>
@@ -438,14 +438,14 @@ export default function ClientMessages() {
         </div>
 
         {/* ── Right panel: chat ─────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 min-w-0">
+        <div className="flex-1 flex flex-col bg-slate-50 min-w-0">
           {!activeConv ? (
             /* No conversation selected */
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[56px] mb-4">
+              <span className="material-symbols-outlined text-slate-300 text-[56px] mb-4">
                 forum
               </span>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <p className="text-slate-500 text-sm">
                 {conversations.length === 0
                   ? "Aucune conversation. Contactez le support."
                   : "Sélectionnez une conversation pour afficher les messages."}
@@ -455,7 +455,7 @@ export default function ClientMessages() {
                   type="button"
                   onClick={() => void startSupportConversation()}
                   disabled={creatingConversation}
-                  className="mt-4 px-4 py-2 rounded-lg bg-[#db143c] text-white text-xs font-semibold hover:bg-[#b01030] disabled:opacity-60"
+                  className="mt-4 px-4 py-2 rounded-lg bg-[#2463eb] text-white text-xs font-semibold hover:bg-[#1d4ed8] disabled:opacity-60"
                 >
                   {creatingConversation ? "Création…" : "Démarrer une conversation support"}
                 </button>
@@ -464,12 +464,12 @@ export default function ClientMessages() {
           ) : (
             <>
               {/* Chat header */}
-              <div className="flex items-center gap-3 px-5 h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-                <div className="size-8 rounded-full bg-[#db143c] flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <div className="flex items-center gap-3 px-5 h-14 border-b border-slate-200 bg-white shrink-0">
+                <div className="size-8 rounded-full bg-[#2463eb] flex items-center justify-center text-white text-xs font-bold shrink-0">
                   {getInitials(getConvDisplayName(activeConv, user?.id ?? ""))}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <p className="text-sm font-semibold text-slate-900">
                     {getConvDisplayName(activeConv, user?.id ?? "")}
                   </p>
                   <p className="text-xs text-emerald-500 flex items-center gap-1">
@@ -488,7 +488,7 @@ export default function ClientMessages() {
                         key={n}
                         className={`flex ${n % 2 === 0 ? "justify-end" : "justify-start"} animate-pulse`}
                       >
-                        <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded-2xl w-48" />
+                        <div className="h-9 bg-slate-200 rounded-2xl w-48" />
                       </div>
                     ))}
                   </div>
@@ -496,7 +496,7 @@ export default function ClientMessages() {
 
                 {!loadingMsgs && messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                    <span className="material-symbols-outlined text-slate-300 dark:text-slate-600 text-[40px] mb-2">
+                    <span className="material-symbols-outlined text-slate-300 text-[40px] mb-2">
                       chat
                     </span>
                     <p className="text-xs text-slate-400">
@@ -536,8 +536,8 @@ export default function ClientMessages() {
                           <div
                             className={`px-4 py-2.5 text-sm ${
                               mine
-                                ? "bg-[#db143c] text-white rounded-2xl rounded-br-sm"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl rounded-bl-sm"
+                              ? "bg-[#2463eb] text-white rounded-2xl rounded-br-sm"
+                              : "bg-slate-100 text-slate-900 rounded-2xl rounded-bl-sm"
                             }`}
                           >
                             <p>{messageText(msg)}</p>
@@ -553,7 +553,7 @@ export default function ClientMessages() {
                         {mine && (
                           <div
                             className="size-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mb-1"
-                            style={{ backgroundColor: user?.avatarColor ?? "#db143c" }}
+                            style={{ backgroundColor: user?.avatarColor ?? "#2463eb" }}
                           >
                             {user?.initials ?? getInitials(user?.name ?? "")}
                           </div>
@@ -565,19 +565,19 @@ export default function ClientMessages() {
               </div>
 
               {/* Input bar */}
-              <div className="flex items-center gap-3 px-5 py-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-3 px-5 py-4 bg-white border-t border-slate-200 shrink-0">
                 <input
                   value={msgText}
                   onChange={(e) => setMsgText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   disabled={sending}
-                  className="flex-1 h-10 px-4 rounded-full bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none disabled:opacity-60 placeholder:text-slate-400"
+                  className="flex-1 h-10 px-4 rounded-full bg-slate-100 text-sm text-slate-900 focus:outline-none disabled:opacity-60 placeholder:text-slate-400"
                   placeholder="Écrire un message…"
                 />
                 <button
                   onClick={() => void sendMessage()}
                   disabled={!msgText.trim() || sending}
-                  className="size-9 rounded-full bg-[#db143c] flex items-center justify-center text-white hover:bg-[#b01030] disabled:opacity-40 transition-colors"
+                  className="size-9 rounded-full bg-[#2463eb] flex items-center justify-center text-white hover:bg-[#1d4ed8] disabled:opacity-40 transition-colors"
                 >
                   {sending ? (
                     <span className="material-symbols-outlined text-[16px] animate-spin">
