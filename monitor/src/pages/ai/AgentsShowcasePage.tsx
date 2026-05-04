@@ -409,7 +409,7 @@ export default function AgentsShowcasePage({ role, navItems }: AgentsShowcasePag
             <div>
               <h3 className="font-semibold text-slate-900">Local VPS Ollama Models</h3>
               <p className="mt-1 text-xs text-slate-500">
-                Runs on the VPS through `194.146.13.22:18002/ollama`; separate from paid Together API models.
+                Runs on the VPS through `https://194.146.13.22:18002/ollama` (falls back to `http://194.146.13.22:18002`); separate from paid Together API models.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

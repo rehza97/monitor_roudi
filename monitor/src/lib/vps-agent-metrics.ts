@@ -108,7 +108,35 @@ export type VpsAgentSnapshot = {
   metrics: VpsMetrics
 }
 
-const API_BASE = IS_VITE_DEV ? "/__vps-agent" : "http://194.146.13.22:18002"
+/** Production: try HTTPS first (avoids mixed-content issues when the SPA is on HTTPS), then HTTP. */
+const PROD_VPS_AGENT_BASES = ["https://194.146.13.22:18002", "http://194.146.13.22:18002"] as const
+
+let cachedProdVpsBase: string | null = null
+
+function invalidateProdVpsBase() {
+  cachedProdVpsBase = null
+}
+
+async function resolveProdVpsBase(): Promise<string> {
+  if (cachedProdVpsBase) return cachedProdVpsBase
+  for (const base of PROD_VPS_AGENT_BASES) {
+    try {
+      const res = await fetch(`${base}/health`, { headers: { accept: "application/json" } })
+      if (res.ok) {
+        cachedProdVpsBase = base
+        return base
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error("VPS agent unreachable (tried HTTPS and HTTP)")
+}
+
+async function getVpsAgentBase(): Promise<string> {
+  if (IS_VITE_DEV) return "/__vps-agent"
+  return resolveProdVpsBase()
+}
 
 function numberField(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value)
@@ -252,22 +280,33 @@ function parseHealth(raw: unknown): VpsHealth {
   }
 }
 
-async function fetchJson(path: string): Promise<unknown> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: { accept: "application/json" } })
+async function fetchJson(base: string, path: string): Promise<unknown> {
+  const res = await fetch(`${base}${path}`, { headers: { accept: "application/json" } })
   if (!res.ok) throw new Error(`VPS agent ${path} failed (${res.status})`)
   return res.json()
 }
 
 export async function fetchVpsAgentSnapshot(): Promise<VpsAgentSnapshot> {
-  const [health, metrics] = await Promise.all([
-    fetchJson("/health").then(parseHealth),
-    fetchJson("/metrics").then(parseMetrics),
-  ])
-  return { health, metrics }
+  const run = async (): Promise<VpsAgentSnapshot> => {
+    const base = await getVpsAgentBase()
+    const [health, metrics] = await Promise.all([
+      fetchJson(base, "/health").then(parseHealth),
+      fetchJson(base, "/metrics").then(parseMetrics),
+    ])
+    return { health, metrics }
+  }
+  try {
+    return await run()
+  } catch (first) {
+    if (IS_VITE_DEV) throw first
+    invalidateProdVpsBase()
+    return await run()
+  }
 }
 
 export async function loadOllamaModel(model: string, keepAlive = "30m"): Promise<void> {
-  const res = await fetch(`${API_BASE}/ollama/load`, {
+  const base = await getVpsAgentBase()
+  const res = await fetch(`${base}/ollama/load`, {
     method: "POST",
     headers: { "Content-Type": "application/json", accept: "application/json" },
     body: JSON.stringify({ model, keep_alive: keepAlive }),
@@ -276,7 +315,8 @@ export async function loadOllamaModel(model: string, keepAlive = "30m"): Promise
 }
 
 export async function unloadOllamaModel(model: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/ollama/unload`, {
+  const base = await getVpsAgentBase()
+  const res = await fetch(`${base}/ollama/unload`, {
     method: "POST",
     headers: { "Content-Type": "application/json", accept: "application/json" },
     body: JSON.stringify({ model }),
