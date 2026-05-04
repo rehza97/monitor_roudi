@@ -442,6 +442,101 @@ exports.ingestDeploymentMetrics = onRequest({ cors: true }, async (req, res) => 
   res.status(200).json({ ok: true, health })
 })
 
+/**
+ * HTTPS proxy so browser apps on Render / HTTPS can reach the VPS agent at HTTP (mixed content safe).
+ * Deploy: firebase deploy --only functions:vpsAgentProxy
+ * Set secrets (optional): firebase functions:secrets:set VPS_AGENT_PROXY_SECRET
+ * Env: VPS_AGENT_UPSTREAM=http://194.146.13.22:18002 (default)
+ *
+ * Frontend (production): VITE_VPS_AGENT_BASE_URL=https://<region>-<project>.cloudfunctions.net/vpsAgentProxy
+ * If secret set: VITE_VPS_AGENT_PROXY_TOKEN=<same value>
+ */
+exports.vpsAgentProxy = onRequest(
+  { cors: true, timeoutSeconds: 120, memory: "512MiB", invoker: "public" },
+  async (req, res) => {
+    const upstreamBase = process.env.VPS_AGENT_UPSTREAM || "http://194.146.13.22:18002"
+    const secret = process.env.VPS_AGENT_PROXY_SECRET || ""
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("")
+      return
+    }
+
+    if (secret && req.get("x-vps-proxy-token") !== secret) {
+      res.status(401).json({ ok: false, error: "invalid_proxy_token" })
+      return
+    }
+
+    const ou = req.originalUrl || req.url || "/"
+    const u = new URL(ou, "http://internal.local")
+    let pathname = u.pathname
+    const strip = "/vpsAgentProxy"
+    if (pathname === strip || pathname.startsWith(`${strip}/`)) {
+      pathname = pathname.slice(strip.length) || "/"
+    }
+
+    const targetUrl = `${upstreamBase.replace(/\/$/, "")}${pathname}${u.search}`
+
+    const headers = new Headers()
+    const accept = req.get("accept")
+    const ct = req.get("content-type")
+    if (accept) headers.set("accept", accept)
+    if (ct) headers.set("content-type", ct)
+
+    let body
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      if (req.body !== undefined && req.body !== null) {
+        if (Buffer.isBuffer(req.body)) {
+          body = req.body
+        } else if (typeof req.body === "string") {
+          body = Buffer.from(req.body, "utf8")
+        } else if (typeof req.body === "object") {
+          body = Buffer.from(JSON.stringify(req.body), "utf8")
+          if (!headers.has("content-type")) headers.set("content-type", "application/json")
+        }
+      }
+      if (!body && typeof req.rawBody !== "undefined" && Buffer.isBuffer(req.rawBody) && req.rawBody.length) {
+        body = req.rawBody
+      }
+      if (!body) {
+        const chunks = []
+        try {
+          await new Promise((resolve, reject) => {
+            req.on("data", (c) => chunks.push(c))
+            req.on("end", resolve)
+            req.on("error", reject)
+          })
+        } catch {
+          /* ignore */
+        }
+        body = chunks.length ? Buffer.concat(chunks) : undefined
+      }
+    }
+
+    let out
+    try {
+      out = await fetch(targetUrl, {
+        method: req.method,
+        headers,
+        body: body === undefined || body.length === 0 ? undefined : body,
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      res.status(502).json({ ok: false, error: "upstream_unreachable", detail: msg })
+      return
+    }
+
+    res.status(out.status)
+    out.headers.forEach((value, key) => {
+      const kl = key.toLowerCase()
+      if (kl === "transfer-encoding" || kl === "content-encoding") return
+      res.setHeader(key, value)
+    })
+    const buf = Buffer.from(await out.arrayBuffer())
+    res.send(buf)
+  },
+)
+
 exports.syncUserClaims = onDocumentWritten("users/{uid}", async (event) => {
   const after = event.data?.after
   if (!after?.exists) {

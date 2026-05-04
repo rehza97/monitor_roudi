@@ -109,17 +109,24 @@ export type VpsAgentSnapshot = {
 }
 
 /**
- * Production bases are HTTPS-only. Never call http:// from an HTTPS-deployed SPA — the browser blocks it (mixed content).
+ * Browsers block `http://` requests from an `https://` page (mixed content). So
+ * `http://194.146.13.22:18002` cannot be called directly from Render — use one of:
  *
- * Set on Render / hosting:
- *   VITE_VPS_AGENT_BASE_URL=https://your-domain.com/metrics-api
- * Optional extra HTTPS-only fallbacks (comma-separated):
- *   VITE_VPS_AGENT_BASE_URLS=https://a.example/metrics-api,https://b.example/metrics-api
+ * 1) HTTPS nginx path: VITE_VPS_AGENT_BASE_URL=https://your-domain/metrics-api
+ * 2) Firebase `vpsAgentProxy` (server-side HTTP to the agent): set base to
+ *    https://<region>-<project>.cloudfunctions.net/vpsAgentProxy
+ *    Optional shared secret: VPS_AGENT_PROXY_SECRET (functions) +
+ *    VITE_VPS_AGENT_PROXY_TOKEN (build)
+ * 3) Same-origin path: VITE_VPS_AGENT_BASE_URL=/api/vps-agent (only if your host proxies it)
  *
- * If unset, defaults to https://194.146.13.22:18002 (TLS on the agent port). Prefer nginx 443 + path above.
+ * `http://` bases work only when the SPA itself is served over HTTP (e.g. local dev).
  */
 function normalizeAgentBase(url: string): string {
   return url.trim().replace(/\/+$/, "")
+}
+
+function pageIsHttps(): boolean {
+  return typeof window !== "undefined" && window.location.protocol === "https:"
 }
 
 function getProdVpsAgentBases(): string[] {
@@ -137,10 +144,49 @@ function getProdVpsAgentBases(): string[] {
     candidates.push(normalizeAgentBase(single))
   }
 
-  const httpsOnly = candidates.filter((b) => b.startsWith("https://"))
-  if (httpsOnly.length > 0) return httpsOnly
+  const securePage = pageIsHttps()
+
+  if (securePage && candidates.some((b) => b.startsWith("http://"))) {
+    console.warn(
+      "[vps-agent] HTTP agent URLs are ignored on HTTPS (mixed content). Use HTTPS proxy / Cloud Function vpsAgentProxy / nginx.",
+    )
+  }
+
+  const usable = candidates.filter((b) => {
+    if (b.startsWith("https://") || b.startsWith("/")) return true
+    if (b.startsWith("http://")) return !securePage
+    return false
+  })
+
+  if (usable.length > 0) return usable
+
+  if (!securePage) {
+    return ["http://194.146.13.22:18002", "https://194.146.13.22:18002"]
+  }
 
   return ["https://194.146.13.22:18002"]
+}
+
+/** Build absolute URL for fetch (handles same-origin `/path` bases). */
+function joinAgentUrl(base: string, path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`
+  if (base.startsWith("/")) {
+    const origin = typeof window !== "undefined" ? window.location.origin : ""
+    const b = base.endsWith("/") ? base.slice(0, -1) : base
+    return `${origin}${b}${p}`
+  }
+  const b = base.endsWith("/") ? base.slice(0, -1) : base
+  return `${b}${p}`
+}
+
+function vpsFetchHeaders(extra?: Record<string, string>): HeadersInit {
+  const headers: Record<string, string> = {
+    accept: "application/json",
+    ...extra,
+  }
+  const token = (import.meta.env.VITE_VPS_AGENT_PROXY_TOKEN as string | undefined)?.trim()
+  if (token) headers["x-vps-proxy-token"] = token
+  return headers
 }
 
 let cachedProdVpsBase: string | null = null
@@ -154,7 +200,7 @@ async function resolveProdVpsBase(): Promise<string> {
   const bases = getProdVpsAgentBases()
   for (const base of bases) {
     try {
-      const res = await fetch(`${base}/health`, { headers: { accept: "application/json" } })
+      const res = await fetch(joinAgentUrl(base, "/health"), { headers: vpsFetchHeaders() })
       if (res.ok) {
         cachedProdVpsBase = base
         return base
@@ -163,9 +209,11 @@ async function resolveProdVpsBase(): Promise<string> {
       /* try next */
     }
   }
-  throw new Error(
-    "VPS agent unreachable over HTTPS. Set VITE_VPS_AGENT_BASE_URL to your nginx HTTPS proxy (e.g. https://your-domain/metrics-api).",
-  )
+  const hint =
+    pageIsHttps()
+      ? "You cannot use http://194.146.13.22:18002 from an HTTPS site (browser blocks mixed content). Options: nginx HTTPS proxy, or deploy Firebase function vpsAgentProxy and set VITE_VPS_AGENT_BASE_URL to https://<region>-<project>.cloudfunctions.net/vpsAgentProxy — see monitor/functions/index.js."
+      : "Check that the agent is reachable and CORS/proxy settings."
+  throw new Error(`VPS agent unreachable. ${hint}`)
 }
 
 async function getVpsAgentBase(): Promise<string> {
@@ -316,7 +364,7 @@ function parseHealth(raw: unknown): VpsHealth {
 }
 
 async function fetchJson(base: string, path: string): Promise<unknown> {
-  const res = await fetch(`${base}${path}`, { headers: { accept: "application/json" } })
+  const res = await fetch(joinAgentUrl(base, path), { headers: vpsFetchHeaders() })
   if (!res.ok) throw new Error(`VPS agent ${path} failed (${res.status})`)
   return res.json()
 }
@@ -341,9 +389,9 @@ export async function fetchVpsAgentSnapshot(): Promise<VpsAgentSnapshot> {
 
 export async function loadOllamaModel(model: string, keepAlive = "30m"): Promise<void> {
   const base = await getVpsAgentBase()
-  const res = await fetch(`${base}/ollama/load`, {
+  const res = await fetch(joinAgentUrl(base, "/ollama/load"), {
     method: "POST",
-    headers: { "Content-Type": "application/json", accept: "application/json" },
+    headers: vpsFetchHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ model, keep_alive: keepAlive }),
   })
   if (!res.ok) throw new Error(`Ollama load failed (${res.status})`)
@@ -351,9 +399,9 @@ export async function loadOllamaModel(model: string, keepAlive = "30m"): Promise
 
 export async function unloadOllamaModel(model: string): Promise<void> {
   const base = await getVpsAgentBase()
-  const res = await fetch(`${base}/ollama/unload`, {
+  const res = await fetch(joinAgentUrl(base, "/ollama/unload"), {
     method: "POST",
-    headers: { "Content-Type": "application/json", accept: "application/json" },
+    headers: vpsFetchHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ model }),
   })
   if (!res.ok) throw new Error(`Ollama unload failed (${res.status})`)
