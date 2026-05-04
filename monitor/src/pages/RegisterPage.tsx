@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
+import { TechnovaLogo } from "@/components/TechnovaLogo"
 import { useAuth } from "@/contexts/AuthContext"
 import { getDashboardPathForRole } from "@/lib/auth-routing"
 
@@ -54,11 +55,8 @@ export default function RegisterPage() {
       <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-2 cursor-pointer">
-              <div className="size-8 rounded bg-blue-600/10 flex items-center justify-center text-blue-600">
-                <span className="material-symbols-outlined">monitoring</span>
-              </div>
-              <h2 className="text-slate-900 text-lg font-bold tracking-tight">Technova Project</h2>
+            <Link to="/" className="flex items-center min-w-0 max-w-[min(100%,240px)] cursor-pointer">
+              <TechnovaLogo heightClass="h-8" className="max-h-8" />
             </Link>
             <div className="flex items-center gap-4">
               <span className="hidden sm:inline-block text-slate-600 text-sm font-medium">

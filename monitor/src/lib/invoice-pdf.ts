@@ -115,6 +115,20 @@ function statusInfo(status: string): { label: string; color: RGB } {
   return { label: "EN ATTENTE", color: [0.82, 0.50, 0.05] }
 }
 
+// ─── Embedded TECHNOVA raster for PDF header (168×36 RGB, zlib / FlateDecode) ─
+// Regenerate: `node scripts/gen-invoice-logo-hex.mjs`
+
+const INVOICE_LOGO_ZLIB_HEX =
+  "78DAEDDBB90D80301004C02668838C08D17F1314631A4008FC70C68CB5E105481360C45E4A239C7959E5511277EEDCB973E7CE9D3B77EEA1BEDCB9731CCF9D117769EDDEFFD3B2E32E43BA97BC0B0C9C0E70E7CE9D3B77EEDCB973E7CE9D3BF7BFB9EFD3562BDCBFE25E11FD829E3B77EE4DDD6FEAB7762FFF676780BB01EEDCB9731FCF5D32AECAE1DFEFDCBBEDD75574D7C1FB56AF32169D3B7779B9471D88CE3DB63F1F85CE3D7C6F22049D7B0FFB32EFA373CFC801D105EE5C"
+
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  }
+  return out
+}
+
 // ─── Main stream builder ──────────────────────────────────────────────────────
 
 function buildStream(input: InvoicePdfInput): string {
@@ -165,16 +179,22 @@ function buildStream(input: InvoicePdfInput): string {
   // ── 1. Dark navy header band (top of page) ─────────────────────────────────
   const HEADER_H   = 110
   const HEADER_BOT = H - HEADER_H
+  const LOGO_W_PT = 112
+  const LOGO_H_PT = 24
+  const LOGO_X = ML
+  const LOGO_Y = HEADER_BOT + (HEADER_H - LOGO_H_PT) / 2
+  const HL = ML + LOGO_W_PT + 14
 
   ops.push(fillRect(0, HEADER_BOT, W, HEADER_H, NAVY))
+  ops.push(`q ${LOGO_W_PT} 0 0 ${LOGO_H_PT} ${LOGO_X} ${LOGO_Y} cm /Logo Do Q`)
 
-  // Left: company name + tagline
-  ops.push(text(ML, H - 30, companyName, 22, "F2", WHITE))
-  ops.push(text(ML, H - 46, companyTagline, 9, "F1", [0.65, 0.72, 0.85]))
-  ops.push(hline(ML, ML + 160, H - 52, [0.30, 0.40, 0.60], 0.5))
-  ops.push(text(ML, H - 64, companyAddress, 8, "F1", [0.55, 0.62, 0.75]))
-  ops.push(text(ML, H - 76, companyEmail, 8, "F1", [0.55, 0.62, 0.75]))
-  ops.push(text(ML, H - 88, companyPhone, 8, "F1", [0.55, 0.62, 0.75]))
+  // Left: company name + tagline (starts after logo)
+  ops.push(text(HL, H - 30, companyName, 22, "F2", WHITE))
+  ops.push(text(HL, H - 46, companyTagline, 9, "F1", [0.65, 0.72, 0.85]))
+  ops.push(hline(HL, HL + 160, H - 52, [0.30, 0.40, 0.60], 0.5))
+  ops.push(text(HL, H - 64, companyAddress, 8, "F1", [0.55, 0.62, 0.75]))
+  ops.push(text(HL, H - 76, companyEmail, 8, "F1", [0.55, 0.62, 0.75]))
+  ops.push(text(HL, H - 88, companyPhone, 8, "F1", [0.55, 0.62, 0.75]))
 
   // Right: document label + number + status pill
   ops.push(text(W - MR - 210, H - 30, documentLabel, documentLabel.length > 12 ? 19 : 26, "F2", WHITE))
@@ -327,31 +347,79 @@ function buildStream(input: InvoicePdfInput): string {
 
 // ─── PDF structure builder ────────────────────────────────────────────────────
 
+function concatParts(parts: Uint8Array[]): Uint8Array {
+  let n = 0
+  for (const p of parts) n += p.length
+  const out = new Uint8Array(n)
+  let o = 0
+  for (const p of parts) {
+    out.set(p, o)
+    o += p.length
+  }
+  return out
+}
+
 function buildPdfBytes(input: InvoicePdfInput): Uint8Array {
   const stream = buildStream(input)
-  const objects = [
-    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-    "2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n",
-    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj\n",
-    `4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`,
-    "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-    "6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n",
+  const logoZlib = hexToBytes(INVOICE_LOGO_ZLIB_HEX)
+  const enc = new TextEncoder()
+
+  const obj1 = enc.encode("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+  const obj2 = enc.encode("2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n")
+  const obj3 = enc.encode(
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Logo 7 0 R >> >> >>\nendobj\n",
+  )
+  const obj4Head = enc.encode(`4 0 obj\n<< /Length ${stream.length} >>\nstream\n`)
+  const streamBytes = enc.encode(stream)
+  const obj4Tail = enc.encode("endstream\nendobj\n")
+  const obj5 = enc.encode("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+  const obj6 = enc.encode("6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n")
+  const obj7Head = enc.encode(
+    `7 0 obj\n<< /Type /XObject /Subtype /Image /Width 168 /Height 36 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${logoZlib.length} >>\nstream\n`,
+  )
+  const obj7Tail = enc.encode("\nendstream\nendobj\n")
+
+  const header = enc.encode("%PDF-1.4\n")
+  const chunks: Uint8Array[] = [
+    header,
+    obj1,
+    obj2,
+    obj3,
+    obj4Head,
+    streamBytes,
+    obj4Tail,
+    obj5,
+    obj6,
+    obj7Head,
+    logoZlib,
+    obj7Tail,
   ]
 
-  let body = "%PDF-1.4\n"
-  const offsets: number[] = [0]
-  for (const obj of objects) {
-    offsets.push(body.length)
-    body += obj
+  const objOffset: number[] = []
+  let p = header.length
+  objOffset[1] = p
+  p += obj1.length
+  objOffset[2] = p
+  p += obj2.length
+  objOffset[3] = p
+  p += obj3.length
+  objOffset[4] = p
+  p += obj4Head.length + streamBytes.length + obj4Tail.length
+  objOffset[5] = p
+  p += obj5.length
+  objOffset[6] = p
+  p += obj6.length
+  objOffset[7] = p
+  p += obj7Head.length + logoZlib.length + obj7Tail.length
+
+  const mainBody = concatParts(chunks)
+  const xrefStart = mainBody.length
+  let xref = `xref\n0 8\n0000000000 65535 f \n`
+  for (let i = 1; i <= 7; i++) {
+    xref += `${String(objOffset[i]!).padStart(10, "0")} 00000 n \n`
   }
-  const xrefOffset = body.length
-  body += `xref\n0 ${offsets.length}\n`
-  body += "0000000000 65535 f \n"
-  for (let i = 1; i < offsets.length; i++) {
-    body += `${String(offsets[i]!).padStart(10, "0")} 00000 n \n`
-  }
-  body += `trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
-  return new TextEncoder().encode(body)
+  xref += `trailer\n<< /Size 8 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`
+  return concatParts([mainBody, enc.encode(xref)])
 }
 
 export function buildInvoicePdfDataUri(input: InvoicePdfInput): string {

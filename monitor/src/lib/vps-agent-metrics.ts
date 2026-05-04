@@ -108,8 +108,40 @@ export type VpsAgentSnapshot = {
   metrics: VpsMetrics
 }
 
-/** Production: try HTTPS first (avoids mixed-content issues when the SPA is on HTTPS), then HTTP. */
-const PROD_VPS_AGENT_BASES = ["https://194.146.13.22:18002", "http://194.146.13.22:18002"] as const
+/**
+ * Production bases are HTTPS-only. Never call http:// from an HTTPS-deployed SPA — the browser blocks it (mixed content).
+ *
+ * Set on Render / hosting:
+ *   VITE_VPS_AGENT_BASE_URL=https://your-domain.com/metrics-api
+ * Optional extra HTTPS-only fallbacks (comma-separated):
+ *   VITE_VPS_AGENT_BASE_URLS=https://a.example/metrics-api,https://b.example/metrics-api
+ *
+ * If unset, defaults to https://194.146.13.22:18002 (TLS on the agent port). Prefer nginx 443 + path above.
+ */
+function normalizeAgentBase(url: string): string {
+  return url.trim().replace(/\/+$/, "")
+}
+
+function getProdVpsAgentBases(): string[] {
+  const multi = import.meta.env.VITE_VPS_AGENT_BASE_URLS as string | undefined
+  const single = import.meta.env.VITE_VPS_AGENT_BASE_URL as string | undefined
+
+  const candidates: string[] = []
+  if (multi?.trim()) {
+    for (const part of multi.split(",")) {
+      const b = normalizeAgentBase(part)
+      if (b) candidates.push(b)
+    }
+  }
+  if (candidates.length === 0 && single?.trim()) {
+    candidates.push(normalizeAgentBase(single))
+  }
+
+  const httpsOnly = candidates.filter((b) => b.startsWith("https://"))
+  if (httpsOnly.length > 0) return httpsOnly
+
+  return ["https://194.146.13.22:18002"]
+}
 
 let cachedProdVpsBase: string | null = null
 
@@ -119,7 +151,8 @@ function invalidateProdVpsBase() {
 
 async function resolveProdVpsBase(): Promise<string> {
   if (cachedProdVpsBase) return cachedProdVpsBase
-  for (const base of PROD_VPS_AGENT_BASES) {
+  const bases = getProdVpsAgentBases()
+  for (const base of bases) {
     try {
       const res = await fetch(`${base}/health`, { headers: { accept: "application/json" } })
       if (res.ok) {
@@ -130,7 +163,9 @@ async function resolveProdVpsBase(): Promise<string> {
       /* try next */
     }
   }
-  throw new Error("VPS agent unreachable (tried HTTPS and HTTP)")
+  throw new Error(
+    "VPS agent unreachable over HTTPS. Set VITE_VPS_AGENT_BASE_URL to your nginx HTTPS proxy (e.g. https://your-domain/metrics-api).",
+  )
 }
 
 async function getVpsAgentBase(): Promise<string> {

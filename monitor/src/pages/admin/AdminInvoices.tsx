@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from "@/lib/firebase-firestore"
+import { TechnovaLogo } from "@/components/TechnovaLogo"
 import { buildInvoicePdfDataUri, downloadInvoicePdf } from "@/lib/invoice-pdf"
 import { formatFirestoreDate } from "@/lib/utils"
 
@@ -151,7 +152,9 @@ export default function AdminInvoices() {
           const cfg = cfgSnap.data() as FirestorePlatformConfig
           company = cfg.invoiceConfig
         }
-      } catch {}
+      } catch {
+        /* invoice branding falls back to defaults */
+      }
 
       const pdfUrl = buildInvoicePdfDataUri({
         invoiceNumber: inv.id,
@@ -308,10 +311,10 @@ export default function AdminInvoices() {
 
             {/* Invoice header — mimics letterhead */}
             <div className="bg-[#1c2840] px-8 py-6 flex items-start justify-between gap-6">
-              <div>
-                <p className="text-white font-bold text-xl tracking-tight">TECHNOVA</p>
-                <p className="text-slate-300 text-xs mt-0.5">Digital Systems & Monitoring</p>
-                <p className="text-slate-400 text-xs mt-3 leading-relaxed">
+              <div className="min-w-0 space-y-3">
+                <TechnovaLogo heightClass="h-11" onDark className="max-h-11 max-w-full" />
+                <p className="text-slate-300 text-xs">Digital Systems & Monitoring</p>
+                <p className="text-slate-400 text-xs leading-relaxed">
                   Alger, Algérie<br />
                   contact@technova.dz &nbsp;·&nbsp; +213 XX XX XX XX
                 </p>

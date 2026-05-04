@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
+import { TechnovaLogo } from "@/components/TechnovaLogo"
 import { useAuth } from "@/contexts/AuthContext"
 
 type DemoAccount = {
@@ -74,11 +75,8 @@ export default function LoginPage() {
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-100 p-4 font-sans">
       <div className="w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
         <div className="p-8 pb-4 text-center">
-          <div className="mb-6 inline-flex items-center justify-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-slate-900 text-white">
-              <span className="material-symbols-outlined text-[20px]">deployed_code</span>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Projet Technova</h1>
+          <div className="mb-6 flex justify-center px-2">
+            <TechnovaLogo heightClass="h-10 sm:h-11" className="max-h-11" />
           </div>
           <h2 className="mb-2 text-2xl font-bold text-slate-900">Connexion à votre espace</h2>
           <p className="text-sm text-slate-500">Entrez vos identifiants pour accéder au tableau de bord de monitoring.</p>

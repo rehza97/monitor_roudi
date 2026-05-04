@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" fill="none" aria-hidden="true">
+  <title>TECHNOVA</title>
+  <g transform="translate(4,6)">
+    <!-- Laptop base -->
+    <path fill="#2d343a" d="M4 22h28v2H4v-2zm2-14h24c1.1 0 2 .9 2 2v12H4V10c0-1.1.9-2 2-2z"/>
+    <!-- Pixels -->
+    <rect x="28" y="4" width="3" height="3" fill="#2d343a" rx="0.5"/>
+    <rect x="32" y="2" width="3" height="3" fill="#2d343a" rx="0.5"/>
+    <rect x="36" y="4" width="3" height="3" fill="#2d343a" rx="0.5"/>
+    <rect x="40" y="1" width="3" height="3" fill="#2d343a" rx="0.5"/>
+    <!-- Red swoosh + wrench circle -->
+    <path fill="none" stroke="#db143c" stroke-width="2.2" stroke-linecap="round"
+      d="M2 26c6-10 14-14 22-12c4 1 7 4 8 8"/>
+    <circle cx="18" cy="28" r="3.5" stroke="#db143c" stroke-width="2" fill="none"/>
+    <!-- Wordmark -->
+    <text x="52" y="22" fill="#2d343a" font-family="system-ui,Segoe UI,Helvetica,Arial,sans-serif" font-size="15" font-weight="800" letter-spacing="0.06em">TECHNOVA</text>
+  </g>
+</svg>

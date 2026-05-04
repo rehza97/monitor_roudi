@@ -728,7 +728,7 @@ export default function AdminMonitoring() {
                 <h3 className="text-xl font-black text-slate-900">Métriques VPS</h3>
               </div>
               <p className="mt-1 text-sm text-slate-500">
-                Source: https://194.146.13.22:18002 + http://194.146.13.22:18002 (HTTPS puis HTTP) /health + /metrics + /containers
+                Source: VPS agent via HTTPS only (see VITE_VPS_AGENT_BASE_URL) — /health + /metrics + /containers
                 {metricsUpdatedAt ? ` · MAJ ${metricsUpdatedAt.toLocaleTimeString("fr-DZ", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}
               </p>
             </div>

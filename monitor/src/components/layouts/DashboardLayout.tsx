@@ -8,6 +8,7 @@ import {
 } from "@/lib/dashboard-header-routing"
 import { useClientSidebarBadges } from "@/hooks/useClientSidebarBadges"
 import AdminSidebar, { ADMIN_SIDEBAR_OFFSET_CLASS } from "@/components/layouts/AdminSidebar"
+import { TechnovaLogo } from "@/components/TechnovaLogo"
 
 export type Role = "client" | "admin" | "engineer" | "technician"
 
@@ -35,7 +36,6 @@ const roleConfig: Record<Role, {
   activeText: string
   hoverBg: string
   dotColor: string
-  logoIcon: string
   logoText: string
   label: string
   switchIcon: string
@@ -46,7 +46,6 @@ const roleConfig: Record<Role, {
     activeText: "text-cyan-400",
     hoverBg:    "hover:bg-white/5",
     dotColor:   "bg-cyan-400",
-    logoIcon:   "monitoring",
     logoText:   "Espace Client",
     label:      "Client",
     switchIcon: "person",
@@ -57,7 +56,6 @@ const roleConfig: Record<Role, {
     activeText: "text-rose-400",
     hoverBg:    "hover:bg-white/5",
     dotColor:   "bg-rose-400",
-    logoIcon:   "admin_panel_settings",
     logoText:   "Administration",
     label:      "Admin",
     switchIcon: "shield_person",
@@ -68,7 +66,6 @@ const roleConfig: Record<Role, {
     activeText: "text-blue-400",
     hoverBg:    "hover:bg-white/5",
     dotColor:   "bg-blue-400",
-    logoIcon:   "code",
     logoText:   "Espace Ingénieur",
     label:      "Ingénieur",
     switchIcon: "code",
@@ -79,7 +76,6 @@ const roleConfig: Record<Role, {
     activeText: "text-amber-400",
     hoverBg:    "hover:bg-white/5",
     dotColor:   "bg-amber-400",
-    logoIcon:   "build",
     logoText:   "Espace Technicien",
     label:      "Technicien",
     switchIcon: "build",
@@ -314,14 +310,9 @@ export default function DashboardLayout({
         />
       ) : isClient ? (
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 h-screen fixed left-0 top-0 z-20">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-          <div className="bg-[#0891b2]/10 p-2 rounded-lg">
-            <span className="material-symbols-outlined text-[#0891b2] text-2xl">grid_view</span>
-          </div>
-          <div>
-            <h1 className="text-slate-900 text-base font-bold leading-tight">Projet Technova</h1>
-            <p className="text-slate-500 text-xs font-medium">Espace Client</p>
-          </div>
+        <div className="p-6 border-b border-slate-100 flex flex-col gap-2">
+          <TechnovaLogo heightClass="h-9" className="max-h-9 max-w-full" />
+          <p className="text-slate-500 text-xs font-medium">Espace Client</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1">
@@ -368,7 +359,8 @@ export default function DashboardLayout({
         className="hidden md:flex flex-col w-64 shrink-0 bg-white border-r border-slate-200 h-screen"
         style={{ width: "var(--sidebar-width)" }}
       >
-        <div className="p-6 border-b border-slate-200">
+        <div className="p-6 border-b border-slate-200 space-y-4">
+          <TechnovaLogo heightClass="h-8" className="max-h-8 max-w-full" />
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="h-12 w-12 rounded-full ring-2 ring-[#2463eb]/30 bg-[#2463eb]/10 flex items-center justify-center text-sm font-bold text-[#2463eb]">
@@ -423,7 +415,11 @@ export default function DashboardLayout({
       ) : isTechnician ? (
       <aside className="hidden md:flex flex-col w-72 shrink-0 h-screen bg-[#181611] border-r border-[#3a3527]">
         <div className="flex flex-col flex-1 min-h-0 p-4">
-          <div className="flex gap-3 items-center px-2 shrink-0">
+          <div className="px-2 shrink-0">
+            <TechnovaLogo heightClass="h-8" onDark className="max-h-8 max-w-full" />
+          </div>
+
+          <div className="flex gap-3 items-center px-2 shrink-0 mt-6">
             <div className="rounded-full h-10 w-10 ring-2 ring-[#f9bc06]/20 bg-[#3a3527] flex items-center justify-center text-sm font-bold text-[#f9bc06] shrink-0">
               {displayInitials}
             </div>
@@ -433,7 +429,7 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto flex flex-col gap-2 mt-8 min-h-0">
+          <nav className="flex-1 overflow-y-auto flex flex-col gap-2 mt-6 min-h-0">
             {sidebarNavItems.map((item) => {
               const isActive =
                 location.pathname === item.to ||
@@ -478,17 +474,9 @@ export default function DashboardLayout({
         className="flex flex-col w-64 shrink-0 border-r bg-slate-900 border-white/5"
         style={{ width: "var(--sidebar-width)" }}
       >
-        <div className={`flex items-center gap-3 px-5 h-16 border-b shrink-0 ${isAdmin ? "border-gray-100" : "border-white/5"}`}>
-          <div
-            className="size-8 rounded-lg flex items-center justify-center text-white text-sm shrink-0"
-            style={{ backgroundColor: cfg.brand }}
-          >
-            <span className="material-symbols-outlined text-[20px]">{cfg.logoIcon}</span>
-          </div>
-          <div className="min-w-0">
-            <p className={`text-sm font-bold truncate leading-tight ${isAdmin ? "text-[#181112]" : "text-white"}`}>Projet Technova</p>
-            <p className={`text-xs truncate leading-tight ${isAdmin ? "text-[#896169]" : "text-slate-400"}`}>{cfg.logoText}</p>
-          </div>
+        <div className={`flex flex-col gap-2 px-5 py-4 border-b shrink-0 ${isAdmin ? "border-gray-100" : "border-white/5"}`}>
+          <TechnovaLogo heightClass="h-8" onDark className="max-h-8 max-w-full" />
+          <p className={`text-xs truncate leading-tight ${isAdmin ? "text-[#896169]" : "text-slate-400"}`}>{cfg.logoText}</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">

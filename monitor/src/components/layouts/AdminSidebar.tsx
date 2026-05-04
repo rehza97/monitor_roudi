@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom"
+import { TechnovaLogo } from "@/components/TechnovaLogo"
 
 export const ADMIN_SIDEBAR_WIDTH_CLASS = "w-72"
 export const ADMIN_SIDEBAR_OFFSET_CLASS = "ml-72"
@@ -36,14 +37,9 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   return (
     <aside className={`${ADMIN_SIDEBAR_WIDTH_CLASS} flex flex-col h-screen bg-white border-r border-gray-200 fixed left-0 top-0 z-50`}>
-      <div className="flex items-center gap-3 p-6 border-b border-gray-100">
-        <div className="bg-[#db143c]/10 rounded-full h-10 w-10 flex items-center justify-center text-[#db143c]">
-          <span className="material-symbols-outlined">admin_panel_settings</span>
-        </div>
-        <div className="flex flex-col">
-          <h1 className="text-[#181112] text-base font-bold leading-tight">Projet Technova</h1>
-          <p className="text-[#896169] text-xs font-medium">Administrateur</p>
-        </div>
+      <div className="flex flex-col gap-3 p-6 border-b border-gray-100">
+        <TechnovaLogo heightClass="h-9" className="max-h-9 max-w-full" />
+        <p className="text-[#896169] text-xs font-medium">Administrateur</p>
       </div>
 
       <nav className="flex flex-col gap-1 p-4 overflow-y-auto flex-1">

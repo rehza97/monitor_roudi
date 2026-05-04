@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { getDashboardPathForRole } from "@/lib/auth-routing"
+import { TechnovaLogo } from "@/components/TechnovaLogo"
 
 interface PublicLayoutProps {
   children: React.ReactNode
@@ -22,11 +23,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link to="/" className="flex items-center gap-3">
-                <div className="size-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-[20px]">terminal</span>
-                </div>
-                <span className="text-xl font-bold tracking-tight text-slate-900">Projet Technova</span>
+              <Link to="/" className="flex items-center min-w-0 max-w-[min(100%,240px)]">
+                <TechnovaLogo heightClass="h-8" className="max-h-8" />
               </Link>
               <nav className="hidden md:flex items-center gap-6">
                 {[
@@ -91,11 +89,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             {/* Brand */}
             <div className="col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="size-6 rounded bg-blue-600 text-white flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[16px]">terminal</span>
-                </div>
-                <span className="text-lg font-bold text-slate-900">Projet Technova</span>
+              <div className="mb-4">
+                <TechnovaLogo heightClass="h-7" className="max-h-7" />
               </div>
               <p className="text-sm text-slate-500 leading-relaxed">
                 Solutions de monitoring et d'analyse pour les développeurs modernes.
