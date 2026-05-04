@@ -1,11 +1,8 @@
 import { ENGINEER_REMOTE_DEFAULTS } from "./engineerRemoteHardcoded"
 
-/**
- * Remote SSH WebSocket + credential defaults (no .env).
- * - `websocketUrl` empty: use same-origin `ws(s)://<host>/__dev/ssh/ws` (integrated `npm run dev`).
- * - For `vite preview` + `npm run ssh-bridge`, set e.g. `ws://127.0.0.1:8765` (see `scripts/ssh-bridge-server.mjs` port).
- */
-export const REMOTE_SSH_WEBSOCKET_URL = ""
+// Dev: Vite handles wss via /__dev/ssh/ws. Prod: dedicated Render web service.
+const IS_DEV = typeof __APP_IS_DEV__ !== "undefined" && __APP_IS_DEV__
+export const REMOTE_SSH_WEBSOCKET_URL = IS_DEV ? "" : "wss://roudi-ssh-bridge.onrender.com"
 
 export const REMOTE_SSH_DEFAULT_HOST = ENGINEER_REMOTE_DEFAULTS.host
 export const REMOTE_SSH_DEFAULT_PORT = ENGINEER_REMOTE_DEFAULTS.port

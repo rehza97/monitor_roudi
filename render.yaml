@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: roudi-ssh-bridge
+    runtime: node
+    rootDir: monitor
+    buildCommand: npm install
+    startCommand: npm run ssh-bridge
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production

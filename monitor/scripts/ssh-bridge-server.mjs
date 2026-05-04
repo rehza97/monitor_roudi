@@ -7,8 +7,8 @@ import http from "node:http"
 import { Client } from "ssh2"
 import { WebSocketServer } from "ws"
 
-const PORT = 8765
-const BIND = "127.0.0.1"
+const PORT = process.env.PORT ? Number(process.env.PORT) : 8765
+const BIND = "0.0.0.0"
 
 /** @typedef {{ type: 'connect'; host: string; port?: number; username: string; password?: string; privateKey?: string } | { type: 'input'; data: string } | { type: 'resize'; cols: number; rows: number } | { type: 'disconnect' }} SshSocketIncoming */
 
@@ -126,5 +126,5 @@ wss.on("connection", (ws) => {
 })
 
 server.listen(PORT, BIND, () => {
-  console.log(`[ssh-bridge] ws://${BIND}:${PORT} (protocol compatible with Engineer Remote SSH UI)`)
+  console.log(`[ssh-bridge] listening on ${BIND}:${PORT}`)
 })
