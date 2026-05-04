@@ -108,63 +108,16 @@ export type VpsAgentSnapshot = {
   metrics: VpsMetrics
 }
 
-/**
- * Browsers block `http://` requests from an `https://` page (mixed content). So
- * `http://194.146.13.22:18002` cannot be called directly from Render — use one of:
- *
- * 1) HTTPS nginx path: VITE_VPS_AGENT_BASE_URL=https://your-domain/metrics-api
- * 2) Firebase `vpsAgentProxy` (server-side HTTP to the agent): set base to
- *    https://<region>-<project>.cloudfunctions.net/vpsAgentProxy
- *    Optional shared secret: VPS_AGENT_PROXY_SECRET (functions) +
- *    VITE_VPS_AGENT_PROXY_TOKEN (build)
- * 3) Same-origin path: VITE_VPS_AGENT_BASE_URL=/api/vps-agent (only if your host proxies it)
- *
- * `http://` bases work only when the SPA itself is served over HTTP (e.g. local dev).
- */
-function normalizeAgentBase(url: string): string {
-  return url.trim().replace(/\/+$/, "")
-}
+const VPS_AGENT_PROXY = "https://us-central1-roudi-monitor-app.cloudfunctions.net/vpsAgentProxy"
+const VPS_AGENT_DIRECT = "http://194.146.13.22:18002"
 
 function pageIsHttps(): boolean {
   return typeof window !== "undefined" && window.location.protocol === "https:"
 }
 
 function getProdVpsAgentBases(): string[] {
-  const multi = import.meta.env.VITE_VPS_AGENT_BASE_URLS as string | undefined
-  const single = import.meta.env.VITE_VPS_AGENT_BASE_URL as string | undefined
-
-  const candidates: string[] = []
-  if (multi?.trim()) {
-    for (const part of multi.split(",")) {
-      const b = normalizeAgentBase(part)
-      if (b) candidates.push(b)
-    }
-  }
-  if (candidates.length === 0 && single?.trim()) {
-    candidates.push(normalizeAgentBase(single))
-  }
-
-  const securePage = pageIsHttps()
-
-  if (securePage && candidates.some((b) => b.startsWith("http://"))) {
-    console.warn(
-      "[vps-agent] HTTP agent URLs are ignored on HTTPS (mixed content). Use HTTPS proxy / Cloud Function vpsAgentProxy / nginx.",
-    )
-  }
-
-  const usable = candidates.filter((b) => {
-    if (b.startsWith("https://") || b.startsWith("/")) return true
-    if (b.startsWith("http://")) return !securePage
-    return false
-  })
-
-  if (usable.length > 0) return usable
-
-  if (!securePage) {
-    return ["http://194.146.13.22:18002", "https://194.146.13.22:18002"]
-  }
-
-  return ["https://194.146.13.22:18002"]
+  if (pageIsHttps()) return [VPS_AGENT_PROXY]
+  return [VPS_AGENT_DIRECT, VPS_AGENT_PROXY]
 }
 
 /** Build absolute URL for fetch (handles same-origin `/path` bases). */
@@ -180,13 +133,7 @@ function joinAgentUrl(base: string, path: string): string {
 }
 
 function vpsFetchHeaders(extra?: Record<string, string>): HeadersInit {
-  const headers: Record<string, string> = {
-    accept: "application/json",
-    ...extra,
-  }
-  const token = (import.meta.env.VITE_VPS_AGENT_PROXY_TOKEN as string | undefined)?.trim()
-  if (token) headers["x-vps-proxy-token"] = token
-  return headers
+  return { accept: "application/json", ...extra }
 }
 
 let cachedProdVpsBase: string | null = null
@@ -209,11 +156,7 @@ async function resolveProdVpsBase(): Promise<string> {
       /* try next */
     }
   }
-  const hint =
-    pageIsHttps()
-      ? "You cannot use http://194.146.13.22:18002 from an HTTPS site (browser blocks mixed content). Options: nginx HTTPS proxy, or deploy Firebase function vpsAgentProxy and set VITE_VPS_AGENT_BASE_URL to https://<region>-<project>.cloudfunctions.net/vpsAgentProxy — see monitor/functions/index.js."
-      : "Check that the agent is reachable and CORS/proxy settings."
-  throw new Error(`VPS agent unreachable. ${hint}`)
+  throw new Error("VPS agent unreachable. Check that the VPS is online and the Firebase proxy is deployed.")
 }
 
 async function getVpsAgentBase(): Promise<string> {
