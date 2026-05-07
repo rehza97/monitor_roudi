@@ -312,7 +312,7 @@ export default function AdminInvoices() {
             {/* Invoice header — mimics letterhead */}
             <div className="bg-[#1c2840] px-8 py-6 flex items-start justify-between gap-6">
               <div className="min-w-0 space-y-3">
-                <TechnovaLogo heightClass="h-11" onDark className="max-h-11 max-w-full" />
+                <TechnovaLogo heightClass="h-16" onDark className="max-h-16 max-w-full" />
                 <p className="text-slate-300 text-xs">Digital Systems & Monitoring</p>
                 <p className="text-slate-400 text-xs leading-relaxed">
                   Alger, Algérie<br />

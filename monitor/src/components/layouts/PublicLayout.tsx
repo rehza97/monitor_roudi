@@ -24,7 +24,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
               <Link to="/" className="flex items-center min-w-0 max-w-[min(100%,240px)]">
-                <TechnovaLogo heightClass="h-8" className="max-h-8" />
+                <TechnovaLogo heightClass="h-12" className="max-h-12" />
               </Link>
               <nav className="hidden md:flex items-center gap-6">
                 {[
@@ -90,7 +90,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
             {/* Brand */}
             <div className="col-span-1">
               <div className="mb-4">
-                <TechnovaLogo heightClass="h-7" className="max-h-7" />
+                <TechnovaLogo heightClass="h-11" className="max-h-11" />
               </div>
               <p className="text-sm text-slate-500 leading-relaxed">
                 Solutions de monitoring et d'analyse pour les développeurs modernes.

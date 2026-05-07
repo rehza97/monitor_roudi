@@ -38,7 +38,7 @@ export default function AdminSidebar({
   return (
     <aside className={`${ADMIN_SIDEBAR_WIDTH_CLASS} flex flex-col h-screen bg-white border-r border-gray-200 fixed left-0 top-0 z-50`}>
       <div className="flex flex-col gap-3 p-6 border-b border-gray-100">
-        <TechnovaLogo heightClass="h-9" className="max-h-9 max-w-full" />
+        <TechnovaLogo heightClass="h-14" className="max-h-14 max-w-full" />
         <p className="text-[#896169] text-xs font-medium">Administrateur</p>
       </div>
 

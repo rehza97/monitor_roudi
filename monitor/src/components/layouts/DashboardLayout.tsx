@@ -311,7 +311,7 @@ export default function DashboardLayout({
       ) : isClient ? (
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 h-screen fixed left-0 top-0 z-20">
         <div className="p-6 border-b border-slate-100 flex flex-col gap-2">
-          <TechnovaLogo heightClass="h-9" className="max-h-9 max-w-full" />
+          <TechnovaLogo heightClass="h-14" className="max-h-14 max-w-full" />
           <p className="text-slate-500 text-xs font-medium">Espace Client</p>
         </div>
 
@@ -360,7 +360,7 @@ export default function DashboardLayout({
         style={{ width: "var(--sidebar-width)" }}
       >
         <div className="p-6 border-b border-slate-200 space-y-4">
-          <TechnovaLogo heightClass="h-8" className="max-h-8 max-w-full" />
+          <TechnovaLogo heightClass="h-12" className="max-h-12 max-w-full" />
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="h-12 w-12 rounded-full ring-2 ring-[#2463eb]/30 bg-[#2463eb]/10 flex items-center justify-center text-sm font-bold text-[#2463eb]">
@@ -416,7 +416,7 @@ export default function DashboardLayout({
       <aside className="hidden md:flex flex-col w-72 shrink-0 h-screen bg-[#181611] border-r border-[#3a3527]">
         <div className="flex flex-col flex-1 min-h-0 p-4">
           <div className="px-2 shrink-0">
-            <TechnovaLogo heightClass="h-8" onDark className="max-h-8 max-w-full" />
+            <TechnovaLogo heightClass="h-12" onDark className="max-h-12 max-w-full" />
           </div>
 
           <div className="flex gap-3 items-center px-2 shrink-0 mt-6">
@@ -475,7 +475,7 @@ export default function DashboardLayout({
         style={{ width: "var(--sidebar-width)" }}
       >
         <div className={`flex flex-col gap-2 px-5 py-4 border-b shrink-0 ${isAdmin ? "border-gray-100" : "border-white/5"}`}>
-          <TechnovaLogo heightClass="h-8" onDark className="max-h-8 max-w-full" />
+          <TechnovaLogo heightClass="h-12" onDark className="max-h-12 max-w-full" />
           <p className={`text-xs truncate leading-tight ${isAdmin ? "text-[#896169]" : "text-slate-400"}`}>{cfg.logoText}</p>
         </div>
 

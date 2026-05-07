@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-const LOGO_SRC = "/branding/technova-logo.svg"
+const LOGO_SRC = "/n_logo.jpeg"
 
 export type TechnovaLogoProps = {
   className?: string
@@ -15,9 +15,9 @@ export function TechnovaLogo({ className, heightClass = "h-8", onDark }: Technov
     <img
       src={LOGO_SRC}
       alt="TECHNOVA"
-      className={cn(heightClass, "w-auto max-w-[min(100%,220px)] object-contain object-left", className)}
-      width={220}
-      height={40}
+      className={cn(heightClass, "w-auto max-w-[min(100%,320px)] object-contain object-left", className)}
+      width={1254}
+      height={1254}
       decoding="async"
     />
   )

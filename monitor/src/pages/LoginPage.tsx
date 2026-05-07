@@ -76,7 +76,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
         <div className="p-8 pb-4 text-center">
           <div className="mb-6 flex justify-center px-2">
-            <TechnovaLogo heightClass="h-10 sm:h-11" className="max-h-11" />
+            <TechnovaLogo heightClass="h-14 sm:h-16" className="max-h-16" />
           </div>
           <h2 className="mb-2 text-2xl font-bold text-slate-900">Connexion à votre espace</h2>
           <p className="text-sm text-slate-500">Entrez vos identifiants pour accéder au tableau de bord de monitoring.</p>
