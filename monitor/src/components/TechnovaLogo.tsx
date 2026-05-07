@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 
 const LOGO_SRC = "/n_logo.jpeg"
+const SIDEBAR_LOGO_SRC = "/verti_logo.jpeg"
 
 export type TechnovaLogoProps = {
   className?: string
@@ -18,6 +19,29 @@ export function TechnovaLogo({ className, heightClass = "h-8", onDark }: Technov
       className={cn(heightClass, "w-auto max-w-[min(100%,320px)] object-contain object-left", className)}
       width={1254}
       height={1254}
+      decoding="async"
+    />
+  )
+
+  if (onDark) {
+    return (
+      <span className="inline-flex max-w-full min-w-0 rounded-md bg-white px-2 py-1 shadow-sm ring-1 ring-black/10">
+        {img}
+      </span>
+    )
+  }
+
+  return <span className="inline-flex max-w-full min-w-0">{img}</span>
+}
+
+export function TechnovaSidebarLogo({ className, heightClass = "h-9", onDark }: TechnovaLogoProps) {
+  const img = (
+    <img
+      src={SIDEBAR_LOGO_SRC}
+      alt="TechNova"
+      className={cn(heightClass, "w-auto max-w-full object-contain object-left", className)}
+      width={1024}
+      height={409}
       decoding="async"
     />
   )
