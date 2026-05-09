@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 
-const LOGO_SRC = "/n_logo.jpeg"
-const SIDEBAR_LOGO_SRC = "/verti_logo.jpeg"
+const LOGO_SRC = "/n_logo.png"
+const SIDEBAR_LOGO_SRC = "/verti_logo.png"
 
 export type TechnovaLogoProps = {
   className?: string
@@ -11,12 +11,20 @@ export type TechnovaLogoProps = {
   onDark?: boolean
 }
 
-export function TechnovaLogo({ className, heightClass = "h-8", onDark }: TechnovaLogoProps) {
+export function TechnovaLogo({
+  className,
+  heightClass = "h-8",
+  onDark,
+}: TechnovaLogoProps) {
   const img = (
     <img
       src={LOGO_SRC}
       alt="TECHNOVA"
-      className={cn(heightClass, "w-auto max-w-[min(100%,320px)] object-contain object-left", className)}
+      className={cn(
+        heightClass,
+        "w-auto max-w-[min(100%,320px)] object-contain object-left",
+        className
+      )}
       width={1254}
       height={1254}
       decoding="async"
@@ -34,12 +42,20 @@ export function TechnovaLogo({ className, heightClass = "h-8", onDark }: Technov
   return <span className="inline-flex max-w-full min-w-0">{img}</span>
 }
 
-export function TechnovaSidebarLogo({ className, heightClass = "h-9", onDark }: TechnovaLogoProps) {
+export function TechnovaSidebarLogo({
+  className,
+  heightClass = "h-9",
+  onDark,
+}: TechnovaLogoProps) {
   const img = (
     <img
       src={SIDEBAR_LOGO_SRC}
       alt="TechNova"
-      className={cn(heightClass, "w-auto max-w-full object-contain object-left", className)}
+      className={cn(
+        heightClass,
+        "w-auto max-w-full object-contain object-left",
+        className
+      )}
       width={1024}
       height={409}
       decoding="async"
