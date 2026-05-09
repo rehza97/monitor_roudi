@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom"
 import { TechnovaSidebarLogo } from "@/components/TechnovaLogo"
 
 export const ADMIN_SIDEBAR_WIDTH_CLASS = "w-72"
-export const ADMIN_SIDEBAR_OFFSET_CLASS = "ml-72"
+export const ADMIN_SIDEBAR_OFFSET_CLASS = "md:ml-72"
 
 type AdminSidebarProps = {
   demandesBadge?: number
@@ -36,7 +36,7 @@ export default function AdminSidebar({
   onLogout,
 }: AdminSidebarProps) {
   return (
-    <aside className={`${ADMIN_SIDEBAR_WIDTH_CLASS} flex flex-col h-screen bg-white border-r border-gray-200 fixed left-0 top-0 z-50`}>
+    <aside className={`${ADMIN_SIDEBAR_WIDTH_CLASS} hidden md:flex flex-col h-screen bg-white border-r border-gray-200 fixed left-0 top-0 z-50`}>
       <div className="flex flex-col gap-3 p-6 border-b border-gray-100">
         <TechnovaSidebarLogo heightClass="h-12" className="max-h-12 max-w-full" />
         <p className="text-[#896169] text-xs font-medium">Administrateur</p>

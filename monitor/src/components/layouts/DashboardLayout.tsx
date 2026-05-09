@@ -218,6 +218,7 @@ export default function DashboardLayout({
   const { messageUnread, notificationUnread } = useClientSidebarBadges(role, user)
   const [contentLoading, setContentLoading] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [headerQuery, setHeaderQuery] = useState("")
   const searchWrapRef = useRef<HTMLDivElement>(null)
 
@@ -249,6 +250,10 @@ export default function DashboardLayout({
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [searchOpen])
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   // Prefer live auth user, fall back to legacy props
   const displayName     = user?.name     ?? userName
@@ -297,8 +302,72 @@ export default function DashboardLayout({
     [navItems, sidebarNavItems],
   )
 
+  const isCurrentNavItem = (to: string) => {
+    if (to === `/${role}/dashboard`) return location.pathname === to
+    if (to === "/admin/dashboard") return location.pathname === to
+    if (to === "/client/dashboard") return location.pathname === to
+    if (to === "/engineer/dashboard") return location.pathname === to
+    if (to === "/technician/dashboard") return location.pathname === to
+    return location.pathname === to || location.pathname.startsWith(`${to}/`)
+  }
+
   return (
     <div className={`flex h-screen overflow-hidden font-sans ${isAdmin ? "bg-[#f8f6f6]" : isClient ? "bg-[#f8fafc]" : isEngineer ? "bg-[#f6f6f8]" : "bg-[#f8f8f5]"}`}>
+      {mobileMenuOpen ? (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button
+            type="button"
+            aria-label="Fermer le menu"
+            onClick={() => setMobileMenuOpen(false)}
+            className="absolute inset-0 bg-black/45"
+          />
+          <aside className="relative z-10 h-full w-[84vw] max-w-[22rem] overflow-y-auto border-r border-slate-200 bg-white p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <TechnovaSidebarLogo heightClass="h-10" className="max-h-10 max-w-full" />
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <nav className="space-y-1">
+              {sidebarNavItems.map((item) => {
+                const isActive = isCurrentNavItem(item.to)
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {item.badge !== undefined && item.badge > 0 ? (
+                      <span className="min-w-5 rounded-full bg-[#2463eb] px-1.5 py-0.5 text-center text-[10px] font-bold text-white">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </NavLink>
+                )
+              })}
+            </nav>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-5 flex w-full items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              <span className="material-symbols-outlined text-[20px]">logout</span>
+              <span>Déconnexion</span>
+            </button>
+          </aside>
+        </div>
+      ) : null}
+
       {/* ── Sidebar ─────────────────────────────────────── */}
       {isAdmin ? (
         <AdminSidebar
@@ -542,11 +611,19 @@ export default function DashboardLayout({
       <div className={`flex flex-col flex-1 min-w-0 overflow-hidden ${isAdmin ? ADMIN_SIDEBAR_OFFSET_CLASS : isClient ? "md:ml-64" : ""}`}>
         {/* Header */}
         <header
-          className="flex items-center gap-4 px-6 bg-white border-b border-slate-200 shrink-0"
+          className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 bg-white border-b border-slate-200 shrink-0"
           style={{ height: "var(--header-height)" }}
         >
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+            aria-label="Ouvrir le menu"
+          >
+            <span className="material-symbols-outlined text-[20px]">menu</span>
+          </button>
           {pageTitle && (
-            <h1 className="text-slate-900 text-lg font-semibold truncate flex-1">
+            <h1 className="text-slate-900 text-base sm:text-lg font-semibold truncate flex-1">
               {pageTitle}
             </h1>
           )}
