@@ -94,10 +94,10 @@ export default function LandingPage() {
             </div>
           )}
           <h1 className="text-4xl md:text-6xl font-black tracking-tight text-slate-900 mb-6 max-w-4xl mx-auto leading-tight">
-            Découvrez nos <span className="text-blue-600">solutions logicielles</span> intelligentes
+            Tout votre <span className="text-blue-600">écosystème IT</span>
           </h1>
           <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Une suite complète d'outils pour surveiller, gérer et optimiser vos projets de développement avec efficacité et simplicité.
+            La plateforme intelligente qui connecte vos besoins en logiciel, matériel et maintenance aux meilleurs experts du domaine.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="#applications" className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:shadow-blue-500/30 transition-all flex items-center justify-center gap-2">

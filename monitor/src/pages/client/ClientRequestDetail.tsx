@@ -136,17 +136,29 @@ export default function ClientRequestDetail() {
                       order.features.length > 0 && (
                         <div className="mt-6 border-t border-slate-100 pt-6">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                            Fonctionnalités demandées
+                            Fonctionnalités
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {order.features.map((f) => (
-                              <span
-                                key={f}
-                                className="rounded-full bg-[#0891b2]/10 px-2.5 py-1 text-xs font-medium text-[#0891b2]"
-                              >
-                                {f}
-                              </span>
-                            ))}
+                            {order.features.map((f) => {
+                              const done = (order.completedFeatures ?? []).includes(f)
+                              return (
+                                <span
+                                  key={f}
+                                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+                                    done
+                                      ? "bg-emerald-50 text-emerald-700 line-through"
+                                      : "bg-[#0891b2]/10 text-[#0891b2]"
+                                  }`}
+                                >
+                                  {done && (
+                                    <span className="material-symbols-outlined text-[14px]">
+                                      check_circle
+                                    </span>
+                                  )}
+                                  {f}
+                                </span>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -178,9 +190,13 @@ export default function ClientRequestDetail() {
                       <Info
                         label="Progression"
                         value={
-                          getOrderProgress(order.status).isRejected
+                          getOrderProgress(
+                            order.status,
+                            order.features,
+                            order.completedFeatures,
+                          ).isRejected
                             ? "Rejetée"
-                            : `${getOrderProgress(order.status).percent}%`
+                            : `${getOrderProgress(order.status, order.features, order.completedFeatures).percent}%`
                         }
                       />
                     )}

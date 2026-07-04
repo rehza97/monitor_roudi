@@ -161,6 +161,34 @@ export default function EngineerProjectProgress() {
     setOrder((prev) => (prev ? { ...prev, completedFeatures: next } : prev))
   }
 
+  async function addFeature(label: string) {
+    if (!db || !id || !order) return
+    const trimmed = label.trim()
+    if (!trimmed) return
+    const current = order.features ?? []
+    if (current.some((f) => f.toLowerCase() === trimmed.toLowerCase())) return
+    const next = [...current, trimmed]
+    await updateDoc(doc(db, COLLECTIONS.orders, id), {
+      features: next,
+      updatedAt: serverTimestamp(),
+    })
+    setOrder((prev) => (prev ? { ...prev, features: next } : prev))
+  }
+
+  async function deleteFeature(label: string) {
+    if (!db || !id || !order) return
+    const nextFeatures = (order.features ?? []).filter((f) => f !== label)
+    const nextCompleted = (order.completedFeatures ?? []).filter((f) => f !== label)
+    await updateDoc(doc(db, COLLECTIONS.orders, id), {
+      features: nextFeatures,
+      completedFeatures: nextCompleted,
+      updatedAt: serverTimestamp(),
+    })
+    setOrder((prev) =>
+      prev ? { ...prev, features: nextFeatures, completedFeatures: nextCompleted } : prev,
+    )
+  }
+
   async function handleSaveStatus(e: React.FormEvent) {
     e.preventDefault()
     if (!db || !id || !order || !user?.id) return
@@ -249,6 +277,8 @@ export default function EngineerProjectProgress() {
               completedFeatures={order.completedFeatures}
               assignedEngineerName={order.assignedEngineerName}
               onToggleFeature={toggleFeature}
+              onAddFeature={addFeature}
+              onDeleteFeature={deleteFeature}
               footer={
                 <p className="text-xs text-slate-400">
                   {doneTasks}/{totalTasks} tâches complètes

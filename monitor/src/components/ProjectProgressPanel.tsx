@@ -1,7 +1,8 @@
-import type { ReactNode } from "react"
+import { useState, type FormEvent, type ReactNode } from "react"
 import {
   getOrderProgress,
   getFeatureProgress,
+  getPerFeatureProgressIncrement,
   shouldShowAssignedEngineer,
   MILESTONES,
 } from "@/lib/project-progress"
@@ -14,6 +15,8 @@ export interface ProjectProgressPanelProps {
   variant: "client" | "engineer"
   compact?: boolean
   onToggleFeature?: (feature: string) => void
+  onAddFeature?: (label: string) => void
+  onDeleteFeature?: (label: string) => void
   /** Optional footer line (e.g. task count on engineer page) */
   footer?: ReactNode
 }
@@ -26,19 +29,39 @@ export default function ProjectProgressPanel({
   variant,
   compact = false,
   onToggleFeature,
+  onAddFeature,
+  onDeleteFeature,
   footer,
 }: ProjectProgressPanelProps) {
+  const [draftFeature, setDraftFeature] = useState("")
   const isClient = variant === "client"
+  const isEngineer = variant === "engineer"
   const accent = isClient ? "#0891b2" : "#3d72e6"
   const barFrom = isClient ? "from-cyan-400" : "from-blue-400"
   const barTo = isClient ? "to-[#0891b2]" : "to-[#3d72e6]"
   const currentBg = isClient ? "bg-cyan-50 border-cyan-200" : "bg-blue-50 border-blue-200"
   const reachedBg = isClient ? "bg-[#0891b2]" : "bg-blue-600"
 
-  const { percent, stepIndex, isRejected } = getOrderProgress(status)
+  const { percent, stepIndex, isRejected } = getOrderProgress(
+    status,
+    features,
+    completedFeatures,
+  )
   const featureProgress = getFeatureProgress(features, completedFeatures)
   const showEngineer =
     shouldShowAssignedEngineer(status) && !!assignedEngineerName?.trim()
+  const showFeaturesSection =
+    featureProgress.total > 0 || (isEngineer && (onAddFeature || onToggleFeature))
+
+  const perFeaturePercent = getPerFeatureProgressIncrement(status, featureProgress.total)
+
+  function handleAddFeature(e: FormEvent) {
+    e.preventDefault()
+    const label = draftFeature.trim()
+    if (!label || !onAddFeature) return
+    onAddFeature(label)
+    setDraftFeature("")
+  }
 
   if (compact) {
     return (
@@ -158,49 +181,90 @@ export default function ProjectProgressPanel({
           </div>
         </div>
 
-        {featureProgress.total > 0 && (
+        {showFeaturesSection && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Fonctionnalités
               </h4>
-              <span className="text-xs font-medium text-slate-500">
-                {featureProgress.done}/{featureProgress.total} livrée
-                {featureProgress.done !== 1 ? "s" : ""}
-              </span>
+              {featureProgress.total > 0 && (
+                <span className="text-xs font-medium text-slate-500">
+                  {featureProgress.done}/{featureProgress.total} livrée
+                  {featureProgress.done !== 1 ? "s" : ""}
+                  {perFeaturePercent != null && perFeaturePercent > 0 && (
+                    <> · +{perFeaturePercent}% par fonctionnalité</>
+                  )}
+                </span>
+              )}
             </div>
-            <div className="space-y-2">
-              {featureProgress.items.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 bg-slate-50/50"
-                >
-                  {variant === "engineer" && onToggleFeature ? (
-                    <input
-                      type="checkbox"
-                      checked={item.done}
-                      onChange={() => onToggleFeature(item.label)}
-                      className="size-4 rounded accent-blue-600 cursor-pointer shrink-0"
-                    />
-                  ) : (
+
+            {featureProgress.total === 0 ? (
+              <p className="text-sm text-slate-500 mb-3">
+                Aucune fonctionnalité — ajoutez-en pour suivre la livraison.
+              </p>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {featureProgress.items.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 bg-slate-50/50"
+                  >
+                    {isEngineer && onToggleFeature ? (
+                      <input
+                        type="checkbox"
+                        checked={item.done}
+                        onChange={() => onToggleFeature(item.label)}
+                        className="size-4 rounded accent-blue-600 cursor-pointer shrink-0"
+                      />
+                    ) : (
+                      <span
+                        className={`material-symbols-outlined text-[20px] shrink-0 ${
+                          item.done ? "text-emerald-500" : "text-slate-300"
+                        }`}
+                      >
+                        {item.done ? "check_circle" : "radio_button_unchecked"}
+                      </span>
+                    )}
                     <span
-                      className={`material-symbols-outlined text-[20px] shrink-0 ${
-                        item.done ? "text-emerald-500" : "text-slate-300"
+                      className={`flex-1 text-sm ${
+                        item.done ? "text-slate-500 line-through" : "text-slate-800 font-medium"
                       }`}
                     >
-                      {item.done ? "check_circle" : "radio_button_unchecked"}
+                      {item.label}
                     </span>
-                  )}
-                  <span
-                    className={`text-sm ${
-                      item.done ? "text-slate-500 line-through" : "text-slate-800 font-medium"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+                    {isEngineer && onDeleteFeature && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteFeature(item.label)}
+                        className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                        title="Supprimer"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isEngineer && onAddFeature && (
+              <form onSubmit={handleAddFeature} className="flex gap-2">
+                <input
+                  type="text"
+                  value={draftFeature}
+                  onChange={(e) => setDraftFeature(e.target.value)}
+                  placeholder="Nouvelle fonctionnalité…"
+                  className="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!draftFeature.trim()}
+                  className="px-4 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors shrink-0"
+                >
+                  Ajouter
+                </button>
+              </form>
+            )}
           </div>
         )}
       </div>

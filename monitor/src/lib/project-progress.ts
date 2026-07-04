@@ -14,6 +14,13 @@ export const MILESTONES = [
 
 const ASSIGNED_STATUSES = new Set(["Validée", "En cours", "Livré"])
 
+/** Progress band floor/ceiling per status when features drive incremental % */
+const STATUS_BAND: Record<string, { floor: number; ceiling: number }> = {
+  "En attente": { floor: 10, ceiling: 25 },
+  Validée: { floor: 25, ceiling: 60 },
+  "En cours": { floor: 60, ceiling: 100 },
+}
+
 export interface OrderProgress {
   percent: number
   stepIndex: number
@@ -31,12 +38,49 @@ export interface FeatureProgress {
   items: FeatureProgressItem[]
 }
 
-export function getOrderProgress(status: string): OrderProgress {
+export function getCombinedProgress(
+  status: string,
+  features?: string[],
+  completedFeatures?: string[],
+): number {
+  if (status === "Rejetée") return 0
+  if (status === "Livré") return 100
+
+  const featureProgress = getFeatureProgress(features, completedFeatures)
+  if (featureProgress.total === 0) {
+    return STATUS_PROGRESS[status] ?? 10
+  }
+
+  const band = STATUS_BAND[status]
+  if (!band) {
+    return STATUS_PROGRESS[status] ?? 10
+  }
+
+  const { floor, ceiling } = band
+  const range = ceiling - floor
+  return Math.round(floor + (featureProgress.done / featureProgress.total) * range)
+}
+
+export function getPerFeatureProgressIncrement(
+  status: string,
+  featureCount: number,
+): number | null {
+  if (featureCount <= 0 || status === "Livré" || status === "Rejetée") return null
+  const band = STATUS_BAND[status]
+  if (!band) return null
+  return Math.round((band.ceiling - band.floor) / featureCount)
+}
+
+export function getOrderProgress(
+  status: string,
+  features?: string[],
+  completedFeatures?: string[],
+): OrderProgress {
   if (status === "Rejetée") {
     return { percent: 0, stepIndex: -1, isRejected: true }
   }
   const stepIndex = MILESTONES.findIndex((m) => m.status === status)
-  const percent = STATUS_PROGRESS[status] ?? 10
+  const percent = getCombinedProgress(status, features, completedFeatures)
   return { percent, stepIndex, isRejected: false }
 }
 

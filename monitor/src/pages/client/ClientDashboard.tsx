@@ -102,7 +102,13 @@ export default function ClientDashboard() {
                             <td className="px-6 py-4 text-sm text-slate-600">{formatFirestoreDate(o.createdAt)}</td>
                             <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass[o.status] ?? "bg-slate-100 text-slate-700 border border-slate-200"}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{o.status}</span></td>
                             <td className="px-6 py-4">
-                              <ProjectProgressPanel variant="client" status={o.status} compact />
+                              <ProjectProgressPanel
+                                variant="client"
+                                status={o.status}
+                                features={o.features}
+                                completedFeatures={o.completedFeatures}
+                                compact
+                              />
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-900 text-right">{o.budgetLabel || "Montant à définir (DZD)"}</td>
                           </tr>

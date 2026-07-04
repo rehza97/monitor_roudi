@@ -496,6 +496,8 @@ export default function ClientRequests() {
                           <ProjectProgressPanel
                             variant="client"
                             status={o.status}
+                            features={o.features}
+                            completedFeatures={o.completedFeatures}
                             compact
                           />
                         ) : (
