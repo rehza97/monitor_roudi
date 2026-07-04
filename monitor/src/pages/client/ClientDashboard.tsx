@@ -7,6 +7,7 @@ import { COLLECTIONS, type FirestoreOrder, type Deployment } from "@/data/schema
 import { formatFirestoreDate } from "@/lib/utils"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
+import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 interface OrderDoc extends FirestoreOrder {
   id: string
@@ -88,18 +89,21 @@ export default function ClientDashboard() {
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
-                    <thead><tr className="border-b border-slate-100 bg-slate-50/50 text-xs uppercase tracking-wider text-slate-500 font-semibold"><th className="px-6 py-4">Projet / Demande</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Statut</th><th className="px-6 py-4 text-right">Montant</th></tr></thead>
+                    <thead><tr className="border-b border-slate-100 bg-slate-50/50 text-xs uppercase tracking-wider text-slate-500 font-semibold"><th className="px-6 py-4">Projet / Demande</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Statut</th><th className="px-6 py-4">Progression</th><th className="px-6 py-4 text-right">Montant</th></tr></thead>
                     <tbody className="divide-y divide-slate-100">
                       {loadingOrders ? (
-                        <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">Chargement…</td></tr>
+                        <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-500">Chargement…</td></tr>
                       ) : recentOrders.length === 0 ? (
-                        <tr><td colSpan={4} className="px-6 py-8 text-center text-sm text-slate-500">Aucune activité récente.</td></tr>
+                        <tr><td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-500">Aucune activité récente.</td></tr>
                       ) : (
                         recentOrders.map((o, i) => (
                           <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4"><Link to={`/client/requests/${o.id}`} className="flex items-center gap-3"><div className={`p-2 rounded-lg ${i % 3 === 0 ? "bg-indigo-100 text-indigo-600" : i % 3 === 1 ? "bg-emerald-100 text-emerald-600" : "bg-orange-100 text-orange-600"}`}><span className="material-symbols-outlined text-sm">{i % 3 === 0 ? "code" : i % 3 === 1 ? "design_services" : "campaign"}</span></div><div><p className="text-sm font-semibold text-slate-900">{o.requestType ?? "Demande"}</p><p className="text-xs text-slate-500">ID: #{o.id.slice(0, 8).toUpperCase()}</p></div></Link></td>
                             <td className="px-6 py-4 text-sm text-slate-600">{formatFirestoreDate(o.createdAt)}</td>
                             <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass[o.status] ?? "bg-slate-100 text-slate-700 border border-slate-200"}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{o.status}</span></td>
+                            <td className="px-6 py-4">
+                              <ProjectProgressPanel variant="client" status={o.status} compact />
+                            </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-900 text-right">{o.budgetLabel || "Montant à définir (DZD)"}</td>
                           </tr>
                         ))

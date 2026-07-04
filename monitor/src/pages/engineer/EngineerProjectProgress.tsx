@@ -12,23 +12,10 @@ import { COLLECTIONS } from "@/data/schema"
 import type { FirestoreOrder, FirestoreTask } from "@/data/schema"
 import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
+import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 interface Order extends FirestoreOrder { id: string }
 interface Task  extends FirestoreTask  { id: string }
-
-const STATUS_PROGRESS: Record<string, number> = {
-  "En attente": 10,
-  "Validée":    25,
-  "En cours":   60,
-  "Livré":      100,
-}
-
-const MILESTONES = [
-  { status: "En attente", label: "Demande reçue",      icon: "inbox" },
-  { status: "Validée",    label: "Demande validée",     icon: "task_alt" },
-  { status: "En cours",   label: "Développement actif", icon: "code" },
-  { status: "Livré",      label: "Livraison effectuée", icon: "rocket_launch" },
-]
 
 const priorityColor: Record<string, string> = {
   Haute:   "text-rose-700 bg-rose-50",
@@ -82,6 +69,19 @@ export default function EngineerProjectProgress() {
     })
   }
 
+  async function toggleFeature(feature: string) {
+    if (!db || !id || !order) return
+    const current = order.completedFeatures ?? []
+    const next = current.includes(feature)
+      ? current.filter((f) => f !== feature)
+      : [...current, feature]
+    await updateDoc(doc(db, COLLECTIONS.orders, id), {
+      completedFeatures: next,
+      updatedAt: serverTimestamp(),
+    })
+    setOrder((prev) => (prev ? { ...prev, completedFeatures: next } : prev))
+  }
+
   async function handleSaveNotes(e: React.FormEvent) {
     e.preventDefault()
     if (!db || !id || !user?.id) return
@@ -98,9 +98,6 @@ export default function EngineerProjectProgress() {
       setSaving(false)
     }
   }
-
-  const progress  = STATUS_PROGRESS[order?.status ?? "En attente"] ?? 10
-  const stepIndex = MILESTONES.findIndex(m => m.status === order?.status)
 
   if (loading) {
     return (
@@ -130,64 +127,34 @@ export default function EngineerProjectProgress() {
   return (
     <DashboardLayout role="engineer" navItems={engineerNav} pageTitle="Progression du projet">
       <div className="p-6 max-w-6xl mx-auto space-y-8 bg-[#f6f6f8] min-h-[calc(100vh-64px)]">
-        {/* Back */}
         <Link to="/engineer/projects" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 transition-colors">
           <span className="material-symbols-outlined text-[16px]">arrow_back</span>
           Retour aux projets
         </Link>
 
-        {/* Header */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Suivi du Projet</h2>
-              <p className="text-slate-500 text-sm mt-1">{order.clientLabel ?? "Client inconnu"} · {order.requestType ?? "Demande client"} · {formatFirestoreDate(order.createdAt)}</p>
-            </div>
-            <span className="text-3xl font-black text-slate-900">{progress}%</span>
-          </div>
-          <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-blue-400 to-[#3d72e6] transition-all duration-700"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-xs text-slate-400 mt-2">{doneTasks}/{totalTasks} tâches complètes</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Suivi du Projet</h2>
+          <p className="text-slate-500 text-sm mt-1">
+            {order.clientLabel ?? "Client inconnu"} · {order.requestType ?? "Demande client"} · {formatFirestoreDate(order.createdAt)}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* Milestones */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">Jalons</h3>
-              <div className="space-y-3">
-                {MILESTONES.map((m, i) => {
-                  const reached = i <= stepIndex
-                  const current = i === stepIndex
-                  return (
-                    <div key={m.status} className={`flex items-center gap-4 p-3 rounded-lg transition-colors ${
-                      current ? "bg-blue-50 border border-blue-200" : ""
-                    }`}>
-                      <div className={`size-9 rounded-full flex items-center justify-center shrink-0 ${
-                        reached ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"
-                      }`}>
-                        <span className="material-symbols-outlined text-[18px]">{m.icon}</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium ${reached ? "text-slate-900" : "text-slate-400"}`}>
-                          {m.label}
-                        </p>
-                        <p className="text-xs text-slate-400">{m.status}</p>
-                      </div>
-                      {reached && (
-                        <span className="material-symbols-outlined text-emerald-500 text-[20px]">check_circle</span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+            <ProjectProgressPanel
+              variant="engineer"
+              status={order.status}
+              features={order.features}
+              completedFeatures={order.completedFeatures}
+              assignedEngineerName={order.assignedEngineerName}
+              onToggleFeature={toggleFeature}
+              footer={
+                <p className="text-xs text-slate-400">
+                  {doneTasks}/{totalTasks} tâches complètes
+                </p>
+              }
+            />
 
-            {/* Tasks */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
               <div className="px-5 py-4 border-b border-slate-100">
                 <h3 className="text-sm font-semibold text-slate-700">Mes tâches</h3>

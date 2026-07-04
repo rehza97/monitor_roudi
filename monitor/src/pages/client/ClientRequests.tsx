@@ -19,6 +19,7 @@ import {
 import { COLLECTIONS, ORDER_KIND, type FirestoreOrder } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
 import { notifyAdminsOfOrderCreated } from "@/lib/notifications"
+import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 interface OrderDoc extends FirestoreOrder {
   id: string
@@ -419,7 +420,7 @@ export default function ClientRequests() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {["Réf.", "Type", "Budget", "Priorité", "Date", "Statut", "Actions"].map((h) => (
+                {["Réf.", "Type", "Budget", "Priorité", "Date", "Statut", "Progression", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
@@ -433,7 +434,7 @@ export default function ClientRequests() {
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      {Array.from({ length: 7 }).map((__, j) => (
+                      {Array.from({ length: 8 }).map((__, j) => (
                         <td key={j} className="px-4 py-3">
                           <div className="h-4 bg-slate-100 rounded w-20" />
                         </td>
@@ -489,6 +490,17 @@ export default function ClientRequests() {
                         >
                           {o.status}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {o.kind === ORDER_KIND.clientRequest ? (
+                          <ProjectProgressPanel
+                            variant="client"
+                            status={o.status}
+                            compact
+                          />
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">

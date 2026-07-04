@@ -108,6 +108,8 @@ export interface FirestoreOrder {
   timelineLabel?: string
   priority?: string
   features?: string[]
+  /** Subset of features marked done by engineer */
+  completedFeatures?: string[]
   adminComment?: string
   /** Commande matériel */
   materialName?: string
