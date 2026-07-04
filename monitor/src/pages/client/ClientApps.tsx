@@ -8,6 +8,7 @@ import { onSnapshot, collection, query, where, orderBy } from "@/lib/firebase-fi
 import { COLLECTIONS } from "@/data/schema"
 import type { Deployment, DeploymentHealth, DeploymentEnvironment, FirestoreOrder } from "@/data/schema"
 import { createSupportTicket } from "@/lib/support-tickets"
+import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,14 @@ interface AppOrderDoc extends FirestoreOrder {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const statusClass: Record<string, string> = {
+  "En cours": "bg-blue-50 text-blue-700",
+  "Validée": "bg-emerald-50 text-emerald-700",
+  "En attente": "bg-amber-50 text-amber-700",
+  "Livré": "bg-emerald-50 text-emerald-700",
+  "Rejetée": "bg-rose-50 text-rose-700",
+}
 
 function resolveHealth(health: string): DeploymentHealth {
   if (health === "ok" || health === "healthy") return "ok"
@@ -439,11 +448,20 @@ export default function ClientApps() {
                           <p className="text-xs text-slate-400 truncate">REQ-{order.id.slice(0, 8).toUpperCase()}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-amber-700 bg-amber-50">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass[order.status] ?? "text-amber-700 bg-amber-50"}`}>
                         {order.status}
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 line-clamp-2">{order.description || "Commande en cours de traitement."}</p>
+                    <div className="mt-4">
+                      <ProjectProgressPanel
+                        variant="client"
+                        compact
+                        status={order.status}
+                        features={order.features}
+                        completedFeatures={order.completedFeatures}
+                      />
+                    </div>
                     <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                       <span className="text-xs text-slate-500">{isCustom ? "App custom" : "App catalogue"}</span>
                       <span className="text-sm font-bold text-slate-900">{order.budgetLabel || "Sur devis"}</span>
