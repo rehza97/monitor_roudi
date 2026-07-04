@@ -1,3 +1,5 @@
+import type { FirestoreOrder } from "@/data/schema"
+
 export const STATUS_PROGRESS: Record<string, number> = {
   "En attente": 10,
   "Validée": 25,
@@ -86,6 +88,24 @@ export function getOrderProgress(
 
 export function shouldShowAssignedEngineer(status: string): boolean {
   return ASSIGNED_STATUSES.has(status)
+}
+
+const PROJECT_STATUS_TO_ORDER: Record<string, string> = {
+  pending: "Validée",
+  active: "En cours",
+  delivered: "Livré",
+  cancelled: "Rejetée",
+}
+
+/** Resolves the French order-status string for a project, preferring the live joined order
+ *  over the project's last-synced status, over a best-effort mapping of its own status. */
+export function resolveOrderStatusForProject(
+  project: { status: string; lastOrderStatus?: string },
+  order?: Pick<FirestoreOrder, "status"> | null,
+): string {
+  if (order?.status) return order.status
+  if (project.lastOrderStatus) return project.lastOrderStatus
+  return PROJECT_STATUS_TO_ORDER[project.status] ?? "En attente"
 }
 
 export function getFeatureProgress(

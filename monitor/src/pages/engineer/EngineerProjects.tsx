@@ -6,8 +6,10 @@ import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import { collection, query, where, onSnapshot, limit } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { FirestoreProject } from "@/data/schema"
+import type { FirestoreOrder, FirestoreProject } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
+import { resolveOrderStatusForProject } from "@/lib/project-progress"
+import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 interface Project extends FirestoreProject { id: string }
 
@@ -49,6 +51,7 @@ function toMillis(value: unknown): number {
 export default function EngineerProjects() {
   const { user } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
+  const [ordersById, setOrdersById] = useState<Map<string, FirestoreOrder>>(new Map())
   const [loading, setLoading]   = useState(true)
   const [statusTab, setStatus]  = useState("Tous")
   const [search, setSearch]     = useState("")
@@ -69,6 +72,21 @@ export default function EngineerProjects() {
       })
       setProjects(sorted)
       setLoading(false)
+    })
+    return unsub
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!db || !user?.id) return
+    const q = query(
+      collection(db, COLLECTIONS.orders),
+      where("assignedToId", "==", user.id),
+      where("kind", "==", "client_request"),
+    )
+    const unsub = onSnapshot(q, (snap) => {
+      const map = new Map<string, FirestoreOrder>()
+      snap.docs.forEach((d) => map.set(d.id, d.data() as FirestoreOrder))
+      setOrdersById(map)
     })
     return unsub
   }, [user?.id])
@@ -156,6 +174,7 @@ export default function EngineerProjects() {
             {filtered.map((project) => {
               const uiStatus = PROJECT_STATUS_LABEL[project.status] ?? "Validée"
               const openOrderId = project.orderId || project.id
+              const order = project.orderId ? ordersById.get(project.orderId) : undefined
               return (
               <Link key={project.id} to={`/engineer/projects/${openOrderId}/progress`}
                 className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-400 transition-colors group">
@@ -179,6 +198,15 @@ export default function EngineerProjects() {
                 {project.description && (
                   <p className="text-xs text-slate-400 mt-2 line-clamp-2">{project.description}</p>
                 )}
+                <div className="mt-3">
+                  <ProjectProgressPanel
+                    variant="engineer"
+                    compact
+                    status={resolveOrderStatusForProject(project, order)}
+                    features={order?.features}
+                    completedFeatures={order?.completedFeatures}
+                  />
+                </div>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
                   <span className="text-xs text-slate-400">{formatFirestoreDate(project.startedAt ?? project.createdAt)}</span>
                   <span className="text-xs text-blue-600 font-medium group-hover:underline">Suivi du projet →</span>

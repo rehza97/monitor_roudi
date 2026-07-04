@@ -13,6 +13,8 @@ import type { FirestoreOrder, FirestoreProject, FirestoreServiceLog, FirestoreTa
 import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDateTime, firestoreToMillis } from "@/lib/utils"
 import { engineerNav } from "@/lib/nav"
+import { resolveOrderStatusForProject } from "@/lib/project-progress"
+import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 interface Task extends FirestoreTask { id: string }
 
@@ -31,21 +33,6 @@ const LEVEL_BADGE: Record<string, string> = {
   warning: "text-amber-600",
   info: "text-emerald-600",
   debug: "text-slate-500",
-}
-
-function projectProgress(p: ProjectRow): number {
-  switch (p.status) {
-    case "pending":
-      return 25
-    case "active":
-      return 62
-    case "delivered":
-      return 100
-    case "cancelled":
-      return 0
-    default:
-      return 40
-  }
 }
 
 function progressStyle(i: number) {
@@ -130,6 +117,7 @@ export default function EngineerDashboard() {
   const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [projects, setProjects] = useState<ProjectRow[]>([])
+  const [ordersById, setOrdersById] = useState<Map<string, FirestoreOrder>>(new Map())
   const [recentOrders, setRecentOrders] = useState(0)
   const [deployIssues, setDeployIssues] = useState(0)
   const [serviceLogs, setServiceLogs] = useState<LogRow[]>([])
@@ -172,6 +160,21 @@ export default function EngineerDashboard() {
     const unsub = onSnapshot(q, (snap) => {
       const visible = snap.docs.map((d) => d.data() as FirestoreOrder).filter((d) => canEngineerAccessOrder(d, user.id))
       setRecentOrders(visible.length)
+    })
+    return unsub
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!db || !user?.id || !isFirebaseConfigured) return
+    const q = query(
+      collection(db, COLLECTIONS.orders),
+      where("assignedToId", "==", user.id),
+      where("kind", "==", "client_request"),
+    )
+    const unsub = onSnapshot(q, (snap) => {
+      const map = new Map<string, FirestoreOrder>()
+      snap.docs.forEach((d) => map.set(d.id, d.data() as FirestoreOrder))
+      setOrdersById(map)
     })
     return unsub
   }, [user?.id])
@@ -283,23 +286,24 @@ export default function EngineerDashboard() {
                   <p className="text-sm text-slate-500">Aucun projet assigné pour le moment.</p>
                 ) : (
                   topProjects.map((t, i) => {
-                    const pct = projectProgress(t)
+                    const order = t.orderId ? ordersById.get(t.orderId) : undefined
                     const st = progressStyle(i)
                     return (
                       <div key={t.id} className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg ${st.icon} flex items-center justify-center`}><span className="material-symbols-outlined">api</span></div>
-                            <div>
-                              <h4 className="text-sm font-semibold">{t.title || t.clientLabel || "Projet"}</h4>
-                              <p className="text-xs text-slate-500">{t.requestType ?? t.status}</p>
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg ${st.icon} flex items-center justify-center`}><span className="material-symbols-outlined">api</span></div>
+                          <div>
+                            <h4 className="text-sm font-semibold">{t.title || t.clientLabel || "Projet"}</h4>
+                            <p className="text-xs text-slate-500">{t.requestType ?? t.status}</p>
                           </div>
-                          <span className={`text-sm font-bold ${st.percent}`}>{pct}%</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full">
-                          <div className={`${st.bar} h-full rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                        </div>
+                        <ProjectProgressPanel
+                          variant="engineer"
+                          compact
+                          status={resolveOrderStatusForProject(t, order)}
+                          features={order?.features}
+                          completedFeatures={order?.completedFeatures}
+                        />
                       </div>
                     )
                   })
