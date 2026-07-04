@@ -12,7 +12,22 @@ const BIND = "0.0.0.0"
 
 /** @typedef {{ type: 'connect'; host: string; port?: number; username: string; password?: string; privateKey?: string } | { type: 'input'; data: string } | { type: 'resize'; cols: number; rows: number } | { type: 'disconnect' }} SshSocketIncoming */
 
-const server = http.createServer((_req, res) => {
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+}
+
+const server = http.createServer((req, res) => {
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, CORS_HEADERS)
+    res.end()
+    return
+  }
+  if (req.url === "/health" || req.url === "/health/") {
+    res.writeHead(200, { ...CORS_HEADERS, "Content-Type": "application/json" })
+    res.end(JSON.stringify({ ok: true, service: "ssh-bridge" }))
+    return
+  }
   res.writeHead(404, { "Content-Type": "text/plain" })
   res.end("SSH WebSocket bridge — use a WebSocket client\n")
 })

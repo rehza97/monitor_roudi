@@ -6,21 +6,35 @@ import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
 import {
   doc, getDoc, updateDoc, serverTimestamp,
-  collection, query, where, onSnapshot,
+  collection, query, where, onSnapshot, limit, getDocs, addDoc,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
-import type { FirestoreOrder, FirestoreTask } from "@/data/schema"
+import type { FirestoreOrder, FirestoreProject, FirestoreTask } from "@/data/schema"
 import { canEngineerAccessOrder } from "@/lib/access-control"
 import { formatFirestoreDate } from "@/lib/utils"
+import { notifyClientOfOrderStatusChanged } from "@/lib/notifications"
 import ProjectProgressPanel from "@/components/ProjectProgressPanel"
 
 interface Order extends FirestoreOrder { id: string }
 interface Task  extends FirestoreTask  { id: string }
 
+const ENGINEER_STATUSES = ["En cours", "Livré"]
+
 const priorityColor: Record<string, string> = {
   Haute:   "text-rose-700 bg-rose-50",
   Normale: "text-blue-700 bg-blue-50",
   Basse:   "text-slate-600 bg-slate-100",
+}
+
+function mapOrderToProjectStatus(status: string): FirestoreProject["status"] {
+  if (status === "Livré") return "delivered"
+  if (status === "Rejetée") return "cancelled"
+  if (status === "En cours") return "active"
+  return "pending"
+}
+
+function engineerStatusValue(status: string): string {
+  return ENGINEER_STATUSES.includes(status) ? status : "En cours"
 }
 
 export default function EngineerProjectProgress() {
@@ -29,10 +43,13 @@ export default function EngineerProjectProgress() {
   const [order, setOrder]     = useState<Order | null>(null)
   const [tasks, setTasks]     = useState<Task[]>([])
   const [notes, setNotes]     = useState("")
+  const [status, setStatus]   = useState("En cours")
   const [loading, setLoading] = useState(true)
   const [notFound, setNF]     = useState(false)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
+  const [statusSaving, setStatusSaving] = useState(false)
+  const [statusSaved, setStatusSaved] = useState(false)
 
   useEffect(() => {
     if (!db || !id) return
@@ -44,6 +61,7 @@ export default function EngineerProjectProgress() {
       } else {
         setOrder(data)
         setNotes(data.adminComment ?? "")
+        setStatus(engineerStatusValue(data.status))
       }
       setLoading(false)
     })
@@ -60,6 +78,67 @@ export default function EngineerProjectProgress() {
     })
     return unsub
   }, [user?.id])
+
+  async function syncProjectRecord(orderData: Order, newStatus: string) {
+    if (!db || !id || !user?.id) return
+    const now = serverTimestamp()
+    const projectStatus = mapOrderToProjectStatus(newStatus)
+    const projectsRef = collection(db, COLLECTIONS.projects)
+    const existingProjectSnap = await getDocs(
+      query(projectsRef, where("orderId", "==", id), limit(1)),
+    )
+
+    if (existingProjectSnap.empty) {
+      const baseProject: FirestoreProject = {
+        orderId: id,
+        organizationId: orderData.organizationId,
+        createdByUserId: orderData.createdByUserId,
+        assignedEngineerId: user.id,
+        assignedEngineerName: user.name,
+        title: orderData.requestType?.trim() || "Projet client",
+        clientLabel: orderData.clientLabel ?? "",
+        clientEmail: orderData.clientEmail ?? "",
+        requestType: orderData.requestType ?? "",
+        priority: orderData.priority ?? "",
+        description: orderData.description ?? "",
+        status: projectStatus,
+        lastOrderStatus: newStatus,
+        createdAt: now,
+        updatedAt: now,
+      }
+      if (projectStatus === "active" || projectStatus === "delivered") {
+        baseProject.startedAt = now
+      }
+      if (projectStatus === "delivered") {
+        baseProject.deliveredAt = now
+      }
+      await addDoc(projectsRef, baseProject)
+      return
+    }
+
+    const projectDoc = existingProjectSnap.docs[0]
+    const existing = projectDoc?.data() as FirestoreProject
+    const payload: Partial<FirestoreProject> = {
+      status: projectStatus,
+      lastOrderStatus: newStatus,
+      assignedEngineerId: user.id,
+      assignedEngineerName: user.name,
+      title: existing.title || orderData.requestType?.trim() || "Projet client",
+      clientLabel: orderData.clientLabel ?? existing.clientLabel ?? "",
+      clientEmail: orderData.clientEmail ?? existing.clientEmail ?? "",
+      requestType: orderData.requestType ?? existing.requestType ?? "",
+      priority: orderData.priority ?? existing.priority ?? "",
+      description: orderData.description ?? existing.description ?? "",
+      updatedAt: now,
+    }
+    if ((projectStatus === "active" || projectStatus === "delivered") && !existing.startedAt) {
+      payload.startedAt = now
+    }
+    if (projectStatus === "delivered") {
+      payload.deliveredAt = now
+    }
+    await updateDoc(doc(db, COLLECTIONS.projects, projectDoc.id), payload)
+  }
 
   async function toggleTask(task: Task) {
     if (!db) return
@@ -80,6 +159,28 @@ export default function EngineerProjectProgress() {
       updatedAt: serverTimestamp(),
     })
     setOrder((prev) => (prev ? { ...prev, completedFeatures: next } : prev))
+  }
+
+  async function handleSaveStatus(e: React.FormEvent) {
+    e.preventDefault()
+    if (!db || !id || !order || !user?.id) return
+    setStatusSaving(true)
+    try {
+      const now = serverTimestamp()
+      await updateDoc(doc(db, COLLECTIONS.orders, id), {
+        status,
+        assignedToId: user.id,
+        assignedEngineerName: user.name,
+        updatedAt: now,
+      })
+      await notifyClientOfOrderStatusChanged(id, order, status)
+      await syncProjectRecord(order, status)
+      setOrder((prev) => (prev ? { ...prev, status } : prev))
+      setStatusSaved(true)
+      setTimeout(() => setStatusSaved(false), 3000)
+    } finally {
+      setStatusSaving(false)
+    }
   }
 
   async function handleSaveNotes(e: React.FormEvent) {
@@ -155,6 +256,39 @@ export default function EngineerProjectProgress() {
               }
             />
 
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+              <h3 className="text-sm font-semibold text-slate-700 mb-4">Action ingénieur</h3>
+              <form onSubmit={handleSaveStatus} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Mettre à jour le statut</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {ENGINEER_STATUSES.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={statusSaving}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold disabled:opacity-60 transition-colors"
+                  >
+                    {statusSaving ? "Enregistrement…" : "Enregistrer le statut"}
+                  </button>
+                  {statusSaved && (
+                    <span className="flex items-center gap-1.5 text-emerald-600 text-sm font-medium">
+                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                      Statut mis à jour
+                    </span>
+                  )}
+                </div>
+              </form>
+            </div>
+
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
               <div className="px-5 py-4 border-b border-slate-100">
                 <h3 className="text-sm font-semibold text-slate-700">Mes tâches</h3>
@@ -186,7 +320,7 @@ export default function EngineerProjectProgress() {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">Notes / Commentaires</h3>
               <form onSubmit={handleSaveNotes} className="space-y-3">
@@ -207,6 +341,14 @@ export default function EngineerProjectProgress() {
                 </div>
               </form>
             </div>
+
+            <Link
+              to={`/engineer/requests/${id}`}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">description</span>
+              Voir le détail de la demande
+            </Link>
           </div>
         </div>
       </div>

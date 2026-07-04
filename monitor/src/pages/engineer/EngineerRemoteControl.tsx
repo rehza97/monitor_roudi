@@ -11,6 +11,8 @@ import {
 } from "@/config/remoteSshDefaults"
 import {
   getRemoteSshWebSocketUrl,
+  probeRemoteSshBridge,
+  remoteSshBridgeErrorMessage,
   remoteSshRequiresLocalDevTunnel,
   remoteSshUsesDedicatedBridge,
 } from "@/lib/remote-ssh-ws"
@@ -139,6 +141,7 @@ export default function EngineerRemoteControl() {
   const [history, setHistory] = useState<string[]>([])
   const [histIdx, setHistIdx] = useState(-1)
   const [errorText, setErrorText] = useState<string | null>(null)
+  const [bridgeProbe, setBridgeProbe] = useState<"idle" | "ok" | "missing" | "unreachable">("idle")
   const [crudError, setCrudError] = useState<string | null>(null)
   const [vpsModalOpen, setVpsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -157,6 +160,22 @@ export default function EngineerRemoteControl() {
   const socketRef = useRef<WebSocket | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
   const devTunnelRequired = remoteSshRequiresLocalDevTunnel()
+
+  useEffect(() => {
+    if (devTunnelRequired || !remoteSshUsesDedicatedBridge()) {
+      setBridgeProbe("ok")
+      return
+    }
+    let cancelled = false
+    void probeRemoteSshBridge().then((result) => {
+      if (cancelled) return
+      setBridgeProbe(result)
+      if (result !== "ok") setErrorText(remoteSshBridgeErrorMessage(result))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [devTunnelRequired])
 
   const mergedRows = useMemo(() => {
     const d = ENGINEER_REMOTE_DEFAULTS
@@ -350,25 +369,26 @@ export default function EngineerRemoteControl() {
     ws.onerror = () => {
       setErrorText(
         remoteSshUsesDedicatedBridge()
-          ? "Pont SSH inaccessible (vérifiez « npm run ssh-bridge » et REMOTE_SSH_WEBSOCKET_URL dans src/config/remoteSshDefaults.ts)."
+          ? remoteSshBridgeErrorMessage(bridgeProbe === "missing" ? "missing" : "unreachable")
           : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » et renseignez REMOTE_SSH_WEBSOCKET_URL pour preview).",
       )
       setConnecting(false)
     }
-  }, [host, port, username, password, pemPrivateKey, appendOutput, disconnect])
+  }, [host, port, username, password, pemPrivateKey, appendOutput, disconnect, bridgeProbe])
 
   const connectRef = useRef(connect)
   connectRef.current = connect
   const autoSshLaunched = useRef(false)
   useEffect(() => {
     if (devTunnelRequired) return
+    if (remoteSshUsesDedicatedBridge() && bridgeProbe !== "ok") return
     if (autoSshLaunched.current) return
     autoSshLaunched.current = true
     const t = window.setTimeout(() => {
       connectRef.current()
     }, 450)
     return () => window.clearTimeout(t)
-  }, [devTunnelRequired])
+  }, [devTunnelRequired, bridgeProbe])
 
   function sendLine(line: string) {
     if (!connected || !socketRef.current) return

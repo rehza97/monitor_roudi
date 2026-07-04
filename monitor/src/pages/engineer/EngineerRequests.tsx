@@ -307,6 +307,10 @@ export default function EngineerRequests() {
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors">
                             Traiter →
                           </button>
+                          <Link to={`/engineer/projects/${o.id}/progress`}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors">
+                            Progression
+                          </Link>
                           <Link to={`/engineer/requests/${o.id}`}
                             className="px-3 py-1.5 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
                             Détails

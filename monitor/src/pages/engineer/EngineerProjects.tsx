@@ -157,7 +157,7 @@ export default function EngineerProjects() {
               const uiStatus = PROJECT_STATUS_LABEL[project.status] ?? "Validée"
               const openOrderId = project.orderId || project.id
               return (
-              <Link key={project.id} to={`/engineer/requests/${openOrderId}`}
+              <Link key={project.id} to={`/engineer/projects/${openOrderId}/progress`}
                 className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-400 transition-colors group">
                 <div className="flex items-start justify-between mb-3">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColors[uiStatus] ?? statusColors["Validée"]}`}>
@@ -181,7 +181,7 @@ export default function EngineerProjects() {
                 )}
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
                   <span className="text-xs text-slate-400">{formatFirestoreDate(project.startedAt ?? project.createdAt)}</span>
-                  <span className="text-xs text-blue-600 font-medium group-hover:underline">Voir le projet →</span>
+                  <span className="text-xs text-blue-600 font-medium group-hover:underline">Suivi du projet →</span>
                 </div>
               </Link>
             )})}

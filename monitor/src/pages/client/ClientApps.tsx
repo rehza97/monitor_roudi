@@ -4,9 +4,10 @@ import DashboardLayout from "@/components/layouts/DashboardLayout"
 import { clientNav } from "@/lib/nav"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/config/firebase"
-import { onSnapshot, addDoc, collection, query, where, orderBy } from "@/lib/firebase-firestore"
+import { onSnapshot, collection, query, where, orderBy } from "@/lib/firebase-firestore"
 import { COLLECTIONS } from "@/data/schema"
 import type { Deployment, DeploymentHealth, DeploymentEnvironment, FirestoreOrder } from "@/data/schema"
+import { createSupportTicket } from "@/lib/support-tickets"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -102,21 +103,19 @@ function AppDetailModal({
   const appName = dep.name ?? dep.productSlug ?? dep.clientListName ?? "Application"
 
   async function handleSendReport() {
-    if (!reportText.trim() || !db || !user) return
+    if (!reportText.trim() || !user) return
     setSending(true)
     try {
-      await addDoc(
-        collection(db, COLLECTIONS.supportTickets) as Parameters<typeof addDoc>[0],
-        {
-          subject: `Problème signalé — ${appName}`,
-          description: reportText.trim(),
-          priority: "Normale",
-          status: "Ouvert",
-          createdByUserId: user.id,
-          organizationId: user.organizationId ?? "",
-          deploymentId: dep.id,
-        } as Record<string, unknown>,
-      )
+      await createSupportTicket({
+        subject: `Problème signalé — ${appName}`,
+        description: reportText.trim(),
+        topic: "software",
+        priority: "Normale",
+        createdByUserId: user.id,
+        organizationId: user.organizationId ?? "",
+        clientLabel: user.name,
+        deploymentId: dep.id,
+      })
       setSent(true)
       setReportText("")
       setTimeout(() => {

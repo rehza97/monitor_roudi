@@ -11,6 +11,8 @@ import {
 } from "@/config/remoteSshDefaults"
 import {
   getRemoteSshWebSocketUrl,
+  probeRemoteSshBridge,
+  remoteSshBridgeErrorMessage,
   remoteSshRequiresLocalDevTunnel,
   remoteSshUsesDedicatedBridge,
 } from "@/lib/remote-ssh-ws"
@@ -179,12 +181,29 @@ export default function TechnicianRemoteControl() {
   const [history, setHistory] = useState<string[]>([])
   const [histIdx, setHistIdx] = useState(-1)
   const [errorText, setErrorText] = useState<string | null>(null)
+  const [bridgeProbe, setBridgeProbe] = useState<"idle" | "ok" | "missing" | "unreachable">("idle")
   const [perf, setPerf] = useState<PerfSnapshot>(initialPerf)
   const [metricsApiError, setMetricsApiError] = useState<string | null>(null)
 
   const socketRef = useRef<WebSocket | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
   const devTunnelRequired = remoteSshRequiresLocalDevTunnel()
+
+  useEffect(() => {
+    if (devTunnelRequired || !remoteSshUsesDedicatedBridge()) {
+      setBridgeProbe("ok")
+      return
+    }
+    let cancelled = false
+    void probeRemoteSshBridge().then((result) => {
+      if (cancelled) return
+      setBridgeProbe(result)
+      if (result !== "ok") setErrorText(remoteSshBridgeErrorMessage(result))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [devTunnelRequired])
 
   useEffect(() => {
     if (!db || !isFirebaseConfigured) return
@@ -347,7 +366,7 @@ export default function TechnicianRemoteControl() {
     ws.onerror = () => {
       setErrorText(
         remoteSshUsesDedicatedBridge()
-          ? "Pont SSH inaccessible (vérifiez « npm run ssh-bridge » et REMOTE_SSH_WEBSOCKET_URL dans src/config/remoteSshDefaults.ts)."
+          ? remoteSshBridgeErrorMessage(bridgeProbe === "missing" ? "missing" : "unreachable")
           : "Impossible d'ouvrir le tunnel SSH (lancez « npm run dev » sur localhost, ou « npm run ssh-bridge » et renseignez REMOTE_SSH_WEBSOCKET_URL pour preview).",
       )
       setConnecting(false)

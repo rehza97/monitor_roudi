@@ -108,7 +108,7 @@ export default function TechnicianDashboard() {
         id: t.id,
         timeLabel,
         title: t.subject || "Intervention",
-        subtitle: t.siteAddress ?? t.organizationId ?? "Site client",
+        subtitle: t.siteAddress ?? t.clientLabel ?? t.organizationId ?? "Site client",
         meta: `${STATUS_LABEL[t.status] ?? t.status} · ${t.priority}`,
         active,
       }

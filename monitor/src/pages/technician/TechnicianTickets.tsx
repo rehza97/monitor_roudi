@@ -43,6 +43,16 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 const PRIORITY_OPTIONS = ["Toutes", "Urgente", "Haute", "Normale", "Basse"] as const
 
+const TOPIC_LABEL: Record<string, string> = {
+  software: "Software",
+  material: "Matériel",
+  unknown: "Non précisé",
+}
+
+function clientDisplayName(ticket: FirestoreSupportTicket): string {
+  return ticket.clientLabel?.trim() || ticket.organizationId?.trim() || "Client"
+}
+
 type NewTicketForm = {
   subject: string
   description: string
@@ -64,7 +74,7 @@ export default function TechnicianTickets() {
   const [tickets, setTickets] = useState<TicketDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "")
-  const [statusFilter, setStatusFilter] = useState<string>("Tous")
+  const [statusFilter, setStatusFilter] = useState<string>("Ouvert")
   const [priorityFilter, setPriorityFilter] = useState<string>("Toutes")
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState<NewTicketForm>(EMPTY_FORM)
@@ -127,7 +137,8 @@ export default function TechnicianTickets() {
     const q = search.toLowerCase()
     const matchSearch =
       t.subject.toLowerCase().includes(q) ||
-      (t.organizationId ?? "").toLowerCase().includes(q)
+      (t.organizationId ?? "").toLowerCase().includes(q) ||
+      (t.clientLabel ?? "").toLowerCase().includes(q)
     const matchStatus   = statusFilter === "Tous" || t.status === statusFilter
     const matchPriority = priorityFilter === "Toutes" || t.priority === priorityFilter
     return matchSearch && matchStatus && matchPriority
@@ -184,7 +195,7 @@ export default function TechnicianTickets() {
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <h1 className="text-3xl font-black tracking-tight text-slate-900">Liste des Tickets de Maintenance</h1>
-            <p className="text-slate-500 text-base">Gérez et suivez les demandes d'assistance technique en temps réel.</p>
+            <p className="text-slate-500 text-base">Tickets clients en attente et interventions assignées — filtre par défaut: Ouvert.</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3">
@@ -257,7 +268,7 @@ export default function TechnicianTickets() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    {["ID", "Client", "Sujet", "Priorité", "Date", "Statut", "Action"].map((h) => (
+                    {["ID", "Client", "Sujet", "Type", "Priorité", "Date", "Statut", "Action"].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                         {h}
                       </th>
@@ -267,9 +278,9 @@ export default function TechnicianTickets() {
                 <tbody className="divide-y divide-slate-100">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
+                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-400">
                         <span className="material-symbols-outlined text-[32px] block mb-2 opacity-40">search_off</span>
-                        Aucun ticket trouvé
+                        Aucun ticket trouvé — les demandes clients apparaissent ici avec le statut Ouvert.
                       </td>
                     </tr>
                   ) : (
@@ -285,13 +296,22 @@ export default function TechnicianTickets() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white text-xs font-bold flex items-center justify-center">
-                              {(t.organizationId ?? "CL").slice(0, 2).toUpperCase()}
+                              {clientDisplayName(t).slice(0, 2).toUpperCase()}
                             </div>
-                            <p className="text-sm font-semibold text-slate-900 truncate max-w-[160px]">{t.organizationId ?? "Client"}</p>
+                            <p className="text-sm font-semibold text-slate-900 truncate max-w-[160px]">{clientDisplayName(t)}</p>
                           </div>
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-700 max-w-[240px]">
                           <span className="truncate block">{t.subject}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {t.topic ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-slate-50 text-slate-600 border-slate-200">
+                              {TOPIC_LABEL[t.topic] ?? t.topic}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${PRIORITY_COLORS[t.priority] ?? ""}`}>

@@ -6,6 +6,7 @@ services:
     buildCommand: npm install
     startCommand: npm run ssh-bridge
     plan: free
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production

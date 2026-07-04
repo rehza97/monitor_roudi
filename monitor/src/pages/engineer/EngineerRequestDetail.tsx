@@ -172,6 +172,14 @@ export default function EngineerRequestDetail() {
             <span className="material-symbols-outlined text-[16px]">arrow_back</span>
             Retour aux demandes
           </Link>
+          <Link
+            to={`/engineer/projects/${id}/progress`}
+            className="mb-4 inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">timeline</span>
+            Ouvrir le suivi complet
+            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </Link>
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-slate-900">{order.clientLabel ?? "Client inconnu"}</h2>

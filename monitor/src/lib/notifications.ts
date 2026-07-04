@@ -21,6 +21,10 @@ type AdminUser = {
   id: string
 }
 
+type TechnicianUser = {
+  id: string
+}
+
 function orderTitle(order: FirestoreOrder): string {
   if (order.kind === ORDER_KIND.materialSupply) return order.materialName || "Commande matériel"
   return order.requestType || "Demande client"
@@ -46,6 +50,21 @@ async function getAdminUsers(): Promise<AdminUser[]> {
   } catch {
     return []
   }
+}
+
+async function getTechnicianUsers(): Promise<TechnicianUser[]> {
+  if (!db) return []
+  try {
+    const snap = await getDocs(query(collection(db, COLLECTIONS.users), where("role", "==", "technician")))
+    return snap.docs.map((d) => ({ id: d.id }))
+  } catch {
+    return []
+  }
+}
+
+async function notifyTechnicians(payload: NotificationPayload): Promise<void> {
+  const technicians = await getTechnicianUsers()
+  await Promise.all(technicians.map((tech) => createNotification({ ...payload, userId: tech.id })))
 }
 
 async function notifyAdmins(payload: NotificationPayload): Promise<void> {
@@ -88,9 +107,29 @@ export async function notifyAdminsOfTicketCreated(
     message: `${ticket.subject} · Priorité ${ticket.priority}.`,
     icon: "support_agent",
     color: "bg-amber-50 text-amber-600",
-    link: "/admin/dashboard",
+    link: `/technician/tickets/${ticketId}`,
   })
-  void ticketId
+}
+
+function ticketTopicLabel(topic: FirestoreSupportTicket["topic"]): string {
+  if (topic === "software") return "Software"
+  if (topic === "material") return "Matériel"
+  return "Non précisé"
+}
+
+export async function notifyTechniciansOfTicketCreated(
+  ticketId: string,
+  ticket: FirestoreSupportTicket,
+): Promise<void> {
+  const client = ticket.clientLabel?.trim() || "Un client"
+  const topicPart = ticket.topic ? ` · ${ticketTopicLabel(ticket.topic)}` : ""
+  await notifyTechnicians({
+    title: "Nouveau ticket client",
+    message: `${client}: ${ticket.subject} · Priorité ${ticket.priority}${topicPart}.`,
+    icon: "support_agent",
+    color: "bg-amber-50 text-amber-600",
+    link: `/technician/tickets/${ticketId}`,
+  })
 }
 
 export async function notifyClientOfTicketStatusChanged(

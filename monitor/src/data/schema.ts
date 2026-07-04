@@ -443,6 +443,7 @@ export interface FirestoreSupportTicket {
   status: "Ouvert" | "En cours" | "Résolu" | "Fermé"
   createdByUserId: string
   organizationId?: string
+  clientLabel?: string
   assignedToId?: string | null
   technicianRejectedBy?: string
   deploymentId?: string

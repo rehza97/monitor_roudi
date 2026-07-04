@@ -9,12 +9,10 @@ import {
   query,
   where,
   orderBy,
-  addDoc,
-  serverTimestamp,
 } from "@/lib/firebase-firestore"
 import { COLLECTIONS, type FirestoreSupportTicket } from "@/data/schema"
 import { formatFirestoreDate } from "@/lib/utils"
-import { notifyAdminsOfTicketCreated } from "@/lib/notifications"
+import { createSupportTicket } from "@/lib/support-tickets"
 
 interface TicketDoc extends FirestoreSupportTicket {
   id: string
@@ -203,23 +201,19 @@ export default function ClientSupport() {
     priority: string,
     topic: "software" | "material" | "unknown",
   ) {
-    if (!db || !user?.id) return
+    if (!user?.id) return
     setSaving(true)
     try {
-      const payload = {
+      const refId = await createSupportTicket({
         subject,
         description,
         topic,
         priority: priority as FirestoreSupportTicket["priority"],
-        status: "Ouvert",
         createdByUserId: user.id,
-        assignedToId: null,
         organizationId: user.organizationId ?? "",
-        createdAt: serverTimestamp(),
-      } as FirestoreSupportTicket
-      const ref = await addDoc(collection(db, COLLECTIONS.supportTickets), payload)
-      await notifyAdminsOfTicketCreated(ref.id, payload)
-      setSuccessId(ref.id)
+        clientLabel: user.name,
+      })
+      setSuccessId(refId)
       setShowModal(false)
       setTimeout(() => setSuccessId(null), 4000)
     } finally {
