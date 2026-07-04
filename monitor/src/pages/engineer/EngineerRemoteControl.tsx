@@ -13,6 +13,7 @@ import {
   getRemoteSshWebSocketUrl,
   probeRemoteSshBridge,
   remoteSshBridgeErrorMessage,
+  RENDER_SSH_BRIDGE_DEPLOY_URL,
   remoteSshRequiresLocalDevTunnel,
   remoteSshUsesDedicatedBridge,
 } from "@/lib/remote-ssh-ws"
@@ -598,7 +599,20 @@ export default function EngineerRemoteControl() {
           </div>
 
           {errorText ? (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{errorText}</div>
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 space-y-2">
+              <p>{errorText}</p>
+              {remoteSshUsesDedicatedBridge() && bridgeProbe !== "ok" ? (
+                <a
+                  href={RENDER_SSH_BRIDGE_DEPLOY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                >
+                  Déployer roudi-ssh-bridge sur Render
+                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                </a>
+              ) : null}
+            </div>
           ) : null}
           {crudError ? (
             <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{crudError}</div>

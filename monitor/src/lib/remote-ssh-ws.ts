@@ -27,6 +27,7 @@ export async function probeRemoteSshBridge(): Promise<"ok" | "missing" | "unreac
     }
     return "unreachable"
   } catch {
+    if (healthUrl.includes("onrender.com")) return "missing"
     return "unreachable"
   }
 }
@@ -34,10 +35,14 @@ export async function probeRemoteSshBridge(): Promise<"ok" | "missing" | "unreac
 export function remoteSshBridgeErrorMessage(probe: "missing" | "unreachable"): string {
   const url = REMOTE_SSH_WEBSOCKET_URL.trim() || "(non configuré)"
   if (probe === "missing") {
-    return `Le service pont SSH Render n'est pas déployé (${url}). Déployez le service « roudi-ssh-bridge » depuis render.yaml (npm run ssh-bridge), ou lancez « npm run dev » en local.`
+    return `Le service pont SSH Render n'est pas déployé (${url}). Ouvrez le déploiement Blueprint Render (render.yaml) ou connectez Render MCP pour créer « roudi-ssh-bridge ». En local : npm run dev.`
   }
-  return `Pont SSH inaccessible (${url}). Vérifiez que le service est démarré (Render: pas en veille, logs sans erreur) ou utilisez « npm run dev » / « npm run ssh-bridge » en local.`
+  return `Pont SSH inaccessible (${url}). Sur Render : vérifiez que « roudi-ssh-bridge » est Live (pas supprimé / en veille). En local : npm run dev ou npm run ssh-bridge.`
 }
+
+/** One-click Blueprint deploy for the SSH bridge (repo must stay public or linked). */
+export const RENDER_SSH_BRIDGE_DEPLOY_URL =
+  "https://render.com/deploy?repo=https://github.com/rehza97/monitor_roudi"
 
 export function remoteSshRequiresLocalDevTunnel(): boolean {
   if (REMOTE_SSH_WEBSOCKET_URL.trim()) return false
