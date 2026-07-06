@@ -328,7 +328,7 @@ function createDevSshBridgePlugin() {
   }
 }
 
-const TOGETHER_API_KEY = "tgp_v1_NV3B7YAMn70eSbdMM66zrfY-yt1ot3KaVo6VkNYQAvU"
+const TOGETHER_API_KEY = "tgp_v1_d3LN2l5Nj9F0kDosnvP8BUvD7kMbwcGWyE7aAZubynw"
 
 function createDevTogetherPlugin() {
   return {
